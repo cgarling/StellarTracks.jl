@@ -17,6 +17,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "PARSEC" => "parsec.md"
     ],
     doctest=false,
     linkcheck=true,
