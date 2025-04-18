@@ -3,9 +3,30 @@ uuid = "2b4a1a39-e20a-4324-9c0b-7d841c062f62"
 authors = ["cgarling <chris.t.garling@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
+DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
+
 [compat]
-julia = "1.9"
+CSV = "0.10"
+CodecZlib = "0.7"
+DataDeps = "0.7"
+DataInterpolations = "4, 5, 6"
+DelimitedFiles = "<0.0.1, 1"
+ProgressMeter = "1"
+StaticArrays = "1"
+Tar = "1.9"
 Test = "<0.0.1, 1"
+TypedTables = "1"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
