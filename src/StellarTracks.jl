@@ -108,6 +108,26 @@ abstract type AbstractTrackLibrary end
     uniqueidx(v) = unique(Base.Fix1(getindex, v), eachindex(v))
 Returns the indices of the first occurrences of unique elements in the array `v`. """
 uniqueidx(v) = unique(Base.Fix1(getindex, v), eachindex(v)) # utility
+"""
+    Mbol(logL::Number, solmbol::Number=4.74)
+Returns the bolometric magnitude corresponding to the provided logarithmic
+bolometric luminosity `logL` which is provided in units of solar luminosities
+(e.g., `logL = log10(L / L⊙)`). This is given by `Mbol⊙ - 2.5 * logL`; the zeropoint
+of bolometric magnitude scale is defined by the solar bolometric magnitude, which you
+can specify as the second argument. The default (4.74) was recommended by
+IAU [Resolution B2](@cite Mamajek2015).
+"""
+Mbol(logL::Number, solmbol::Number=4.74) = solmbol - 5 * logL / 2
+"""
+    logL(Mbol::Number, solmbol::Number=4.74)
+Returns the logarithmic bolometric luminosity in units of solar luminosities
+(e.g., `logL = log10(L / L⊙)`) corresponding to the provided bolometric
+magnitude. This is given by `(Mbol⊙ - Mbol) / 2.5`; the zeropoint
+of bolometric magnitude scale is defined by the solar bolometric magnitude, 
+which you can specify as the second argument. The default (4.74) was recommended
+by IAU [Resolution B2](@cite Mamajek2015).
+"""
+logL(Mbol::Number, solmbol::Number=4.74) = (solmbol - Mbol) / 5 * 2
 
 ###############################################
 # Include files containing submodules for different track libraries
