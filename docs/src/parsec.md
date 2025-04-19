@@ -13,7 +13,7 @@ StellarTracks.PARSEC.PARSECTrackSet
 ## Full Library
 ```@docs
 StellarTracks.PARSEC.PARSECLib
-isochrone(::StellarTracks.PARSEC.PARSECLib, ::Number, ::Number)
+isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number)
 ```
 
 ## Utilities

@@ -46,7 +46,7 @@ StellarTracks.AbstractTrackLibrary
 ```
 
 ### Concrete Implementations
- - [`PARSEC.PARSECLib`](@ref)
+ - [`PARSEC.PARSECLibrary`](@ref)
 
 ## Index
 ```@index

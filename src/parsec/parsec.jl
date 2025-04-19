@@ -330,39 +330,39 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
 end
 
 ##########################################################################
-""" `PARSECLib` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
+""" `PARSECLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
 interface for the PARSEC stellar evolution library. If you construct an instance as
-`p = PARSECLib(...)`, it is callable as
+`p = PARSECLibrary(...)`, it is callable as
  - `p(Z::Number)` to interpolate the full library to a new metal mass fraction
    (returning a [`PARSECTrackSet`](@ref)), or
  - `p(Z::Number, M::Number)` to interpolate the tracks to a specific metallicity
    and initial stellar mass (returning a [`PARSECTrack`](@ref)).
 
 This type also supports isochrone construction
-(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.PARSEC.PARSECLib, ::Number, ::Number))). """
-struct PARSECLib{A,B,C} <: AbstractTrackLibrary
+(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number))). """
+struct PARSECLibrary{A,B,C} <: AbstractTrackLibrary
     ts::A # Vector of `TrackSet`s
     Z::B  # Vector of Z for each TrackSet
     Y::C  # Vector of Y for each TrackSet
 end
 # Interpolation to get a TrackSet with metallicity Z
-function (ts::PARSECLib)(Z::Number)
+function (ts::PARSECLibrary)(Z::Number)
     error("Not yet implemented.")
 end
 # Interpolation to get a Track with mass M and metallicity Z
-function (ts::PARSECLib)(Z::Number, M::Number)
+function (ts::PARSECLibrary)(Z::Number, M::Number)
     error("Not yet implemented.")
 end
-Z(p::PARSECLib) = p.Z
-Y(p::PARSECLib) = p.Y
-X(p::PARSECLib) = 1 .- p.Y .- p.Z
-MH(p::PARSECLib) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
-Base.eltype(p::PARSECLib) = typeof(first(p.Z))
-Base.Broadcast.broadcastable(p::PARSECLib) = Ref(p)
-function Base.show(io::IO, mime::MIME"text/plain", p::PARSECLib)
+Z(p::PARSECLibrary) = p.Z
+Y(p::PARSECLibrary) = p.Y
+X(p::PARSECLibrary) = 1 .- p.Y .- p.Z
+MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
+Base.eltype(p::PARSECLibrary) = typeof(first(p.Z))
+Base.Broadcast.broadcastable(p::PARSECLibrary) = Ref(p)
+function Base.show(io::IO, mime::MIME"text/plain", p::PARSECLibrary)
     print(io, "Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(p.Z)).")
 end
-function PARSECLib(base_dir::AbstractString=datadep"PARSECv1.2S")
+function PARSECLibrary(base_dir::AbstractString=datadep"PARSECv1.2S")
     # Load all data into Tables; 1.2s single-threaded, 0.8s multi-threaded
     # ts = [CSV.read(fname, Table) for fname in glob("Z*.gz", base_dir)]
     # Processing into TrackSet structures takes additional time
@@ -377,10 +377,10 @@ function PARSECLib(base_dir::AbstractString=datadep"PARSECv1.2S")
     set_files .= set_files[idxs]
     # Make vector of tracksets
     ts = [PARSECTrackSet(CSV.read(fname, Table), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
-    return PARSECLib(ts, Z, Y)
+    return PARSECLibrary(ts, Z, Y)
 end
 """
-    isochrone(p::PARSECLib, logAge::Number, Z::Number)
+    isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
 Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and metal mass fraction `Z`. Returns a `NamedTuple` containing the properties listed below:
  - `eep`: Equivalent evolutionary points
  - `m_ini`: Initial stellar masses, in units of solar masses.
@@ -389,10 +389,10 @@ Interpolates properties of the stellar tracks in the library at the requested lo
  - `logg`: Surface gravity of the stellar model calculated as `-10.616 + log10(mass) + 4 * logTe - (4.77 - Mbol) / 2.5`.
  - `C_O`: Photospheric C/O ratio (the ZAMS value is used before the TP-AGB).
 """
-function isochrone(p::PARSECLib, logAge::Number, Z::Number) # 2.4 ms
+function isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
     idx = findfirst(Base.Fix1(≈, Z), p.Z) # Will be === nothing if no entry in p.Z is ≈ Z
     # If input Z is represented in base grid, no Z interpolation needed
-    if idx !== nothing
+    if !isnothing(idx) # idx !== nothing
         return isochrone(p.ts[idx], logAge)
     end
     # Check Z is in valid range
@@ -409,7 +409,7 @@ function isochrone(p::PARSECLib, logAge::Number, Z::Number) # 2.4 ms
     # The pre-computed grid seems more uniform in [M/H] than it is in Z, so I think it might
     # be a good idea to do linear interpolation in [M/H]. 
     xvec = MH(p) # [M/H] for all TrackSet in p, sorted least to greatest
-    x = MH(Z)  # Requested [M/H]
+    x = PARSEC_MH(Z)  # Requested [M/H]
     # searchsortedfirst returns the index of the first value in xvec greater than or
     # equivalent to x. If x is greater than all values in xvec, return lastindex(xvec) + 1.
     # We have already checked bounds so we know minZ < Z < maxZ
@@ -435,14 +435,19 @@ function isochrone(p::PARSECLib, logAge::Number, Z::Number) # 2.4 ms
     # Get isochrone keys, removing EEP since that is fixed
     goodkeys = filter(Base.Fix1(!==, :eep), keys(y0))
     # Linear interpolation here
-    result = NamedTuple{goodkeys}((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
+    # result = NamedTuple{goodkeys}((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
+    # Use a function barrier to improve performance since some of the types of the variables
+    # aren't known at runtime
+    result = NamedTuple{goodkeys}(_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec))
     # Concatenate interpolated result with valid EEP points
     return (eep = good_eeps, result...)
 end
+_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
+    ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
 
 #################################################################################
 
-export PARSECLib # Unique module exports
+export PARSECLibrary # Unique module exports
 export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 #################################################################################
