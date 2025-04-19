@@ -330,9 +330,11 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
 end
 
 ##########################################################################
-""" `PARSECLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
+"""
+    PARSECLibrary()
+`PARSECLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
 interface for the PARSEC stellar evolution library. If you construct an instance as
-`p = PARSECLibrary(...)`, it is callable as
+`p = PARSECLibrary()`, it is callable as
  - `p(Z::Number)` to interpolate the full library to a new metal mass fraction
    (returning a [`PARSECTrackSet`](@ref)), or
  - `p(Z::Number, M::Number)` to interpolate the tracks to a specific metallicity
