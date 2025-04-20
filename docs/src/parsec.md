@@ -7,13 +7,17 @@ using StellarTracks.PARSEC # load all exported methods
 using StellarTracks.PARSEC: PARSECLibrary, X, Y, Z # load specific methods
 ```
 
-The main paper describing the PARSEC family of stellar models is [Bressan2012](@citet), but the library of stellar models has been expanded over the years to add and improve coverage of various parameter spaces. A non-exhaustive list of papers presenting the PARSEC models is provided below.
+The main paper describing the PARSEC family of stellar models is [Bressan2012](@citet), but the library of stellar models has been expanded over the years to add and improve coverage of various parameter spaces. A non-exhaustive list of papers presenting the PARSEC models up to V1.2S is provided below.
  - [Bressan2012](@citet) is the first paper presenting the PARSEC models.
  - [Chen2014](@citet) presented an improved calibration for low-mass stars.
  - [Tang2014](@citet) and [Chen2015](@citet) presented new models of high-mass stars from 14 to 350 M⊙ with metallicities from ``0.001 \le Z \le 0.004``.
  - [Rosenfield2016](@citet) formulated equivalent evolutionary points (EEPs) for the PARSEC models to support use in isochrone interpolation routines. **Our implementation uses their data products.**
  - [Marigo2017](@citet) augmented the PARSEC models with COLIBRI models of the thermally pulsating asymptotic giant branch phase (TP-AGB).
  - [Pastorelli2019,Pastorelli2020](@citet) compared the COLIBRI TP-AGB models to observations of the SMC and LMC, respectively.
+
+The full list of relevant papers maintained by the group is available [here](https://ui.adsabs.harvard.edu/public-libraries/jSpa1621SGW2mMpPRaRP4w).
+
+As we use the PARSEC V1.2S tracks augmented with EEP points by [Rosenfield2016](@citet), we do not currently support the more recent PARSEC V2.0 tracks [Nguyen2022,Costa2025](@citep). We hope to add V2.0 in the future, but doing so would require new measurements of the EEP points which we do not presently support.
 
 ## Data Acquisition
 
