@@ -56,6 +56,3 @@ StellarTracks.Mbol
 StellarTracks.logL
 ```
 
-## Index
-```@index
-```

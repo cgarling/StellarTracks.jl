@@ -21,7 +21,9 @@ makedocs(;
     pages=[
         "index.md",
         "parsec.md",
-        "refs.md"
+        "extensions.md",
+        "refs.md",
+        "doc_index.md"
     ],
     doctest=false,
     linkcheck=true,

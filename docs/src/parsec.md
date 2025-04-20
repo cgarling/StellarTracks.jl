@@ -49,6 +49,7 @@ In PARSEC the initial helium abundance ``Y`` is scaled with the initial metallic
 
 ```@docs
 StellarTracks.PARSEC.PARSEC_MH
+StellarTracks.PARSEC.PARSEC_Z
 ```
 
 ## PARSEC References
