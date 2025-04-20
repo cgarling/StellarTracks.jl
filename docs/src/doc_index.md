@@ -1,0 +1,3 @@
+# [Index](@id index)
+```@index
+```
