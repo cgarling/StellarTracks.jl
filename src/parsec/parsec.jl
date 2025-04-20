@@ -156,7 +156,7 @@ struct PARSECTrackSet{A <: AbstractVector{<:Integer},
                       B <: AbstractVector{<:AbstractInterpolation}, # AbstractInterpolation{T}
                       # C <: AbstractVector{<:AbstractVector{<:AbstractInterpolation}},
                       C,
-                      D}
+                      D} <: AbstractTrackSet
     eeps::A # EEP points; vector of integers
     AMRs::B # age-mass relations; vector of interpolators, same length as eeps
     interps::C
