@@ -1,6 +1,6 @@
 using StellarTracks
-using Test
+using Test, SafeTestsets
 
-@testset "StellarTracks.jl" begin
-    # Write your tests here.
+@testset verbose=true "StellarTracks.jl" begin
+    @safetestset "Isochrone Creation" include("isochrones.jl")
 end

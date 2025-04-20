@@ -132,6 +132,7 @@ logL(Mbol::Number, solmbol::Number=4.74) = (solmbol - Mbol) / 5 * 2
 ###############################################
 # Include files containing submodules for different track libraries
 include("parsec/parsec.jl")
+using .PARSEC
 
 # Common API exports
 export mass, X, Y, Z, MH, post_rgb, isochrone
