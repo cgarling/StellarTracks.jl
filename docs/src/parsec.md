@@ -1,3 +1,8 @@
+```@meta
+CurrentModule = StellarTracks
+ShareDefaultModule = true
+```
+
 # [PARSEC](@id PARSEC)
 
 Here we describe the interface we provide to the PARSEC v1.2S library of stellar evolutionary tracks. PARSEC specific code is housed in the `PARSEC` submodule, which can be accessed as
@@ -23,6 +28,24 @@ As we use the PARSEC V1.2S tracks augmented with EEP points by [Rosenfield2016](
 
 This package handles downloading and pre-processing of the EEP tracks produced by [Rosenfield2016](@citet) (available [here](https://github.com/philrosenfield/padova_tracks)) using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl). The main access point we provide is [`PARSECLibrary`](@ref StellarTracks.PARSEC.PARSECLibrary), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume is ~66 MB after processing. Information on customizing the install location [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"PARSECv1.2S"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity with the PARSEC parameter space.
 
+## Examples
+Load the full PARSEC library, which is downloaded via DataDeps.jl if not already available.
+```@example
+using StellarTracks.PARSEC
+p = PARSECLibrary()
+```
+
+Use the [`PARSEC.PARSECLibrary`](@ref) to interpolate an isochrone, at `log10(age [yr]) = 10.05` and metal mass fraction ``Z=0.001654``. The isochrone is returned as a `NamedTuple`.
+```@example
+isochrone(p, 10.05, 0.001654)
+```
+
+The `NamedTuple` returned by `isochrone()` can be converted to table types, like `TypedTables.Table` to simplify further use.
+```@example
+using TypedTables: Table
+Table(isochrone(p, 10.05, 0.001654))
+```
+
 ## Full Library
 ```@docs
 StellarTracks.PARSEC.PARSECLibrary
@@ -42,7 +65,6 @@ Each track set is, intuitively, a set of individual tracks -- there is one track
 ```@docs
 StellarTracks.PARSEC.PARSECTrack
 ```
-
 
 ## Utilities
 In PARSEC the initial helium abundance ``Y`` is scaled with the initial metallicity, allowing for easy conversion between metal mass fraction ``Z`` and the logarithmic metal abundance [M/H].
