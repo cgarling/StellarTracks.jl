@@ -6,4 +6,4 @@ For integrated stellar photometry, this is typically done by applying [bolometri
 
 ## [BolometricCorrections.jl](@id bcs)
 
-One of the most common products observers require are isochrones to predict where stars of different initial masses but identical chemical compositions should lie in an observed color-magnitude diagram. We already provide the [`isochrone`](@ref) method to calculate isochrones from the stellar evolutionary tracks, and we offer additional call signatures when a grid of bolometric corrections is available to predict magnitudes in the observational space.
+One of the most common products observers require are isochrones to predict where stars of different initial masses but identical chemical compositions should lie in an observed color-magnitude diagram. We already provide the [`isochrone`](@ref) method to calculate isochrones from the stellar evolutionary tracks, and we offer additional call signatures when a grid of bolometric corrections is available to predict magnitudes in the observational space. Examples of this use case are given on the [PARSEC](@ref PARSEC) page.
