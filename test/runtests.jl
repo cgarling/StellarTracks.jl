@@ -8,4 +8,6 @@ doctest(StellarTracks)
 
 @testset verbose=true "StellarTracks.jl" begin
     @safetestset "Isochrone Creation" include("isochrones.jl")
+
+    @safetestset "BolometricCorrections.jl" include("BolometricCorrectionsExtTest.jl")
 end
