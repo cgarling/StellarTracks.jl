@@ -9,4 +9,4 @@ Provides access to and interpolation of pre-computed libraries of stellar tracks
 
  - [PARSECv1.2S](https://stev.oapd.inaf.it/PARSEC/papers.html)
 
-These tracks contain only quantities from stellar interior modeling (e.g., bolometric luminosities and effective temperatures) and must be combined with bolometric corrections to make predictions for observations in different filters/bandpasses. This package integrates with [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to support these use cases. 
+These tracks contain only quantities from stellar interior modeling (e.g., bolometric luminosities and effective temperatures) and must be combined with bolometric corrections to make predictions for observations in different filters/bandpasses. This package integrates with [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to support these use cases. See our documentation linked in the badges above for more details. 
