@@ -56,11 +56,27 @@ X_from_Z(Z, Y_p, γ) = 1 - (Y_from_Z(Z, Y_p, γ) + Z)
 """
     PARSEC_MH(Z, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
 Calculates [M/H] = log(Z/X) - log(Z⊙/X⊙) under the abundance assumptions made by PARSEC. There is a more detailed method `MH_from_Z` in StarFormationHistories.jl that provides more details. May be moved to a common shared package in the future.
+
+# Examples
+```jldoctest
+julia> using StellarTracks.PARSEC: PARSEC_MH
+
+julia> PARSEC_MH(0.03, 0.01524; Y_p = 0.2485, γ = 1.78) ≈ 0.3200223895185035
+true
+```
 """
 PARSEC_MH(Z, solZ=0.01524; Y_p = 0.2485, γ = 1.78) = log10(Z / X_from_Z(Z, Y_p, γ)) - log10(solZ / X_from_Z(solZ, Y_p, γ))
 """
     PARSEC_Z(MH, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
 Calculates metal mass fraction `Z` under the abundance assumptions made by PARSEC. Assumes that the solar metal mass fraction is `solZ` and that `Y = Y_p + γ * Z` with primordial helium abundance `Y_p = 0.2485`, and `γ = 1.78`.
+
+# Examples
+```jldoctest
+julia> using StellarTracks.PARSEC: PARSEC_Z
+
+julia> PARSEC_Z(0.3200223895185035, 0.01524; Y_p = 0.2485, γ = 1.78) ≈ 0.03
+true
+```
 """
 function PARSEC_Z(MH, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
     # [M/H] = log(Z/X)-log(Z/X)☉ with Z☉ = solz
