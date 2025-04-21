@@ -2,4 +2,5 @@
 BolometricCorrections = "37ee4594-8306-40da-a4c2-d7ed95560e0b"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 StellarTracks = "2b4a1a39-e20a-4324-9c0b-7d841c062f62"

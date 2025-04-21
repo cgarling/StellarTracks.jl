@@ -3,6 +3,22 @@ CurrentModule = StellarTracks
 ShareDefaultModule = true
 ```
 
+```@setup
+import PyPlot as plt
+plt.ioff()
+ENV["MPLBACKEND"] = "agg"
+import PyPlot: @L_str # For LatexStrings
+plt.rc("text", usetex=true)
+plt.rc("font", family="serif", serif=["Computer Modern"], size=16)
+# This gets close but not quite
+# plt.matplotlib.rcParams["axes.formatter.use_mathtext"] = true
+# plt.rc("font", family="serif", serif=["cmr10"], size=14)
+plt.rc("figure", figsize=(5,5))
+plt.rc("patch", linewidth=1, edgecolor="k", force_edgecolor=true)
+# https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html
+plt.rc("image", interpolation="none")
+```
+
 # [PARSEC](@id PARSEC)
 
 Here we describe the interface we provide to the PARSEC v1.2S library of stellar evolutionary tracks. PARSEC specific code is housed in the `PARSEC` submodule, which can be accessed as
@@ -37,7 +53,19 @@ p = PARSECLibrary()
 
 Use the [`PARSEC.PARSECLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metal mass fraction ``Z=0.001654``. The isochrone is returned as a `NamedTuple`.
 ```@example
-isochrone(p, 10.05, 0.001654)
+iso = isochrone(p, 10.05, 0.001654)
+```
+
+The theoretical isochrone is plotted below.
+
+```@example
+fig,ax1 = plt.subplots() # hide
+ax1.plot(iso.logTe, iso.Mbol) # hide
+ax1.set_xlim(reverse(ax1.get_xlim())) # hide
+ax1.set_ylim(reverse(ax1.get_ylim())) # hide
+ax1.set_xlabel("logTe") # hide
+ax1.set_ylabel("Mbol") # hide
+fig # hide
 ```
 
 The `NamedTuple` returned by `isochrone(...)` can be converted to table types, like `TypedTables.Table` to simplify further use.
@@ -54,14 +82,25 @@ m = MISTBCGrid("JWST")
 iso = isochrone(p, m, 10.05, 0.001654, 0.02)
 ```
 
-All available columns in the isochrone can be obtained with `TypedTables.columnnames`,
+A color-magnitude diagram constructed from the isochrone is plotted below.
+
+```@example
+fig,ax1 = plt.subplots() # hide
+ax1.plot(iso.F090W .- iso.F150W, iso.F090W) # hide
+ax1.set_ylim(reverse(ax1.get_ylim())) # hide
+ax1.set_xlabel("F090W - F150W") # hide
+ax1.set_ylabel("F090W") # hide
+fig # hide
+```
+
+All available columns in the isochrone can be obtained with `TypedTables.columnnames`.
 
 ```@example
 using TypedTables: columnnames
 columnnames(iso)
 ```
 
-## Full Library
+## Library API
 ```@docs
 StellarTracks.PARSEC.PARSECLibrary
 isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number)
@@ -69,14 +108,14 @@ isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number)
 
 The full library is principally a set of [`PARSECTrackSet`](@ref StellarTracks.PARSEC.PARSECTrackSet)s, with one track set per unique chemical composition. All PARSEC models have scaled-solar chemical compositions, so they vary only in total metallicity (i.e., ``Z``). 
 
-## Track Sets
+## Track Set API
 ```@docs
 StellarTracks.PARSEC.PARSECTrackSet
 ```
 
 Each track set is, intuitively, a set of individual tracks -- there is one track per stellar model, defined uniquely by their initial stellar mass.
  
-## Individual Tracks
+## Individual Tracks API
 ```@docs
 StellarTracks.PARSEC.PARSECTrack
 ```
