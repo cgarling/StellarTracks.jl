@@ -1,5 +1,7 @@
-using StellarTracks: isochrone, PARSECLibrary, Z
-using BolometricCorrections: MISTBCGrid
+using StellarTracks: isochrone, PARSECLibrary
+import StellarTracks as ST # For, e.g., Z which also appears in BolometricCorrections
+using BolometricCorrections: MISTBCGrid, MISTChemistry
+import BolometricCorrections as BC # For, e.g., Z which also appears in StellarTracks
 using TypedTables: Table
 using Test
 
@@ -12,7 +14,7 @@ iso = isochrone(p.ts[1], m(1e-4, 0.0), 10.0)
 @test iso isa Table
 
 # Test passing full stellar track library with single BC table
-iso1 = isochrone(p, m(1e-4, 0.0), 10.0, 1e-4)
+iso1 = isochrone(p, m(BC.MH(MISTChemistry(), 1e-4), 0.0), 10.0, 1e-4)
 @test iso1 isa Table
 # Test passing full stellar track library with full BC grid
 iso2 = isochrone(p, m, 10.0, 1e-4, 0.0)
@@ -21,7 +23,7 @@ iso2 = isochrone(p, m, 10.0, 1e-4, 0.0)
 @test iso1 == iso2
 
 # Test that we can interpolate across the range of valid Z
-for ZZ in range(extrema(Z(p))...; length=10)
+for ZZ in range(extrema(ST.Z(p))...; length=10)
     @test isochrone(p, m, 10.0, ZZ, 0.0) isa Table
 end
 
