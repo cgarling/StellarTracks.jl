@@ -4,55 +4,24 @@ CurrentModule = StellarTracks
 
 # [Overview](@id overview)
 
-## Individual Tracks
-An individual stellar track, containing the time evolution of properties for a single star, is represented by our [`AbstractTrack`](@ref StellarTracks.AbstractTrack) type. Different concrete implementations are used for different stellar evolution libraries, but all support the common access API defined below.
+The purpose of this package is to provide access to pre-computed libraries of stellar evolutionary tracks. These libraries provide predictions for stellar interior and photosphere properties for stars of different initial masses and chemical compositions. In their standard form, each track describes the evolution of a single model star as it evolves through time. Tracks are identified uniquely by their initial stellar masses (``M_\text{ini}``) and chemical compositions. Most libraries will provide, at minimum, a set of stellar models with different total metallicity (typically quantified by the metal mass fraction ``Z``). Some libraries will also vary other parameters like α-element abundance.
 
-### API
-```@docs
-StellarTracks.AbstractTrack
-mass(::StellarTracks.AbstractTrack)
-X(::StellarTracks.AbstractTrack)
-Y(::StellarTracks.AbstractTrack)
-Z(::StellarTracks.AbstractTrack)
-MH(::StellarTracks.AbstractTrack)
-post_rgb(::StellarTracks.AbstractTrack)
+Isochrones representing stellar populations of uniform age and chemical composition but varying initial stellar masses can be formed by interpolating the tracks with the correct chemical compositions to the requested age. This form of isochrone creation can struggle when the spacing in initial mass between the tracks in a set is poor and generally does a poor job of capturing isochrone features that only manifest over a small range of initial stellar masses for a given age. Isochrone creation can be improved by identifying equivalent evolutionary points (EEPs) in these tracks [Dotter2016](@citep); example EEPs are the main sequence turn-off and the tip of the red giant branch. For each EEP, a relation between the stellar initial mass and the age of the star at the EEP can be constructed so that the initial mass of the star as a function of age can be inferred for each EEP. Properties like bolometric luminosity can then be interpolated and evaluated as a function of initial mass for this EEP. When there are many well-spaced EEPs, this method of isochrone creation outperforms the easier approach. *We focus on tracks with EEPs to support this use case.*
+
+## Supported Libraries
+We currently support the following stellar track libraries:
+ - [PARSECv1.2S](@ref PARSEC)
+
+## Integrations
+This package integrates with other packages to add additional functionality, like interpolation of bolometric corrections to model isochrones in observational filter sets. See [here](@ref extensions) for more information.
+
+## API
+Our full API documentation is available [here](@ref api).
+
+## References
+This page cites the following references:
+
+```@bibliography
+Pages = ["index.md"]
+Canonical = false
 ```
-
-### Concrete Implementations
- - [`PARSEC.PARSECTrack`](@ref)
-
-## Track Sets
-We define a "track set" to be a set of individual stellar tracks that share common properties (typically initial metallicity). By grouping these tracks together, we can interpolate between tracks in the set, create isochrones, and perform other similar operations.
-
-### API
-```@docs
-StellarTracks.AbstractTrackSet
-mass(::StellarTracks.AbstractTrackSet)
-X(::StellarTracks.AbstractTrackSet)
-Y(::StellarTracks.AbstractTrackSet)
-Z(::StellarTracks.AbstractTrackSet)
-MH(::StellarTracks.AbstractTrackSet)
-post_rgb(::StellarTracks.AbstractTrackSet)
-isochrone(::StellarTracks.AbstractTrackSet, ::Number)
-```
-
-### Concrete Implementations
- - [`PARSEC.PARSECTrackSet`](@ref)
-
-## Track Libraries
-For ease of use, our main entry point is the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary), which loads and organizes all stellar tracks available from a given library (e.g., PARSEC). Once all tracks have been loaded, subsets with common chemical compositions can be extracted. Individual tracks and isochrones can also be interpolated directly from the library instance. However, the interfaces for these interpolations are not generic as not all libraries offer the same variations in initial chemistry -- e.g., most will offer variation in total metallicity (i.e., ``Z``), but some also include variation in ``\alpha``-element abundances. These methods are documented separately for each stellar library under their unique pages in the left panel.
-
-### API
-```@docs
-StellarTracks.AbstractTrackLibrary
-```
-
-### Concrete Implementations
- - [`PARSEC.PARSECLibrary`](@ref)
-
-## Utilities
-```@docs
-StellarTracks.Mbol
-StellarTracks.logL
-```
-

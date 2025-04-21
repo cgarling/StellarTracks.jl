@@ -22,6 +22,7 @@ makedocs(;
         "index.md",
         "parsec.md",
         "extensions.md",
+        "api.md",
         "refs.md",
         "doc_index.md"
     ],
