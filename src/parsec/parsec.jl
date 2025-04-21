@@ -363,7 +363,17 @@ interface for the PARSEC stellar evolution library. If you construct an instance
    and initial stellar mass (returning a [`PARSECTrack`](@ref)).
 
 This type also supports isochrone construction
-(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number))). """
+(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number))).
+
+# Examples
+```jldoctest
+julia> p = PARSECLibrary()
+Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is (0.0001, 0.06).
+
+julia> isochrone(p, 10.05, 0.001654) isa NamedTuple
+true
+```
+"""
 struct PARSECLibrary{A,B,C} <: AbstractTrackLibrary
     ts::A # Vector of `TrackSet`s
     Z::B  # Vector of Z for each TrackSet
