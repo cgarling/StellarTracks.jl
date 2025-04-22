@@ -104,7 +104,7 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
         rm(dir; recursive=true)
     end
     @info "Cleaning up data directory"
-    # rm(fname) # remove releasev2.tar.gz
+    rm(fname) # remove releasev2.tar.gz
     rm(out_dir; recursive=true)
 end
 
