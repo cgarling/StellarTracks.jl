@@ -91,12 +91,12 @@ function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:N
     rlock = ReentrantLock()
     # This implementation returns a single Table, with Z and logAge rows 
     Threads.@threads for Zval in Z
-        mh = BC.MIST.MH(BC.MIST.MISTChemistry(), Zval)
+        mh = MH(chemistry(bcg), Zval)
         bc = bcg(mh, Av)
         Threads.@threads for la in logAge
             iso = isochrone(tl, bc, la, Zval)
             # Lock and push into result, adding Z and logAge columns
-            @lock rlock push!(result, Table(Table(Z=fill(Zval, length(iso)),
+            @lock rlock push!(result, Table(Table(Z_ini=fill(Zval, length(iso)),
                                                   logAge=fill(la, length(iso))), iso))
         end
     end
