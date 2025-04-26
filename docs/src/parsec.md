@@ -100,6 +100,20 @@ using TypedTables: columnnames
 columnnames(iso)
 ```
 
+## Chemistry API
+We provide the [`StellarTracks.PARSEC.PARSECChemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to access information on the chemical mixture assumed for the PARSEC models.
+
+```@docs
+StellarTracks.PARSEC.PARSECChemistry
+```
+
+Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *protostellar* solar values for `Z⊙` and `X⊙` (these are `Z_initial` and `X_initial = 1 - Z_initial - Y_initial` in Table 4 of [Bressan2012](@citet)). We do this as ``X`` and ``Z`` for the PARSEC tracks also refer to the protostellar chemical composition of the stars -- photospheric metallicities are not generally uniform due to diffusive properties that can redistribute the metals in a star over time. It therefore seems proper for `Z⊙` and `X⊙` to be the solar protostellar values rather than the present-day photospheric values. Our definition differs from the standard PARSEC convention -- for example, Table 4 of [Bressan2012](@citet) and the online CMD webform for PARSEC isochrones both assume `Z⊙/X⊙ = 0.0207` when computing \[M/H\], which is the photospheric result of [Caffau2011](@citet). As such, it is expected that our `MH` function will correspond to a different value of `Z` than these sources. To facilitate comparisons, we provide the following functions to convert between ``Z`` and \[M/H\] using the PARSEC convention -- i.e., these functions will return the same ``Z`` for a given value of \[M/H\] as found in Table 4 of [Bressan2012](@citet) and as returned by the CMD webform.
+
+```@docs
+StellarTracks.PARSEC.MH_canon
+StellarTracks.PARSEC.Z_canon
+```
+
 ## Library API
 ```@docs
 StellarTracks.PARSEC.PARSECLibrary
@@ -118,14 +132,6 @@ Each track set is, intuitively, a set of individual tracks -- there is one track
 ## Individual Tracks API
 ```@docs
 StellarTracks.PARSEC.PARSECTrack
-```
-
-## Utilities
-In PARSEC the initial helium abundance ``Y`` is scaled with the initial metallicity, allowing for easy conversion between metal mass fraction ``Z`` and the logarithmic metal abundance [M/H].
-
-```@docs
-StellarTracks.PARSEC.PARSEC_MH
-StellarTracks.PARSEC.PARSEC_Z
 ```
 
 ## PARSEC References

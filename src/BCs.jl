@@ -1,18 +1,3 @@
-module BolometricCorrectionsExt
-
-using StellarTracks: AbstractTrackSet, PARSECLibrary
-import StellarTracks: isochrone
-import StellarTracks as ST
-using BolometricCorrections: AbstractBCTable, MISTBCGrid, filternames
-import BolometricCorrections as BC
-
-using TypedTables: Table
-import Tables
-# BolometricCorrections.MISTBCGrid can be interpolated in metallicity and reddening;
-# other grids may contain other
-
-#############################################################
-
 # Isochrones generated from different stellar track libraries may have different keys
 # for the same quantities (though we try to avoid this). These functions parse the
 # isochrones and return the necessary quantities. 
@@ -93,7 +78,7 @@ function isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, Z::Nu
 end
 function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::Number, Z::Number, Av::Number)
     # MISTBCGrid expects metallicity in [Fe/H] == [M/H], not Z, so convert
-    mh = BC.MIST.MH(BC.MIST.MISTChemistry(), Z)
+    mh = MH(chemistry(bcg), Z)
     return isochrone(tl, bcg(mh, Av), logAge, Z)
 end
 # This is most useful for constructing large isochrone tables that can then be written out.
@@ -137,5 +122,3 @@ function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:N
     # # we iterate la more quickly than Z.
     # return result, zvec, lavec
 end
-
-end # module

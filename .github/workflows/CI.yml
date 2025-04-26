@@ -47,7 +47,6 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
-      - run: julia --color=yes -e 'using Pkg; Pkg.add("BolometricCorrections")'
       - uses: julia-actions/julia-runtest@v1
         env:
           DATADEPS_ALWAYS_ACCEPT: 'true'
@@ -98,7 +97,6 @@ jobs:
           using Pkg
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
-          Pkg.add("BolometricCorrections")
           Pkg.build()
         env:
           PYTHON: ${{ steps.cpython3.outputs.python-path }}
@@ -113,7 +111,7 @@ jobs:
         run: |
           using Documenter: DocMeta, doctest
           using StellarTracks
-          DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks; import BolometricCorrections; using DataDeps: @datadep_str; datadep"PARSECv1.2S"); recursive=true)
+          DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks; using DataDeps: @datadep_str; datadep"PARSECv1.2S"); recursive=true)
           doctest(StellarTracks)
         env:
           DATADEPS_ALWAYS_ACCEPT: 'true'

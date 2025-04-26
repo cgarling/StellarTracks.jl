@@ -34,6 +34,7 @@ Z(::StellarTracks.AbstractTrackSet)
 MH(::StellarTracks.AbstractTrackSet)
 post_rgb(::StellarTracks.AbstractTrackSet)
 isochrone(::StellarTracks.AbstractTrackSet, ::Number)
+isochrone(::StellarTracks.AbstractTrackSet, ::StellarTracks.AbstractBCTable, ::Number)
 ```
 
 ### Concrete Implementations
