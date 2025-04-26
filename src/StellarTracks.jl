@@ -2,6 +2,11 @@ module StellarTracks
 
 using TypedTables: Table
 
+# For BCs.jl
+using BolometricCorrections: AbstractBCTable, MISTBCGrid, filternames
+import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry
+import Tables
+
 # Top-level API definitions
 # Track
 """ Abstract supertype representing individual stellar tracks.
@@ -101,7 +106,6 @@ at other metallicities and initial stellar masses --
 specifics of this behavior depend on the library. """
 abstract type AbstractTrackLibrary end
 
-
 ###############################################
 # Utilities
 """
@@ -133,6 +137,9 @@ logL(Mbol::Number, solmbol::Number=4.74) = (solmbol - Mbol) / 5 * 2
 # Include files containing submodules for different track libraries
 include("parsec/parsec.jl")
 using .PARSEC
+
+# Include bolometric correction-related functionality
+include("BCs.jl")
 
 # Common API exports
 export mass, X, Y, Z, MH, post_rgb, isochrone

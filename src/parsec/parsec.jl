@@ -1,8 +1,9 @@
 module PARSEC
 
 # imports from parent module
-using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary, uniqueidx
-import ..StellarTracks: mass, X, Y, Z, MH, post_rgb, isochrone
+using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet, AbstractTrackLibrary, uniqueidx
+import ..StellarTracks: mass, post_rgb, isochrone
+import ..StellarTracks: X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 using DataDeps: register, DataDep, @datadep_str, unpack
 import Tar
@@ -50,39 +51,68 @@ const keepcols = SVector(1,2,3,4,5,6)
 const track_type = Float64 # Float type to use to represent values
 
 ##########################################################################
-# PARSEC abundances
-Y_from_Z(Z, Y_p = 0.2485, γ = 1.78) = Y_p + γ * Z
-X_from_Z(Z, Y_p, γ) = 1 - (Y_from_Z(Z, Y_p, γ) + Z)
+# PARSEC chemistry
 """
-    PARSEC_MH(Z, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
-Calculates [M/H] = log(Z/X) - log(Z⊙/X⊙) under the abundance assumptions made by PARSEC. There is a more detailed method `MH_from_Z` in StarFormationHistories.jl that provides more details. May be moved to a common shared package in the future.
+    PARSECChemistry()
+Returns a singleton struct representing the PARSEC chemical mixture model.
+We presently only include scaled-solar models. The solar protostellar chemical
+mixture for PARSEC was calibrated to reproduce solar photospheric observations
+via a forward modeling approach (see section 3 of [Bressan2012](@citet)). The
+full solar calibration assumed for PARSEC is given in Table 3 of [Bressan2012](@citet).
+The distribution of heavy metals is taken from [Grevesse1998](@citet) and [Caffau2011](@citet)
+(see section 4 of [Bressan2012](@citet)).
 
-# Examples
 ```jldoctest
-julia> using StellarTracks.PARSEC: PARSEC_MH
+julia> using StellarTracks.PARSEC: PARSECChemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
 
-julia> PARSEC_MH(0.03, 0.01524; Y_p = 0.2485, γ = 1.78) ≈ 0.3200223895185035
+julia> chem = PARSECChemistry();
+
+julia> X(chem) + Y(chem) + Z(chem) ≈ 1 # solar protostellar values
+true
+
+julia> X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1 # solar photospheric values
+true
+
+julia> MH(chem, Z(chem) * 0.1) ≈ -1.0265716016323736
+true
+
+julia> Z(chem, -1.0265716016323736) ≈ Z(chem) * 0.1
 true
 ```
 """
-PARSEC_MH(Z, solZ=0.01524; Y_p = 0.2485, γ = 1.78) = log10(Z / X_from_Z(Z, Y_p, γ)) - log10(solZ / X_from_Z(solZ, Y_p, γ))
+struct PARSECChemistry <: AbstractChemicalMixture end
+X(::PARSECChemistry) = 0.70226
+X_phot(::PARSECChemistry) = 0.73616
+Y(::PARSECChemistry) = 0.28 # Y_initial in Table 3 of Bressan2012
+Y_phot(::PARSECChemistry) = 0.24787 # Y_S in Table 3 of Bressan2012
+Y_p(::PARSECChemistry) = 0.2485
+Z(::PARSECChemistry) = 0.01774 # Z_initial in Table 3 of Bressan2012
+Z_phot(::PARSECChemistry) = 0.01597 # Z_S in Table 3 of Bressan2012
+
+Y(mix::PARSECChemistry, Zval) = Y_p(mix) + 1.78 * Zval # γ = 1.78
+# X generic
+MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z(mix) / X(mix))
+# MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval) / Z(mix) * X(mix))
 """
-    PARSEC_Z(MH, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
-Calculates metal mass fraction `Z` under the abundance assumptions made by PARSEC. Assumes that the solar metal mass fraction is `solZ` and that `Y = Y_p + γ * Z` with primordial helium abundance `Y_p = 0.2485`, and `γ = 1.78`.
+    MH_canon(mix::PARSECChemistry, Zval)
+Returns the [M/H] value for the provided protostellar value of `Z`, where the solar abundances
+are taken to be *photospheric* rather than protostellar, while the provided `Zval` is assumed
+to be protostellar. This matches the convention of Table 4
+of [Bressan2012](@citet) and the CMD webform for PARSEC.
 
-# Examples
 ```jldoctest
-julia> using StellarTracks.PARSEC: PARSEC_Z
+julia> using StellarTracks.PARSEC: PARSECChemistry, MH_canon;
 
-julia> PARSEC_Z(0.3200223895185035, 0.01524; Y_p = 0.2485, γ = 1.78) ≈ 0.03
+julia> MH_canon(PARSECChemistry(), 0.0005) ≈ -1.4921252963659897
 true
 ```
 """
-function PARSEC_Z(MH, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
-    # [M/H] = log(Z/X)-log(Z/X)☉ with Z☉ = solz
+MH_canon(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(0.0207)
+function Z(mix::PARSECChemistry, MHval)
+    # [M/H] = log(Z/X) - log(Z/X)☉ with Z☉ = solz
     # Z/X = exp10( [M/H] + log(Z/X)☉ )
     # X = 1 - Y - Z
-    # Y ≈ Y_p + γ * Z for parsec (see Y_from_Z above)
+    # Y ≈ Y_p + γ * Z for parsec (see Y(mix::PARSECChemistry, Zval) above)
     # so X ≈ 1 - (Y_p + γ * Z) - Z = 1 - Y_p - (1 + γ) * Z
     # Substitute into line 2,
     # Z / (1 - Y_p - (1 + γ) * Z) = exp10( [M/H] + log(Z/X)☉ )
@@ -92,11 +122,29 @@ function PARSEC_Z(MH, solZ=0.01524; Y_p = 0.2485, γ = 1.78)
     # Z + (1 + γ) * Z * A = (1 - Y_p) * A
     # Z (1 + (1 + γ) * A) = (1 - Y_p) * A
     # Z = (1 - Y_p) * A / (1 + (1 + γ) * A)
-    # Originally had X_from_Z(solZ) without passing through the Y_p. Don't remember why
-    zoverx = exp10(MH + log10(solZ / X_from_Z(solZ, Y_p, γ)))
-    return (1 - Y_p) * zoverx / (1 + (1 + γ) * zoverx)
+    zoverx = exp10(MHval + log10(Z(mix) / X(mix)))
+    γ = 1.78
+    return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
 end
+"""
+    Z_canon(mix::PARSECChemistry, MHval)
+Returns the *protostellar* metal mass fraction corresponding to the provided value
+of [M/H] where the solar abundances are taken to be *photospheric* rather
+than protostellar. This matches the convention of Table 4
+of [Bressan2012](@citet) and the CMD webform for PARSEC.
 
+```jldoctest
+julia> using StellarTracks.PARSEC: PARSECChemistry, Z_canon;
+
+julia> Z_canon(PARSECChemistry(), -1.4921252963659897) ≈ 0.0005
+true
+```
+"""
+function Z_canon(mix::PARSECChemistry, MHval)
+    zoverx = exp10(MHval + log10(0.0207))
+    γ = 1.78
+    return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
+end
 ##########################################################################
 
 function file_properties(filename::AbstractString) # extract properties of original track files
@@ -182,7 +230,8 @@ mass(t::PARSECTrack) = t.properties.M
 Z(t::PARSECTrack) = t.properties.Z
 Y(t::PARSECTrack) = t.properties.Y
 X(t::PARSECTrack) = 1 - Y(t) - Z(t)
-MH(t::PARSECTrack) = PARSEC_MH(Z(t))
+chemistry(::PARSECTrack) = PARSECChemistry()
+MH(t::PARSECTrack) = MH(chemistry(t), Z(t))
 post_rgb(t::PARSECTrack) = t.properties.HB #hashb()
 Base.eltype(t::PARSECTrack) = typeof(t.properties.Z)
 
@@ -313,7 +362,8 @@ mass(ts::PARSECTrackSet) = ts.properties.masses
 Z(ts::PARSECTrackSet) = ts.properties.Z
 Y(ts::PARSECTrackSet) = ts.properties.Y
 X(ts::PARSECTrackSet) = 1 - Y(ts) - Z(ts)
-MH(ts::PARSECTrackSet) = PARSEC_MH(Z(ts)) # MH(Z(t), Y(t))
+chemistry(::PARSECTrackSet) = PARSECChemistry()
+MH(ts::PARSECTrackSet) = MH(chemistry(ts), Z(ts))
 Base.eltype(ts::PARSECTrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
     print(io, "TrackSet with Y=$(ts.properties.Y), Z=$(ts.properties.Z), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
@@ -406,7 +456,9 @@ end
 Z(p::PARSECLibrary) = p.Z
 Y(p::PARSECLibrary) = p.Y
 X(p::PARSECLibrary) = 1 .- p.Y .- p.Z
-MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
+# MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
+chemistry(::PARSECLibrary) = PARSECChemistry()
+MH(tl::PARSECLibrary) = MH.(chemistry(tl), Z(tl))
 Base.eltype(p::PARSECLibrary) = typeof(first(p.Z))
 Base.Broadcast.broadcastable(p::PARSECLibrary) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::PARSECLibrary)
@@ -459,7 +511,7 @@ function isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
     # The pre-computed grid seems more uniform in [M/H] than it is in Z, so I think it might
     # be a good idea to do linear interpolation in [M/H]. 
     xvec = MH(p) # [M/H] for all TrackSet in p, sorted least to greatest
-    x = PARSEC_MH(Z)  # Requested [M/H]
+    x = MH(chemistry(p), Z)  # Requested [M/H]
     # searchsortedfirst returns the index of the first value in xvec greater than or
     # equivalent to x. If x is greater than all values in xvec, return lastindex(xvec) + 1.
     # We have already checked bounds so we know minZ < Z < maxZ
@@ -497,7 +549,7 @@ _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
 
 #################################################################################
 
-export PARSECLibrary # Unique module exports
+export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
 export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 #################################################################################
