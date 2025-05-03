@@ -63,6 +63,8 @@ function custom_unpack(fname::AbstractString)
     unpack_txz(fname, out_dir)
 end
 
+# _read_mist_line(line, colnames) = NamedTuple{colnames}(parse(track_type, val) for val in filter(!isempty, split(line, isspace)))
+_read_mist_line(line, colnames) = NamedTuple{colnames, NTuple{length(colnames), track_type}}(parse(track_type, val) for val in filter(!isempty, split(line, isspace)))
 """
     read_mist_track(data::AbstractString, select = nothing)
 Given the content of a MIST ".eep" track file as a `String`, parse into
@@ -71,8 +73,16 @@ used to select only certain columns.
 """
 function read_mist_track(data::AbstractString, select = nothing)
     header = parse_mist_header(data)
+    # This works but is kind of slow; ~4--5 ms compared to the 100 μs to do read(filename, String)
     tdata = Table(CSV.File(IOBuffer(data); comment="#", delim=' ', ignorerepeated=true,
-                           header=header.colnames, select = select))
+                           header=header.colnames, select = select, ntasks=1))
+    # return header.colnames
+    # return filter(!isempty, split(split(data, '\n')[13:end][1], isspace))
+    # return [NamedTuple{Tuple(Symbol.(header.colnames))}(Tuple(filter(!isempty, split(line, isspace)))) for line in split(data, '\n')[14:14]]
+    # return [NamedTuple{Tuple(Symbol.(header.colnames))}(Tuple(filter(!isempty, split(line, isspace)))) for line in split(data, '\n')[13:end-1]]
+    # return [NamedTuple{Tuple(Symbol.(header.colnames))}(parse(track_type, val) for val in filter(!isempty, split(line, isspace))) for line in split(data, '\n')[13:end-1]]
+    # colnames = Tuple(Symbol.(header.colnames))
+    # return [_read_mist_line(line, colnames) for line in split(data, '\n')[13:end-1]]
 end
 """
     track_table(filename::AbstractString)
