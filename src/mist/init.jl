@@ -64,24 +64,24 @@ function custom_unpack(fname::AbstractString)
 end
 
 """
-    read_mist_track(data::AbstractString, select = nothing)
+    read_mist_track(data::AbstractString; select = nothing)
 Given the content of a MIST ".eep" track file as a `String`, parse into
 a `TypedTables.Table`. `select` is passed through to `CSV.read` and can be
 used to select only certain columns.
 """
-function read_mist_track(data::AbstractString, select = nothing)
+function read_mist_track(data::AbstractString; select = nothing)
     header = parse_mist_header(data)
     # This works but is kind of slow; ~4--5 ms compared to the 100 μs to do read(filename, String)
     tdata = Table(CSV.File(IOBuffer(data); comment="#", delim=' ', ignorerepeated=true,
                            header=header.colnames, select = select, ntasks=1))
 end
 """
-    track_table(filename::AbstractString)
+    track_table(filename::AbstractString; select = select_columns))
 Given the path to a MIST ".eep" track, read the file as a `TypedTables.Table`.
 `select` is passed through to `CSV.read` and can be used to select only certain columns.
 """
-function track_table(filename::AbstractString, select = select_columns)
-    result = read_mist_track(read(filename, String), select)
+function track_table(filename::AbstractString; select = select_columns)
+    result = read_mist_track(read(filename, String); select = select)
     if :Mbol in select
         @argcheck :log_L in select
         # log_L is in solar luminosities, and MIST assumes solar Mbol = 4.74
@@ -102,22 +102,31 @@ function join_tracks(dirname::AbstractString)
     # end
     alldata = []
     for dir in dirs
+        feh = mist_feh(dir)
+        println(feh)
         # Get the list of .eep track files
         files = filter(Base.Fix1(occursin, ".eep"), readdir(joinpath(dir, dir); join=true))
         for track in files
             data = read(track, String)
             # data = split(rawdata, '\n')
             header = parse_mist_header(data)
-            return header
-            tdata = Table(CSV.File(IOBuffer(data); comment="#", delim=' ', ignorerepeated=true,
-                                                   header=header.colnames, select=select_columns))
+            # return header
+            # tdata = Table(CSV.File(IOBuffer(data); comment="#", delim=' ', ignorerepeated=true,
+            #                                        header=header.colnames, select=select_columns))
+            tdata = read_mist_track(data; select = select_columns)
+            tdata = Table(tdata, m_ini = fill(header.M_ini, length(tdata)))
             push!(alldata, tdata)
         end
     end
+    alldata = vcat(alldata...)
     return alldata
+    # CSV.write("test.gz", vcat(alldata...); compress=true)
+    # JLD2.jldsave("test.jld2", true; tt) # Write compressed table; 8.5 MB, 40 ms to load
+    # JLD2.jldsave("test.jld2"; tt) # Write uncompressed table; 12 MB, 1.5 ms to load
     # Process into one file per unique metallicity, like we did in the PARSEC case
-    # a=read("00098M.track.eep", String)
-    # Table(CSV.File(IOBuffer(a)))
+
+
+    
 end
 
 

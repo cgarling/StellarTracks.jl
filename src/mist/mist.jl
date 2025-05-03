@@ -6,9 +6,11 @@ import ..StellarTracks: mass, post_rgb, isochrone
 import ..StellarTracks: X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 # Imports for data reading / processing
-using DataDeps: register, DataDep, @datadep_str, unpack
 import CSV
+using DataDeps: register, DataDep, @datadep_str, unpack
 # using DelimitedFiles: readdlm
+using Glob: glob
+using ProgressMeter: @showprogress
 using TypedTables: Table
 
 # We will simply reuse the MISTChemistry defined in BolometricCorrections
