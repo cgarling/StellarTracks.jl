@@ -12,6 +12,7 @@ using ProgressMeter: @showprogress
 # import p7zip_jll: p7zip
 
 # Imports for core module code
+using ArgCheck: @argcheck
 using TypedTables: Table
 # import Tables # For Tables.matrix conversion, "1" compat
 import CSV
@@ -145,47 +146,10 @@ function Z_canon(mix::PARSECChemistry, MHval)
     γ = 1.78
     return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
 end
-##########################################################################
-
-function file_properties(filename::AbstractString) # extract properties of original track files
-    file = basename(filename) # split(filename, "/")[end]
-    Z = parse(track_type, split( split(file, "Z")[2], "Y" )[1])
-    Y = parse(track_type, split( split(file, "Y")[2], "OUT" )[1])
-    M_HB = split( split(file, "M")[2], ".dat" )[1]
-    if occursin("HB", M_HB)
-        HB = true
-        M = parse(track_type, split(M_HB, ".HB")[1])
-    else
-        HB = false
-        M = parse(track_type, M_HB)
-    end
-    return (Z=Z, Y=Y, M=M, HB=HB)
-end
-
-"""
-    dir_properties(dir::AbstractString)
-Parse `Z` and `Y` from name of track directory (e.g., ".../tracks/Z0.0001Y0.249/") with or without trailing '/'. """
-function dir_properties(dir::AbstractString) # utility
-    @assert isdir(dir) # Check that directory exists
-    if dir[end] == '/'
-        dir = split(dir, '/')[end-1]
-    else
-        dir = split(dir, '/')[end]
-    end
-    Z = parse(track_type, split(split(dir, 'Z')[end], 'Y')[1])
-    Y = parse(track_type, split(dir, 'Y')[end])
-    return (Z=Z, Y=Y)
-end
-
-# CSV actually seems faster, but this method returns a matrix rather than Table like CSV.
-track_matrix(filename::AbstractString) = readdlm(filename, ' ', track_type, '\n'; skipstart=1)
-track_table(filename::AbstractString) = CSV.read(filename, Table;
-                                                 skipto = 2, header = Vector(track_header), types = track_type,
-                                                 select = select_columns) # utility
 
 ##########################################################################
 
-# Data download, organization, etc.
+# Data download, organization, file parsing, etc.
 include("init.jl")
 
 ##########################################################################
@@ -200,7 +164,7 @@ struct PARSECTrack{A,B,C} <: AbstractTrack
 end
 function PARSECTrack(filename::AbstractString) # Constructor from filename
     # Check file exists
-    @assert isfile(filename)
+    @argcheck isfile(filename)
     props = file_properties(filename)
     # Load data file into table
     data = CSV.read(filename, Table;

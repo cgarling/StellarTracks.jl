@@ -1,5 +1,58 @@
+# First, utilities for parsing the Rosenfield 2016 track files
+
+function file_properties(filename::AbstractString) # extract properties of original track files
+    file = basename(filename) # split(filename, "/")[end]
+    Z = parse(track_type, split( split(file, "Z")[2], "Y" )[1])
+    Y = parse(track_type, split( split(file, "Y")[2], "OUT" )[1])
+    M_HB = split( split(file, "M")[2], ".dat" )[1]
+    if occursin("HB", M_HB)
+        HB = true
+        M = parse(track_type, split(M_HB, ".HB")[1])
+    else
+        HB = false
+        M = parse(track_type, M_HB)
+    end
+    return (Z=Z, Y=Y, M=M, HB=HB)
+end
+
+"""
+    dir_properties(dir::AbstractString)
+Parse `Z` and `Y` from name of track directory (e.g., ".../tracks/Z0.0001Y0.249/") with or without trailing '/'. """
+function dir_properties(dir::AbstractString) # utility
+    @assert isdir(dir) # Check that directory exists
+    if dir[end] == '/'
+        dir = split(dir, '/')[end-1]
+    else
+        dir = split(dir, '/')[end]
+    end
+    Z = parse(track_type, split(split(dir, 'Z')[end], 'Y')[1])
+    Y = parse(track_type, split(dir, 'Y')[end])
+    return (Z=Z, Y=Y)
+end
+
+# CSV actually seems faster, but this method returns a matrix rather than Table like CSV.
+"""
+    track_matrix(filename::AbstractString)
+Given the path to a PARSEC v1.2S ".dat" track, read the file as a `Matrix`.
+"""
+track_matrix(filename::AbstractString) = readdlm(filename, ' ', track_type, '\n'; skipstart=1)
+
+"""
+    track_table(filename::AbstractString, select = StellarTracks.PARSEC.select_columns)
+Given the path to a PARSEC v1.2S ".dat" track, read the file as a `TypedTables.Table`.
+`select` is passed through to `CSV.read` and can be used to select only certain columns.
+"""
+function track_table(filename::AbstractString, select = select_columns)
+    return CSV.read(filename, Table;
+                    skipto = 2, header = Vector(track_header), types = track_type,
+                    select = select) # utility
+end
+
+#########################################################################
+
 # Extract gzipped tar (.tar.gz)
 function ungzip(fname::AbstractString, dir::AbstractString)
+    @argcheck isfile(fname)
     gz = open(fname)
     tar = GzipDecompressorStream(gz)
     # Tar.extract(tar, joinpath(dirname(fname), dir))
