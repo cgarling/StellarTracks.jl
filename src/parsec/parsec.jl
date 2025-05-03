@@ -5,19 +5,19 @@ using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
 import ..StellarTracks: mass, post_rgb, isochrone
 import ..StellarTracks: X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 
+import CSV
 using DataDeps: register, DataDep, @datadep_str, unpack
-import Tar
+using DelimitedFiles: readdlm
 using CodecZlib: GzipDecompressorStream
+using Glob: glob # file pattern matching
 using ProgressMeter: @showprogress
+# import Tables # For Tables.matrix conversion, "1" compat
+import Tar
+using TypedTables: Table
 # import p7zip_jll: p7zip
 
 # Imports for core module code
 using ArgCheck: @argcheck
-using TypedTables: Table
-# import Tables # For Tables.matrix conversion, "1" compat
-import CSV
-using DelimitedFiles: readdlm
-using Glob: glob # file pattern matching
 using StaticArrays: SVector
 # import Interpolations: interpolate, Gridded, Linear, deduplicate_knots!
 using DataInterpolations: AbstractInterpolation, AkimaInterpolation, LinearInterpolation, CubicSpline, PCHIPInterpolation, CubicHermiteSpline
