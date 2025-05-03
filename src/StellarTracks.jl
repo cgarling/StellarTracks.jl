@@ -138,6 +138,9 @@ logL(Mbol::Number, solmbol::Number=4.74) = (solmbol - Mbol) / 5 * 2
 include("parsec/parsec.jl")
 using .PARSEC
 
+include("mist/mist.jl")
+using .MIST
+
 # Include bolometric correction-related functionality
 include("BCs.jl")
 
