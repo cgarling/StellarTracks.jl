@@ -190,6 +190,7 @@ function (track::PARSECTrack)(logAge::AbstractArray{<:Number})
     # Conversion to Table is slightly slow ~40ns 
     return Table(track(la) for la in logAge)
 end
+Base.extrema(t::PARSECTrack) = log10.(extrema(t.itp.t))
 mass(t::PARSECTrack) = t.properties.M
 Z(t::PARSECTrack) = t.properties.Z
 Y(t::PARSECTrack) = t.properties.Y
@@ -355,7 +356,7 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
             # underlying EEP tracks). 
             if imass >= first(track_extrema) && imass <= last(track_extrema) # && (length(interp_masses) == 0 || imass > last(interp_masses))
                 mboli = ts.interps.Mbol[i](imass) # 120 ns
-                # Enforce monotonically increasing Mbol along the MS (which ends at eep_idx[4])
+                # Enforce monotonically increasing Mbol along the MS (which ends at eep_idxs[4])
                 # We can't be sure if last point was overly bright or current point is overly faint,
                 # so we delete last point and continue so this point isn't output
                 # Maybe not necessary, revisit later
