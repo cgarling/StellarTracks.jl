@@ -10,6 +10,7 @@ An individual stellar track, containing the time evolution of properties for a s
 ### API
 ```@docs
 StellarTracks.AbstractTrack
+Base.extrema(::StellarTracks.AbstractTrack)
 mass(::StellarTracks.AbstractTrack)
 X(::StellarTracks.AbstractTrack)
 Y(::StellarTracks.AbstractTrack)
