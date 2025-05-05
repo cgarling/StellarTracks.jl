@@ -52,7 +52,7 @@ const eep_lengths = (PMS_BEG = 201,   # beginning of PMS; log(T_c) = 5
 const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[begin:end-1]) .+ 1)...))
 # Which columns to actually keep after reading track file; used in Track and track_table
 const select_columns = SVector(:star_age, :star_mass, :log_L, :log_Teff, :log_g, :log_surf_cell_z)
-const track_type = Float64 # Float type to use to represent values
+const track_type = Float64 # MIST track files have Float64 precision
 
 
 ##########################################################################
