@@ -25,6 +25,7 @@ makedocs(;
         "refs.md",
         "doc_index.md"
     ],
+    pagesonly=true,
     doctest=false,
     linkcheck=true,
     warnonly=[:missing_docs, :linkcheck],
