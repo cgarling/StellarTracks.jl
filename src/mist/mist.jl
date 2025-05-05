@@ -75,10 +75,7 @@ struct MISTTrack{A,B,C} <: AbstractTrack
     properties::C
 end
 function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
-    # props = (M = mass, feh = feh, Z = Z(MISTChemistry(), feh))
-    chem = MISTChemistry()
-    zval = Z(chem, feh)
-    props = (Z = zval, Y = Y(chem, zval), M = mass, feh = feh)
+    props = (M = mass, feh = feh)
     # Validate feh
     @argcheck feh in feh_grid
     feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
@@ -115,14 +112,14 @@ function (track::MISTTrack)(logAge::Number)
 end
 Base.extrema(t::MISTTrack) = log10.(extrema(t.itp.t))
 mass(t::MISTTrack) = t.properties.M
-Z(t::MISTTrack) = t.properties.Z
-Y(t::MISTTrack) = t.properties.Y
-X(t::MISTTrack) = 1 - Y(t) - Z(t)
 chemistry(::MISTTrack) = MISTChemistry()
-MH(t::MISTTrack) = MH(chemistry(t), Z(t))
+MH(t::MISTTrack) = t.properties.feh # MH(chemistry(t), Z(t))
+Z(t::MISTTrack) = Z(chemistry(t), MH(t)) # t.properties.Z
+Y(t::MISTTrack) = Y(chemistry(t), Z(t))  # t.properties.Y
+X(t::MISTTrack) = 1 - Y(t) - Z(t)
 # Whether there is post-rgb evolution or not is dependent on how many EEPs in track
 post_rgb(t::MISTTrack) = length(t.itp.u) > eep_idxs.RG_TIP
-Base.eltype(t::MISTTrack) = typeof(t.properties.Z)
+Base.eltype(t::MISTTrack) = typeof(t.properties.feh)
 
 ##########################################################################
 
@@ -142,7 +139,6 @@ end
 function MISTTrackSet(feh::Number, vvcrit::Number=0) # One table per stellar model
     chem = MISTChemistry()
     zval = Z(chem, feh)
-    props = (Z = zval, Y = Y(chem, zval), feh = feh)
     # Validate feh
     @argcheck feh in feh_grid
     feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
@@ -232,25 +228,26 @@ function MISTTrackSet(data::Table, feh::Number)
         logg[i] = PCHIPInterpolation(tmpdata.log_g, tmpdata.m_ini)
         logsurfz[i] = PCHIPInterpolation(tmpdata.log_surf_cell_z, tmpdata.m_ini)
     end
-    chem = MISTChemistry()
-    zval = Z(chem, feh)
-    return MISTTrackSet(eeps, amrs, (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz), (Z = zval, Y = Y(chem, zval), masses = unique(data.m_ini)))
+    # chem = MISTChemistry()
+    # zval = Z(chem, feh)
+    # return MISTTrackSet(eeps, amrs, (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz), (Z = zval, Y = Y(chem, zval), masses = unique(data.m_ini)))
+    return MISTTrackSet(eeps, amrs, (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz), (feh = feh, masses = unique(data.m_ini)))
 end
 function (ts::MISTTrackSet)(M::Number) # Interpolation to get a Track with mass M
     error("Not yet implemented.")
 end
 mass(ts::MISTTrackSet) = ts.properties.masses
-Z(ts::MISTTrackSet) = ts.properties.Z
-Y(ts::MISTTrackSet) = ts.properties.Y
-X(ts::MISTTrackSet) = 1 - Y(ts) - Z(ts)
 chemistry(::MISTTrackSet) = MISTChemistry()
-MH(ts::MISTTrackSet) = MH(chemistry(ts), Z(ts))
-Base.eltype(ts::MISTTrackSet) = typeof(ts.properties.Z)
+MH(ts::MISTTrackSet) = ts.properties.feh # MH(chemistry(ts), Z(ts))
+Z(ts::MISTTrackSet) = Z(chemistry(ts), MH(ts)) # ts.properties.Z
+Y(ts::MISTTrackSet) = Y(chemistry(ts), Z(ts)) # ts.properties.Y
+X(ts::MISTTrackSet) = 1 - Y(ts) - Z(ts)
+Base.eltype(ts::MISTTrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTTrackSet)
-    print(io, "MISTTrackSet with Y=$(ts.properties.Y), Z=$(ts.properties.Z), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
+    print(io, "MISTTrackSet with Y=$(Y(ts)), Z=$(Z(ts)), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
 end
 
-function isochrone(ts::MISTTrackSet, logAge::Number) # 800 μs
+function isochrone(ts::MISTTrackSet, logAge::Number) # 1 ms
     eeps = Vector{Int}(undef, 0)
     track_extrema = extrema(ts.properties.masses)
     interp_masses = Vector{eltype(ts)}(undef, 0)
@@ -296,10 +293,11 @@ function isochrone(ts::MISTTrackSet, logAge::Number) # 800 μs
     end
     # return (eep = eeps, m_ini = interp_masses, log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz)
     return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl, 4.74),
-            logg = logg, log_surf_cell_z = logsurfz) # , logL = logl)
+            logg = logg, logL = logl, log_surf_cell_z = logsurfz)
 end
 
 # export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
+export MISTTrack, MISTTrackSet # Unique module exports
 export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 end # module
