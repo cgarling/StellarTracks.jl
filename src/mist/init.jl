@@ -33,12 +33,26 @@ function parse_mist_header(data::AbstractString)
     n_eep = parse(Int, n_eep)
     n_col = parse(Int, n_col)
     table_header = filter(!isempty, String.(split(data[12], isspace)))[begin+1:end]
+    # MIST readme document says surface metal content should be :log_surf_cell_z,
+    # but some files still have the older :log_surf_z keyword. To enforce homogeneity, we will
+    # change all occurences of :log_surf_z to :log_surf_cell_z
+    idx = findfirst(Base.Fix1(==, "log_surf_z"), table_header)
+    if !isnothing(idx)
+        table_header[idx] = "log_surf_cell_z"
+    end
     return (M_ini = M, Y_ini = Y, Z_ini = Z, feh = FeH, aFe = aFe,
             n_pts = n_pts, n_eep = n_eep, n_col = n_col, phase = phase, type = type,
             colnames=table_header)
 end
 
-# Get [Fe/H] from name of MIST track directory
+"""
+    mist_feh(fname::AbstractString)
+Returns [Fe/H] from the name of MIST track directory.
+```jldoctest
+julia> MIST.mist_feh("MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS")
+-0.5
+```
+""" 
 function mist_feh(fname::AbstractString)
     fname = basename(fname) # Get file name part of path
     feh = parse(Float64, fname[16:19])
@@ -47,6 +61,15 @@ function mist_feh(fname::AbstractString)
     end
     return feh
 end
+"""
+    mist_mass(fname::AbstractString)
+Returns initial stellar mass from the name of a single MIST track.
+```jldoctest
+julia> MIST.mist_mass("22500M.track.eep")
+225.0
+```
+"""
+mist_mass(fname::AbstractString) = parse(Float64, split(basename(fname), '.')[1][begin:end-1]) / 100
 
 function custom_unpack(fname::AbstractString)
     # println(fname)
@@ -54,6 +77,7 @@ function custom_unpack(fname::AbstractString)
     # the directory in scratchspaces is the UUID of datadeps
     fpath = dirname(fname)
     fbasename = splitext(basename(fname))[1]
+    @info "Unpacking $fbasename"
     out_dir = joinpath(fpath, fbasename)
     if isdir(out_dir)
         rm(out_dir; force=true, recursive=true)
@@ -61,6 +85,31 @@ function custom_unpack(fname::AbstractString)
     # unpack_txz is imported from BolometricCorrections.MIST
     # It extracts the .txz, which is an Xz compressed tarball, into the out_dir
     unpack_txz(fname, out_dir)
+    
+    # Now repack the .track.eep files, which are basic CSV, into JLD2
+    feh = string(mist_feh(fname))
+    save_dir = joinpath(fpath, feh)
+    if isdir(save_dir)
+        rm(save_dir; force=true, recursive=true)
+    end
+    mkdir(save_dir)
+    files = filter(Base.Fix1(occursin, ".eep"), readdir(joinpath(out_dir, fbasename); join=true))
+    for track in files
+        data = read(track, String)
+        header = parse_mist_header(data)
+        tdata = read_mist_track(data; select = select_columns)
+        JLD2.save_object(joinpath(save_dir, splitext(basename(track))[1]) * ".jld2", tdata)
+        # This takes up much more space because of multiple objects I guess?
+        # JLD2.jldsave(joinpath(save_dir, splitext(basename(track))[1]) * ".jld2";
+        #              table = tdata, M_ini = header.M_ini, Y_ini = header.Y_ini, Z_ini = header.Z_ini,
+        #              aFe = header.aFe, n_pts = header.n_pts, n_eep = header.n_eep, n_col = header.n_col,
+        #              phase = header.phase, type = header.type)
+        # tdata = Table(tdata, m_ini = fill(header.M_ini, length(tdata)))
+        # push!(alldata, tdata)
+    end
+    # Remove temporary directory where .track.eep files were extracted
+    # rm(out_dir; force=true, recursive=true)
+    # rm(fname) # Remove original .txz file
 end
 
 """
@@ -85,7 +134,7 @@ function track_table(filename::AbstractString; select = select_columns)
     if :Mbol in select
         @argcheck :log_L in select
         # log_L is in solar luminosities, and MIST assumes solar Mbol = 4.74
-        mbol = Mbol.(result.log_L, 4.74) 
+        mbol = Mbol.(result.log_L, 4.74)
         result = Table(result, Mbol = mbol)
     end
     return result
@@ -125,7 +174,7 @@ function join_tracks(dirname::AbstractString) # datadep"MISTv1.2_vvcrit0.0"
     # CSV.write("test.gz", vcat(alldata...); compress=true)
     # JLD2.jldsave("test.jld2", true; tt) # Write compressed table; 8.5 MB, 40 ms to load
     # JLD2.jldsave("test.jld2"; tt) # Write uncompressed table; 12 MB, 1.5 ms to load
-    # JLD2.load(object("test.jld2") # Load object
+    # JLD2.load_object("test.jld2") # Load object
     # Process into one file per unique metallicity, like we did in the PARSEC case
 
 end
