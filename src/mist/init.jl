@@ -94,8 +94,10 @@ end
 # https://github.com/JuliaData/DelimitedFiles.jl/issues/1
 # track_matrix(filename::AbstractString) = readdlm(filename, ' ', track_type, '\n'; skipstart=13)
 
-function join_tracks(dirname::AbstractString)
-    dirs = filter(Base.Fix1(!occursin, ".txz"), readdir(dirname))
+# This may not be necessary if we convert the .eep files to .jld2
+# which enables smaller on-disk files and more efficient loading
+function join_tracks(dirname::AbstractString) # datadep"MISTv1.2_vvcrit0.0"
+    dirs = filter(Base.Fix1(!occursin, ".txz"), readdir(dirname; join=true))
     # if length(dirs) != 15
     #     error("Number of track directories not equal to expected 15; \
     # probable unpacking problem.")
@@ -105,7 +107,7 @@ function join_tracks(dirname::AbstractString)
         feh = mist_feh(dir)
         println(feh)
         # Get the list of .eep track files
-        files = filter(Base.Fix1(occursin, ".eep"), readdir(joinpath(dir, dir); join=true))
+        files = filter(Base.Fix1(occursin, ".eep"), readdir(joinpath(dir, basename(dir)); join=true))
         for track in files
             data = read(track, String)
             # data = split(rawdata, '\n')
@@ -123,10 +125,9 @@ function join_tracks(dirname::AbstractString)
     # CSV.write("test.gz", vcat(alldata...); compress=true)
     # JLD2.jldsave("test.jld2", true; tt) # Write compressed table; 8.5 MB, 40 ms to load
     # JLD2.jldsave("test.jld2"; tt) # Write uncompressed table; 12 MB, 1.5 ms to load
+    # JLD2.load(object("test.jld2") # Load object
     # Process into one file per unique metallicity, like we did in the PARSEC case
 
-
-    
 end
 
 
