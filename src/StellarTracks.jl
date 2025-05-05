@@ -22,6 +22,11 @@ of the modeled star at that age. Not all libraries will have the same properties
 abstract type AbstractTrack end 
 Base.Broadcast.broadcastable(t::AbstractTrack) = Ref(t)
 """
+    Base.extrema(t::AbstractTrack)
+Returns the minimum and maximum logarithmic age (`log10(age [yr])`) of the stellar model.
+"""
+function Base.extrema(t::AbstractTrack) end
+"""
     mass(t::AbstractTrack)
 Returns the initial stellar mass of the modeled star in solar masses. """
 function mass(t::AbstractTrack) end
