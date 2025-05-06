@@ -383,6 +383,7 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
 end
 
 ##########################################################################
+
 """
     PARSECLibrary()
 `PARSECLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
@@ -474,7 +475,7 @@ function isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
     # VandenBerg2014 suggests linear interpolation is sufficient for Z or [M/H] interpolation,
     # although cubic interpolation was used in VandenBerg2012.
     # The pre-computed grid seems more uniform in [M/H] than it is in Z, so I think it might
-    # be a good idea to do linear interpolation in [M/H]. 
+    # be a good idea to do linear interpolation in [M/H].
     xvec = MH(p) # [M/H] for all TrackSet in p, sorted least to greatest
     x = MH(chemistry(p), Z)  # Requested [M/H]
     # searchsortedfirst returns the index of the first value in xvec greater than or

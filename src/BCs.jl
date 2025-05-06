@@ -18,6 +18,8 @@ function _parse_logg(iso)
     iso_keys = keys(iso)
     if :logg in iso_keys
         return iso.logg
+    elseif :log_g in iso_keys
+        return iso.log_g
     else
         throw(ArgumentError("Provided `iso` argument does not contain a recognized surface gravity key, `(:logg,)`."))
     end

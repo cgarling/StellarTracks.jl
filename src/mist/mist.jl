@@ -55,9 +55,37 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 # Which columns to actually keep after reading track file; used in Track and track_table
 const select_columns = SVector(:star_age, :log_L, :log_Teff, :log_g, :log_surf_cell_z) # :star_mass,
 const track_type = Float64 # MIST track files have Float64 precision
-const feh_grid = SVector(-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0,
-                         -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75)
+const feh_grid = SVector(-4.0, -3.5, -3.0, -2.5, -2.0, -1.75, -1.5, -1.25, -1.0,
+                         -0.75, -0.5, -0.25, 0.0, 0.25, 0.5)
 
+"""
+    _parse_vvcrit(vvcrit::Number)
+Given a MIST vvcrit value, determine if it is valid and return a `String`
+corresponding to the proper value.
+```jldoctest
+julia> using StellarTracks.MIST: _parse_vvcrit
+
+julia> _parse_vvcrit(0.0)
+"0.0"
+
+julia> _parse_vvcrit(0.4)
+"0.4"
+
+julia> using Test; @test_throws ArgumentError MIST._parse_vvcrit(0.2)
+Test Passed
+      Thrown: ArgumentError
+```
+"""
+function _parse_vvcrit(vvcrit::Number)
+    # Validate vvcrit
+    if vvcrit ≈ 0
+        return "0.0"
+    elseif vvcrit ≈ 0.4
+        return "0.4"
+    else
+        throw(ArgumentError("Invalid vvcrit=$vvcrit argument; valid arguments must be ≈ 0 or 0.4."))
+    end
+end
 
 ##########################################################################
 
@@ -80,13 +108,7 @@ function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     @argcheck feh in feh_grid
     feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
     # Validate vvcrit
-    if vvcrit == 0
-        vvcrit = "0.0"
-    elseif vvcrit == 0.4
-        vvcrit = "0.4"
-    else
-        throw(ArgumentError("Invalid vvcrit=$vvcrit argument; valid arguments are 0 or 0.4."))
-    end
+    vvcrit = _parse_vvcrit(vvcrit)
     dd_path = @datadep_str("MISTv1.2_vvcrit"*vvcrit)
     # Validate mass
     allfiles = readdir(joinpath(dd_path, feh); join=true)
@@ -137,19 +159,11 @@ struct MISTTrackSet{A <: AbstractVector{<:Integer},
 end
 # Given a metallicity and rotation, load the correct models and then call below method
 function MISTTrackSet(feh::Number, vvcrit::Number=0) # One table per stellar model
-    chem = MISTChemistry()
-    zval = Z(chem, feh)
     # Validate feh
     @argcheck feh in feh_grid
     feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
     # Validate vvcrit
-    if vvcrit == 0
-        vvcrit = "0.0"
-    elseif vvcrit == 0.4
-        vvcrit = "0.4"
-    else
-        throw(ArgumentError("Invalid vvcrit=$vvcrit argument; valid arguments are 0 or 0.4."))
-    end
+    vvcrit = _parse_vvcrit(vvcrit)
     dd_path = @datadep_str("MISTv1.2_vvcrit"*vvcrit)
     # List stellar track files
     allfiles = readdir(joinpath(dd_path, feh); join=true)
@@ -165,25 +179,6 @@ function MISTTrackSet(feh::Number, vvcrit::Number=0) # One table per stellar mod
     # return data
     return MISTTrackSet(data, parse(track_type, feh))
 end
-# One table per stellar model
-# function MISTTrackSet(data::Vector{<:Table}, masses::Vector{<:Number}, feh::Number)
-#     eeps = 1:maximum(length.(data))
-#     itp_type = CubicHermiteSpline{Vector{track_type},
-#                                   Vector{track_type},
-#                                   Vector{track_type},
-#                                   Vector{track_type},
-#                                   Vector{track_type},
-#                                   track_type}
-#     amrs = Vector{itp_type}(undef, length(eeps))
-#     logte = Vector{itp_type}(undef, length(eeps))
-#     logl = similar(logte)
-#     logg = similar(logte)
-#     logsurfz = similar(logte)
-
-#     Threads.@threads for i in eachindex(eeps)
-#         tmpdata = Table(data[i]
-#     end
-# end
 function MISTTrackSet(data::Table, feh::Number)
     # eeps = 1:maximum(length.(data))
     eeps = sort(unique(data.eep))
@@ -199,8 +194,7 @@ function MISTTrackSet(data::Table, feh::Number)
     logg = similar(logte)
     logsurfz = similar(logte)
 
-    # Threads.@threads for i in eachindex(eeps)
-    for i in eachindex(eeps)
+    Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
         # Sort by age, which will be the independent variable in the AMR interpolation
@@ -296,8 +290,126 @@ function isochrone(ts::MISTTrackSet, logAge::Number) # 1 ms
             logg = logg, logL = logl, log_surf_cell_z = logsurfz)
 end
 
+##########################################################################
+
+"""
+    MISTLibrary(vvcrit::Number=0)
+`MISTLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
+interface for the MIST stellar evolution library. Instances can be constructed by providing a supported
+`vvcrit` argument for the rotation parameter, which must be equal to either `0` (no rotation) or `0.4`.
+We set `vvcrit=0` by default. If you construct an instance as `p = MISTLibrary(0.0)`, it is callable as
+ - `p(mh::Number)` to interpolate the full library to a new metallicity
+   (returning a [`MISTTrackSet`](@ref)), or
+ - `p(mh::Number, M::Number)` to interpolate the tracks to a specific metallicity
+   and initial stellar mass (returning a [`MISTTrack`](@ref)).
+
+This type also supports isochrone construction
+(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.MIST.MISTLibrary, ::Number, ::Number))).
+
+# Examples
+```jldoctest
+julia> p = MISTLibrary(0.0)
+Structure of interpolants for the MIST library of stellar tracks. Valid range of metallicities is (-4.0, 0.5).
+
+julia> isochrone(p, 10.05, -2) isa NamedTuple
+true
+```
+"""
+struct MISTLibrary{A,B} <: AbstractTrackLibrary
+    ts::A # Vector of `TrackSet`s
+    MH::B  # Vector of MH for each TrackSet
+end
+# Interpolation to get a TrackSet with metallicity MH
+function (ts::MISTLibrary)(mh::Number)
+    error("Not yet implemented.")
+end
+# Interpolation to get a Track with mass M and metallicity MH
+function (ts::MISTLibrary)(mh::Number, M::Number)
+    error("Not yet implemented.")
+end
+chemistry(::MISTLibrary) = MISTChemistry()
+MH(p::MISTLibrary) = p.MH # MH.(chemistry(tl), Z(tl))
+Z(p::MISTLibrary) = Z.(chemistry(p), p.MH)
+Y(p::MISTLibrary) = Y.(chemistry(p), Z(p))
+X(p::MISTLibrary) = 1 .- Y(p) .- Z(p)
+Base.eltype(p::MISTLibrary) = typeof(first(p.MH))
+Base.Broadcast.broadcastable(p::MISTLibrary) = Ref(p)
+function Base.show(io::IO, mime::MIME"text/plain", p::MISTLibrary)
+    print(io, "Structure of interpolants for the MIST library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(p.MH)).")
+end
+function MISTLibrary(vvcrit::Number=0)
+    # Make vector of tracksets
+    ts = [MISTTrackSet(feh, vvcrit) for feh in feh_grid]
+    return MISTLibrary(ts, feh_grid)
+end
+"""
+    isochrone(p::MISTLibrary, logAge::Number, mh::Number)
+Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and logarithmic metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the properties listed below:
+ - `eep`: Equivalent evolutionary points
+ - `m_ini`: Initial stellar masses, in units of solar masses.
+ - `logTe`: Base-10 logarithm of the effective temperature [K] of the stellar model.
+ - `Mbol`: Bolometric luminosity of the stellar model.
+ - `logg`: Surface gravity of the stellar model.
+ - `log_surf_cell_z`: Base-10 logarithm of the surface metal mass fraction (Z).
+"""
+function isochrone(p::MISTLibrary, logAge::Number, mh::Number)
+    mh_vec = MH(p)
+    idx = findfirst(Base.Fix1(≈, mh), mh_vec) # Will be === nothing if no entry in MH(p) is ≈ mh
+    # If input mh is represented in base grid, no mh interpolation needed
+    if !isnothing(idx) # idx !== nothing
+        return isochrone(p.ts[idx], logAge)
+    end
+    # Check mh is in valid range
+    min_mh, max_mh = extrema(mh_vec)
+    if mh < min_mh || mh > max_mh
+        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for MIST library of $(extrema(mh_vec))."))
+    end
+    # mh is valid, so need to interpolate isochrone as a function of [M/H]
+    # Z is valid, need to interpolate isochrone as a function of Z
+    # According to Marigo2017, the interpolations (at least for BCs) in Z or [M/H]
+    # are linear, so the BCs overall are computed by a
+    # 3D linear interpolation in logTe x logg x [M/H] space.
+    # VandenBerg2014 suggests linear interpolation is sufficient for Z or [M/H] interpolation,
+    # although cubic interpolation was used in VandenBerg2012.
+    # Most pre-computed grid seems more uniform in [M/H] than they are in Z, so I think it might
+    # be a good idea to do linear interpolation in [M/H].
+    
+    # searchsortedfirst returns the index of the first value in mh_vec greater than or
+    # equivalent to mh. If mh is greater than all values in mh_vec, returns lastindex(mh_vec) + 1.
+    # We have already checked bounds so we know min_mh < mh < max_mh
+    idx = searchsortedfirst(mh_vec, mh)
+    # Evaluate isochrones on either side of intermediate point
+    y0 = isochrone(p.ts[idx-1], logAge)
+    y1 = isochrone(p.ts[idx], logAge)
+    # Get intersection of valid EEPs from each isochrone
+    min_eep = max(first(y0.eep), first(y1.eep))
+    max_eep = min(last(y0.eep), last(y1.eep))
+    # Get indices into y0 and y1 that correspond to the overlapping EEP points
+    y0_idxs = Vector{Int}(undef, 0)
+    y1_idxs = similar(y0_idxs)
+    good_eeps = similar(y0_idxs)
+    for (y0_idx, eep) in enumerate(y0.eep)
+        y1_idx = searchsortedfirst(y1.eep, eep)
+        if y1_idx < lastindex(y1.eep) + 1 # Match found
+            push!(y0_idxs, y0_idx)
+            push!(y1_idxs, y1_idx)
+            push!(good_eeps, eep)
+        end
+    end
+    # Get isochrone keys, removing EEP since that is fixed
+    goodkeys = filter(Base.Fix1(!==, :eep), keys(y0))
+    # Perform linear interpolation in _interp_kernel to establish a function
+    # barrier to improve performance since some of the types of the variables
+    # aren't known at runtime
+    result = NamedTuple{goodkeys}(_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, mh, mh_vec))
+    # Concatenate interpolated result with valid EEP points
+    return (eep = good_eeps, result...)
+end
+_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
+    ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
+
 # export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
-export MISTTrack, MISTTrackSet # Unique module exports
+export MISTTrack, MISTTrackSet, MISTLibrary # Unique module exports
 export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 end # module
