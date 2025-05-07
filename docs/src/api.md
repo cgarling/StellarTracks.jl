@@ -21,6 +21,7 @@ post_rgb(::StellarTracks.AbstractTrack)
 
 ### Concrete Implementations
  - [`PARSEC.PARSECTrack`](@ref)
+ - [`MIST.MISTTrack`](@ref)
 
 ## Track Sets
 We define a "track set" to be a set of individual stellar tracks that share common properties (typically initial metallicity). By grouping these tracks together, we can interpolate between tracks in the set, create isochrones, and perform other similar operations.
@@ -40,6 +41,7 @@ isochrone(::StellarTracks.AbstractTrackSet, ::StellarTracks.AbstractBCTable, ::N
 
 ### Concrete Implementations
  - [`PARSEC.PARSECTrackSet`](@ref)
+ - [`MIST.MISTTrackSet`](@ref)
 
 ## Track Libraries
 For ease of use, our main entry point is the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary), which loads and organizes all stellar tracks available from a given library (e.g., PARSEC). Once all tracks have been loaded, subsets with common chemical compositions can be extracted. Individual tracks and isochrones can also be interpolated directly from the library instance. However, the interfaces for these interpolations are not generic as not all libraries offer the same variations in initial chemistry -- e.g., most will offer variation in total metallicity (i.e., ``Z``), but some also include variation in ``\alpha``-element abundances. These methods are documented separately for each stellar library under their unique pages in the left panel.
@@ -51,6 +53,7 @@ StellarTracks.AbstractTrackLibrary
 
 ### Concrete Implementations
  - [`PARSEC.PARSECLibrary`](@ref)
+ - [`MIST.MISTLibrary`](@ref)
 
 ## Utilities
 ```@docs

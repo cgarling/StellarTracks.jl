@@ -49,7 +49,7 @@ end
     mist_feh(fname::AbstractString)
 Returns [Fe/H] from the name of MIST track directory.
 ```jldoctest
-julia> MIST.mist_feh("MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS")
+julia> StellarTracks.MIST.mist_feh("MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS")
 -0.5
 ```
 """ 
@@ -65,7 +65,7 @@ end
     mist_mass(fname::AbstractString)
 Returns initial stellar mass from the name of a single MIST track.
 ```jldoctest
-julia> MIST.mist_mass("22500M.track.eep")
+julia> StellarTracks.MIST.mist_mass("22500M.track.eep")
 225.0
 ```
 """

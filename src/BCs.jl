@@ -64,10 +64,25 @@ function isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number)
     return Table(Table(iso),
                  Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
 end
+# This generic fallback will work as long as isochrone(tl, logAge, mh) works
+function isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number)
+    iso = isochrone(tl, logAge, mh)
+    iso_teff = _parse_teff(iso)
+    iso_logg = _parse_logg(iso)
+    iso_Mbol = _parse_Mbol(iso)
+    BCs = permutedims(bc(iso_teff, iso_logg))
+    # Concatenate theoretical quantities with magnitudes
+    return Table(Table(iso),
+                 Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
+end
 
 # Not sure how to handle the fact that AbstractTrackLibrary and AbstractBCGrid can
-# have different dependent variables (Z, Av, α-abundance, etc.). For now
-# going to set up some specific call signatures that be relatively simple to extend.
+# have different dependent variables (Z, Av, α-abundance, etc.). Going to define
+# specific call signatures for each type that will be relatively simple to extend.
+
+####################################################################################
+# Code for PARSEC stellar models
+
 function isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, Z::Number)
     iso = isochrone(tl, logAge, Z)
     iso_teff = _parse_teff(iso)
@@ -124,3 +139,11 @@ function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:N
     # # we iterate la more quickly than Z.
     # return result, zvec, lavec
 end
+
+####################################################################################
+# Code for MIST stellar models
+
+# use generic isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number)
+isochrone(tl::MISTLibrary, bcg::MISTBCGrid, logAge::Number, mh::Number, Av::Number) =
+    isochrone(tl, bcg(mh, Av), logAge, mh)
+
