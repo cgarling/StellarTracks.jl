@@ -36,6 +36,14 @@ The MIST library has been widely used as it covers the full range of stellar mas
 
 This package handles downloading and pre-processing of the MIST stellar tracks. The main access point we provide is [`MISTLibrary`](@ref StellarTracks.MIST.MISTLibrary), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume that will be downloaded is about 1.3 GB and will total **XX GB** after additional processing. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"MISTv1.2_vvcrit0.0"; recursive=true); rm(datadep"MISTv1.2_vvcrit0.4"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the MIST parameter space.
 
+## Table Details
+
+The user guide for the MIST products is available [here](https://waps.cfa.harvard.edu/MIST/README_overview.pdf). The full MIST tracks contain 77 data columns originating from the MESA output. An description of the columns is available [here](https://waps.cfa.harvard.edu/MIST/README_tables.pdf). **Currently, we process the raw tracks and only save the subset of columns given by `StellarTracks.MIST.select_columns` (see below).** These columns are the ones most commonly needed for computing isochrones and applying bolometric corrections to compare against observed stellar populations. This choice is an optimization for storage space, load time, and development simplicity. If you require access to more columns, please submit an issue on the source repository and we can consider options.
+```@example
+using StellarTracks.MIST
+MIST.select_columns # These columns are saved from raw tracks
+```
+
 ## Examples
 Load the full MIST library of non-rotating models `vvcrit=0`, which is downloaded via DataDeps.jl if not already available. MIST also provides rotating models with `vvcrit=0.4` which can be loaded with `MISTLibrary(0.4)`.
 ```@example
@@ -94,11 +102,6 @@ fig # hide
 ```
 
 
-
-
-
-## Table Details
-The user guide for the MIST products is available [here](https://waps.cfa.harvard.edu/MIST/README_overview.pdf). The full MIST tracks contain 77 data columns originating from the MESA output. An description of the columns is available [here](https://waps.cfa.harvard.edu/MIST/README_tables.pdf).
 
 ## Chemistry API
 We re-export the `MIST.MISTChemistry` **add interlink** type defined in BolometricCorrections.jl that can be used to access information on the chemical mixture assumed for the MIST models. All models have scaled-solar chemical compositions.
