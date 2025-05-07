@@ -108,8 +108,8 @@ function custom_unpack(fname::AbstractString)
         # push!(alldata, tdata)
     end
     # Remove temporary directory where .track.eep files were extracted
-    # rm(out_dir; force=true, recursive=true)
-    # rm(fname) # Remove original .txz file
+    rm(out_dir; force=true, recursive=true)
+    rm(fname) # Remove original .txz file
 end
 
 """
@@ -194,12 +194,23 @@ function __init__()
     norot_feh_tags = ["m4.00", "m3.50", "m3.00", "m2.50", "m2.00", "m1.75", "m1.50",
                       "m1.25", "m1.00", "m0.75", "m0.50", "m0.25", "p0.00", "p0.25", "p0.50"]
     norot_dl_links = ["https://waps.cfa.harvard.edu/MIST/data/tarballs_v1.2/MIST_v1.2_feh_" * s * "_afe_p0.0_vvcrit0.0_EEPS.txz" for s in norot_feh_tags]
-    
+
+    # Register non-rotating models
     register(DataDep("MISTv1.2_vvcrit0.0",
                      """MIST v1.2 stellar evolutionary tracks without rotation \
                      (v/vcrit=0.0). All available evolutionary tracks \
                      from -4 ≤ [Fe/H] ≤ +0.5 dex will be downloaded.""",
                      norot_dl_links,
-                     "5871d51838f238eacc3ceaf02a75e82188eee51c5cf92b5decd0d94377ff692c"))
+                     "5871d51838f238eacc3ceaf02a75e82188eee51c5cf92b5decd0d94377ff692c";
+                     post_fetch_method = custom_unpack))
 
+    # Register rotating models
+    rot_dl_links = ["https://waps.cfa.harvard.edu/MIST/data/tarballs_v1.2/MIST_v1.2_feh_" * s * "_afe_p0.0_vvcrit0.4_EEPS.txz" for s in norot_feh_tags]
+    register(DataDep("MISTv1.2_vvcrit0.4",
+                     """MIST v1.2 stellar evolutionary tracks with rotation \
+                     (v/vcrit=0.4). All available evolutionary tracks \
+                     from -4 ≤ [Fe/H] ≤ +0.5 dex will be downloaded.""",
+                     rot_dl_links,
+                     "94a657226ecb08026df7a205551878559962e191c97740bba045eea3eddd960b";
+                     post_fetch_method = custom_unpack))
 end
