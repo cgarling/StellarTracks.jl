@@ -1,9 +1,9 @@
+"""StellarTracks.MIST provides access to the MIST stellar tracks."""
 module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary, uniqueidx, Mbol
-import ..StellarTracks: mass, post_rgb, isochrone
-import ..StellarTracks: X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
+import ..StellarTracks: X, Y, Z, MH, chemistry, mass, post_rgb, isochrone # X_phot, Y_phot, Z_phot,
 
 # Imports for data reading / processing
 import CSV
@@ -71,7 +71,7 @@ julia> _parse_vvcrit(0.0)
 julia> _parse_vvcrit(0.4)
 "0.4"
 
-julia> using Test; @test_throws ArgumentError MIST._parse_vvcrit(0.2)
+julia> using Test; @test_throws ArgumentError _parse_vvcrit(0.2)
 Test Passed
       Thrown: ArgumentError
 ```
@@ -94,8 +94,18 @@ include("init.jl")
 
 ##########################################################################
 
-""" `MISTTrack` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
-interface for the MIST stellar evolution library. """
+"""
+    MISTTrack(mh::Number, mass::Number, vvcrit::Number=0)
+`MISTTrack` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
+interface for the MIST stellar evolution library.
+```jldoctest
+julia> track = StellarTracks.MIST.MISTTrack(-2, 0.15, 0.0)
+MISTTrack with M_ini=0.15, MH=-2, vvcrit=0.0, Z=0.00014899227095992976, Y=0.24922374966753474, X=0.7506272580615054.
+
+julia> track(7.0) # interpolate track at log10(age [yr]) = 7
+(log_L = -1.5293719450743, log_Teff = 3.587337261741102, log_g = 4.447603584617846, log_surf_cell_z = -3.8450984758441953)
+```
+"""
 struct MISTTrack{A,B,C} <: AbstractTrack
     filename::String
     data::Table{A}
@@ -103,7 +113,7 @@ struct MISTTrack{A,B,C} <: AbstractTrack
     properties::C
 end
 function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
-    props = (M = mass, feh = feh)
+    props = (M = mass, feh = feh, vvcrit = vvcrit)
     # Validate feh
     @argcheck feh in feh_grid
     feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
@@ -126,7 +136,7 @@ function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     itp = CubicSpline([SVector(values(i)[2:end]) for i in data], data.star_age)
     return MISTTrack(convert(String, filename), data, itp, props)
 end
-# Make Track callable with logAge to get logTe, Mbol, and logg as a NamedTuple
+# Make Track callable with logAge to get properties as a NamedTuple
 function (track::MISTTrack)(logAge::Number)
     # result = track.itp(logAge)
     result = track.itp(exp10(logAge))
@@ -142,14 +152,26 @@ X(t::MISTTrack) = 1 - Y(t) - Z(t)
 # Whether there is post-rgb evolution or not is dependent on how many EEPs in track
 post_rgb(t::MISTTrack) = length(t.itp.u) > eep_idxs.RG_TIP
 Base.eltype(t::MISTTrack) = typeof(t.properties.feh)
+function Base.show(io::IO, mime::MIME"text/plain", t::MISTTrack)
+    print(io, "MISTTrack with M_ini=$(mass(t)), MH=$(MH(t)), vvcrit=$(t.properties.vvcrit), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+end
 
 ##########################################################################
 
-""" `MISTTrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
-interface for the MIST stellar evolution library. """
+"""
+    MISTTrackSet(mh::Number, vvcrit::Number=0)
+`MISTTrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
+interface for the MIST stellar evolution library.
+```jldoctest
+julia> ts = StellarTracks.MIST.MISTTrackSet(0.0, 0.0)
+MISTTrackSet with MH=0.0, vvcrit=0.0, Z=0.0142014201420142, Y=0.2703270327032703, 1710 EEPs and 196 initial stellar mass points.
+
+julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
+true
+```
+"""
 struct MISTTrackSet{A <: AbstractVector{<:Integer},
-                    B <: AbstractVector{<:AbstractInterpolation}, # AbstractInterpolation{T}
-                    # C <: AbstractVector{<:AbstractVector{<:AbstractInterpolation}},
+                    B <: AbstractVector{<:AbstractInterpolation},
                     C,
                     D} <: AbstractTrackSet
     eeps::A # EEP points; vector of integers
@@ -177,9 +199,9 @@ function MISTTrackSet(feh::Number, vvcrit::Number=0) # One table per stellar mod
                            eep = 1:length(tmpdata))
                  end for i in eachindex(allfiles, masses)]...)
     # return data
-    return MISTTrackSet(data, parse(track_type, feh))
+    return MISTTrackSet(data, parse(track_type, feh), parse(track_type, vvcrit))
 end
-function MISTTrackSet(data::Table, feh::Number)
+function MISTTrackSet(data::Table, feh::Number, vvcrit::Number)
     # eeps = 1:maximum(length.(data))
     eeps = sort(unique(data.eep))
     itp_type = CubicHermiteSpline{Vector{track_type},
@@ -222,10 +244,9 @@ function MISTTrackSet(data::Table, feh::Number)
         logg[i] = PCHIPInterpolation(tmpdata.log_g, tmpdata.m_ini)
         logsurfz[i] = PCHIPInterpolation(tmpdata.log_surf_cell_z, tmpdata.m_ini)
     end
-    # chem = MISTChemistry()
-    # zval = Z(chem, feh)
-    # return MISTTrackSet(eeps, amrs, (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz), (Z = zval, Y = Y(chem, zval), masses = unique(data.m_ini)))
-    return MISTTrackSet(eeps, amrs, (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz), (feh = feh, masses = unique(data.m_ini)))
+    return MISTTrackSet(eeps, amrs,
+                        (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz),
+                        (feh = feh, vvcrit = vvcrit, masses = unique(data.m_ini)))
 end
 function (ts::MISTTrackSet)(M::Number) # Interpolation to get a Track with mass M
     error("Not yet implemented.")
@@ -238,7 +259,7 @@ Y(ts::MISTTrackSet) = Y(chemistry(ts), Z(ts)) # ts.properties.Y
 X(ts::MISTTrackSet) = 1 - Y(ts) - Z(ts)
 Base.eltype(ts::MISTTrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTTrackSet)
-    print(io, "MISTTrackSet with Y=$(Y(ts)), Z=$(Z(ts)), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
+    print(io, "MISTTrackSet with MH=$(MH(ts)), vvcrit=$(ts.properties.vvcrit), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
 end
 
 function isochrone(ts::MISTTrackSet, logAge::Number) # 1 ms
@@ -309,15 +330,16 @@ This type also supports isochrone construction
 # Examples
 ```jldoctest
 julia> p = MISTLibrary(0.0)
-Structure of interpolants for the MIST library of stellar tracks. Valid range of metallicities is (-4.0, 0.5).
+Structure of interpolants for the MIST library of stellar tracks with vvcrit=0.0. Valid range of metallicities is (-4.0, 0.5).
 
 julia> isochrone(p, 10.05, -2) isa NamedTuple
 true
 ```
 """
-struct MISTLibrary{A,B} <: AbstractTrackLibrary
-    ts::A # Vector of `TrackSet`s
+struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
+    ts::A  # Vector of `TrackSet`s
     MH::B  # Vector of MH for each TrackSet
+    vvcrit::C
 end
 # Interpolation to get a TrackSet with metallicity MH
 function (ts::MISTLibrary)(mh::Number)
@@ -335,12 +357,12 @@ X(p::MISTLibrary) = 1 .- Y(p) .- Z(p)
 Base.eltype(p::MISTLibrary) = typeof(first(p.MH))
 Base.Broadcast.broadcastable(p::MISTLibrary) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::MISTLibrary)
-    print(io, "Structure of interpolants for the MIST library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(p.MH)).")
+    print(io, "Structure of interpolants for the MIST library of stellar tracks with vvcrit=$(p.vvcrit). Valid range of metallicities is $(extrema(MH(p))).")
 end
 function MISTLibrary(vvcrit::Number=0)
     # Make vector of tracksets
     ts = [MISTTrackSet(feh, vvcrit) for feh in feh_grid]
-    return MISTLibrary(ts, feh_grid)
+    return MISTLibrary(ts, feh_grid, vvcrit)
 end
 """
     isochrone(p::MISTLibrary, logAge::Number, mh::Number)
@@ -409,7 +431,7 @@ _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
     ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
 
 # export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
-export MISTTrack, MISTTrackSet, MISTLibrary # Unique module exports
+export MISTTrack, MISTTrackSet, MISTLibrary   # Unique module exports
 export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 end # module

@@ -1,3 +1,4 @@
+"""StellarTracks.PARSEC provides access to the PARSEC V1.2S stellar tracks."""
 module PARSEC
 
 # imports from parent module

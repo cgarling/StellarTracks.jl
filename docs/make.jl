@@ -1,6 +1,14 @@
 using StellarTracks
 using Documenter
 using DocumenterCitations: CitationBibliography
+using Unicode: normalize # for parsing CI environment variable
+
+# Check if we are running on CI
+if "CI" in keys(ENV)
+    ci = parse(Bool, normalize(ENV["CI"]))
+else
+    ci = false
+end
 
 DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks); recursive=true)
 
@@ -21,13 +29,14 @@ makedocs(;
     pages=[
         "index.md",
         "parsec.md",
+        "mist.md",
         "api.md",
         "refs.md",
         "doc_index.md"
     ],
     pagesonly=true,
     doctest=false,
-    linkcheck=true,
+    linkcheck=ci, # only check links on CI
     warnonly=[:missing_docs, :linkcheck],
     plugins=[bib]
 )

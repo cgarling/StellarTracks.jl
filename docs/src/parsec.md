@@ -45,15 +45,21 @@ As we use the PARSEC V1.2S tracks augmented with EEP points by [Rosenfield2016](
 This package handles downloading and pre-processing of the EEP tracks produced by [Rosenfield2016](@citet) (available [here](https://github.com/philrosenfield/padova_tracks)) using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl). The main access point we provide is [`PARSECLibrary`](@ref StellarTracks.PARSEC.PARSECLibrary), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume is ~66 MB after processing. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"PARSECv1.2S"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the PARSEC parameter space.
 
 ## Examples
-Load the full PARSEC library, which is downloaded via DataDeps.jl if not already available.
+First we load the full PARSEC library, which is downloaded via DataDeps.jl if not already available.
 ```@example
 using StellarTracks.PARSEC
 p = PARSECLibrary()
 ```
 
-Use the [`PARSEC.PARSECLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metal mass fraction ``Z=0.001654``. The isochrone is returned as a `NamedTuple`.
+Now we use the [`PARSEC.PARSECLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metal mass fraction ``Z=0.001654``. The isochrone is returned as a `NamedTuple`.
 ```@example
 iso = isochrone(p, 10.05, 0.001654)
+```
+
+The `NamedTuple` returned by `isochrone` can be converted to table types, like `TypedTables.Table` to simplify further use.
+```@example
+using TypedTables: Table
+Table(iso)
 ```
 
 The theoretical isochrone is plotted below.
@@ -61,18 +67,14 @@ The theoretical isochrone is plotted below.
 ```@example
 fig,ax1 = plt.subplots() # hide
 ax1.plot(iso.logTe, iso.Mbol) # hide
-ax1.set_xlim(reverse(ax1.get_xlim())) # hide
+ax1.set_xlim([3.85, 3.5]) # hide
 ax1.set_ylim(reverse(ax1.get_ylim())) # hide
 ax1.set_xlabel("logTe") # hide
 ax1.set_ylabel("Mbol") # hide
 fig # hide
 ```
 
-The `NamedTuple` returned by `isochrone(...)` can be converted to table types, like `TypedTables.Table` to simplify further use.
-```@example
-using TypedTables: Table
-Table(isochrone(p, 10.05, 0.001654))
-```
+
 
 We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[Fe/H\]) and reddening values (``A_V``). The `isochrone` interface will convert the metal mass fraction ``Z`` argument (required for `PARSECLibrary`) to \[Fe/H\] (required for `MISTBCGrid`) using the correct conversion. This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, ``Z=0.001654``, and ``A_v=0.02`` mag. 
 
@@ -82,23 +84,26 @@ m = MISTBCGrid("JWST")
 iso = isochrone(p, m, 10.05, 0.001654, 0.02)
 ```
 
-A color-magnitude diagram constructed from the isochrone is plotted below.
-
-```@example
-fig,ax1 = plt.subplots() # hide
-ax1.plot(iso.F090W .- iso.F150W, iso.F090W) # hide
-ax1.set_ylim(reverse(ax1.get_ylim())) # hide
-ax1.set_xlabel("F090W - F150W") # hide
-ax1.set_ylabel("F090W") # hide
-fig # hide
-```
-
 All available columns in the isochrone can be obtained with `TypedTables.columnnames`.
 
 ```@example
 using TypedTables: columnnames
 columnnames(iso)
 ```
+
+A color-magnitude diagram constructed from the isochrone is plotted below.
+
+```@example
+fig,ax1 = plt.subplots() # hide
+ax1.plot(iso.F090W .- iso.F150W, iso.F090W) # hide
+ax1.set_ylim(reverse(ax1.get_ylim())) # hide
+ax1.set_xlim([0.48, 1.62]) # hide
+ax1.set_xlabel("F090W - F150W") # hide
+ax1.set_ylabel("F090W") # hide
+fig # hide
+```
+
+
 
 ## Chemistry API
 We provide the [`StellarTracks.PARSEC.PARSECChemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to access information on the chemical mixture assumed for the PARSEC models.
@@ -126,8 +131,6 @@ The full library is principally a set of [`PARSECTrackSet`](@ref StellarTracks.P
 ```@docs
 StellarTracks.PARSEC.PARSECTrackSet
 ```
-
-Each track set is, intuitively, a set of individual tracks -- there is one track per stellar model, defined uniquely by their initial stellar mass.
  
 ## Individual Tracks API
 ```@docs
