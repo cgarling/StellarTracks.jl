@@ -517,7 +517,7 @@ _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
 #################################################################################
 
 export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
-export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
+export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 #################################################################################
 

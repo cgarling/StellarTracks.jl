@@ -150,7 +150,7 @@ using .MIST
 include("BCs.jl")
 
 # Common API exports
-export mass, X, Y, Z, MH, post_rgb, isochrone
+export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone
 # Submodule exports
 export PARSECLibrary, MISTLibrary
 

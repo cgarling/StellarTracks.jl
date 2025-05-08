@@ -11,6 +11,10 @@ using DataDeps: register, DataDep, @datadep_str, unpack
 using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
 # using DelimitedFiles: readdlm
 using Glob: glob
+# # MIST track with [Fe/H] = -4, M=0.9, vvcrit=0.0 has float error in the star_age that results
+# in non-increasing as a function of EEP. Since it's ~EPS error, we use Interpolations.deduplicate_knots!
+# to correct for this minor error.
+using Interpolations: deduplicate_knots!
 import JLD2 # for saving files in binary format
 using ProgressMeter: @showprogress
 using TypedTables: Table
@@ -38,6 +42,7 @@ using StaticArrays: SVector
 
 # const eep_lengths = NamedTuple{keys(eep_idxs)[begin:end-1]}(eep_idxs[i+1] - eep_idxs[i] for i in eachindex(values(eep_idxs))[begin:end-1])
 
+"""Number of secondary EEP points per primary EEP point."""
 const eep_lengths = (PMS_BEG = 201,   # beginning of PMS; log(T_c) = 5
                      MS_BEG = 151,    # beginning of MS; H-burning L > 99.9% of total L
                      IAMS = 101,      # intermediate age MS; X_c = 0.3
@@ -51,12 +56,18 @@ const eep_lengths = (PMS_BEG = 201,   # beginning of PMS; log(T_c) = 5
                      END_TPAGB = 301) # For stars that will become white dwarfs, end of TP-AGB phase
                                       # White dwarfs at 1710, final EEP point
 # Indices where the different phases begin
+"""1-based indices giving the EEP point at which each EEP phase begins."""
 const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[begin:end-1]) .+ 1)...))
 # Which columns to actually keep after reading track file; used in Track and track_table
+"""Columns to save from the MIST tracks."""
 const select_columns = SVector(:star_age, :log_L, :log_Teff, :log_g, :log_surf_cell_z) # :star_mass,
+"""Data type to parse the MIST tracks as."""
 const track_type = Float64 # MIST track files have Float64 precision
+"""Available [Fe/H] values in the MIST stellar track grid."""
 const feh_grid = SVector(-4.0, -3.5, -3.0, -2.5, -2.0, -1.75, -1.5, -1.25, -1.0,
                          -0.75, -0.5, -0.25, 0.0, 0.25, 0.5)
+"""Initial stellar masses for the stellar tracks in the MIST grid. These are uniform for all [Fe/H] and also for rotating and non-rotating grids."""
+const mist_massgrid = SVector(0.1, 0.15, 0.2, 0.25, 0.3, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.92, 0.94, 0.96, 0.98, 1.0, 1.02, 1.04, 1.06, 1.08, 1.1, 1.12, 1.14, 1.16, 1.18, 1.2, 1.22, 1.24, 1.26, 1.28, 1.3, 1.32, 1.34, 1.36, 1.38, 1.4, 1.42, 1.44, 1.46, 1.48, 1.5, 1.52, 1.54, 1.56, 1.58, 1.6, 1.62, 1.64, 1.66, 1.68, 1.7, 1.72, 1.74, 1.76, 1.78, 1.8, 1.82, 1.84, 1.86, 1.88, 1.9, 1.92, 1.94, 1.96, 1.98, 2.0, 2.02, 2.04, 2.06, 2.08, 2.1, 2.12, 2.14, 2.16, 2.18, 2.2, 2.22, 2.24, 2.26, 2.28, 2.3, 2.32, 2.34, 2.36, 2.38, 2.4, 2.42, 2.44, 2.46, 2.48, 2.5, 2.52, 2.54, 2.56, 2.58, 2.6, 2.62, 2.64, 2.66, 2.68, 2.7, 2.72, 2.74, 2.76, 2.78, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0, 6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4, 7.6, 7.8, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 22.0, 24.0, 26.0, 28.0, 30.0, 32.0, 34.0, 36.0, 38.0, 40.0, 45.0, 50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0, 85.0, 90.0, 95.0, 100.0, 105.0, 110.0, 115.0, 120.0, 125.0, 130.0, 135.0, 140.0, 145.0, 150.0, 175.0, 200.0, 225.0, 250.0, 275.0, 300.0)
 
 """
     _parse_vvcrit(vvcrit::Number)
@@ -124,16 +135,18 @@ function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     allfiles = readdir(joinpath(dd_path, feh); join=true)
     masses = mist_mass.(allfiles)
     @argcheck mass in masses ArgumentError("Invalid mass=$mass argument; available track masses for [Fe/H]=$feh and vvcrit=$vvcrit are $masses.")
-    mass = string(Int(mass * 100))
+    # mass = string(Int(mass * 100))
+    mass = string(round(Int, mass * 100))
     mass = repeat("0", 5 - length(mass)) * mass # Pad to length 5
     # Load data file into table
     filename = joinpath(dd_path, feh, mass * "M.track.jld2")
     data = JLD2.load_object(filename)
     # return data
     # Construct interpolator as a function of proper age
-    # itp = interpolate(data.star_age,
+    # itp = interpolate(deduplicate_knots!(data.star_age; move_knots=true),
     #                   [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
-    itp = CubicSpline([SVector(values(i)[2:end]) for i in data], data.star_age)
+    itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
+                      deduplicate_knots!(data.star_age; move_knots=true))
     return MISTTrack(convert(String, filename), data, itp, props)
 end
 # Make Track callable with logAge to get properties as a NamedTuple
@@ -257,6 +270,7 @@ MH(ts::MISTTrackSet) = ts.properties.feh # MH(chemistry(ts), Z(ts))
 Z(ts::MISTTrackSet) = Z(chemistry(ts), MH(ts)) # ts.properties.Z
 Y(ts::MISTTrackSet) = Y(chemistry(ts), Z(ts)) # ts.properties.Y
 X(ts::MISTTrackSet) = 1 - Y(ts) - Z(ts)
+post_rgb(t::MISTTrackSet) = true
 Base.eltype(ts::MISTTrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTTrackSet)
     print(io, "MISTTrackSet with MH=$(MH(ts)), vvcrit=$(ts.properties.vvcrit), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
@@ -354,6 +368,7 @@ MH(p::MISTLibrary) = p.MH # MH.(chemistry(tl), Z(tl))
 Z(p::MISTLibrary) = Z.(chemistry(p), p.MH)
 Y(p::MISTLibrary) = Y.(chemistry(p), Z(p))
 X(p::MISTLibrary) = 1 .- Y(p) .- Z(p)
+post_rgb(::MISTLibrary) = true
 Base.eltype(p::MISTLibrary) = typeof(first(p.MH))
 Base.Broadcast.broadcastable(p::MISTLibrary) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::MISTLibrary)
@@ -431,7 +446,7 @@ _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
     ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
 
 # export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
-export MISTTrack, MISTTrackSet, MISTLibrary   # Unique module exports
-export mass, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
+export MISTTrack, MISTTrackSet, MISTLibrary, MISTChemistry   # Unique module exports
+export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 end # module
