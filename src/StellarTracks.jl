@@ -96,6 +96,15 @@ Returns a `NamedTuple` containing the properties; different libraries
 may have different properties available. If `result = isochrone(...)`,
 EEP points are generally available as `result.eep` and the corresponding
 initial stellar masses are `result.m_ini`.
+
+```jldoctest
+julia> using StellarTracks.MIST
+
+julia> ts = MISTTrackSet(-1, 0); # Load set of MIST tracks with [M/H] = -1, vvcrit=0
+
+julia> isochrone(ts, 10.0) isa NamedTuple
+true
+```
 """
 function isochrone(ts::AbstractTrackSet, logAge::Number) end
 
@@ -131,6 +140,15 @@ metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the
 properties; different libraries may have different properties available.
 If `result = isochrone(...)`, EEP points are generally available as
 `result.eep` and the corresponding initial stellar masses are `result.m_ini`.
+
+```jldoctest
+julia> using StellarTracks.MIST
+
+julia> p = MISTLibrary(0.0); # Load the library of MIST tracks with vvcrit=0
+
+julia> isochrone(p, 10.0, -1.65) isa NamedTuple
+true
+```
 """
 function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
     mh_vec = MH(p)
