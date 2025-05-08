@@ -8,4 +8,5 @@ doctest(StellarTracks)
 
 @testset verbose=true "StellarTracks.jl" begin
     @safetestset "Isochrone Creation" include("isochrones.jl")
+    @safetestset "MIST Tracks" include("mist_tests.jl")
 end
