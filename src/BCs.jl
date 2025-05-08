@@ -60,13 +60,11 @@ from the provided table `bc` at the logarithmic age `logAge`. Column names
 can be retrieved with `TypedTables.columnnames`. The result can be converted
 to a matrix with `Tables.matrix`.
 
-# Examples
-
 ```julia
 using StellarTracks, BolometricCorrections
-p = PARSECLibrary() # Load PARSEC library of stellar models
-m = MISTBCGrid()    # Load MIST library of BCs
-isochrone(p.ts[1], m(1e-4, 0.0), 10.0)
+p = PARSECLibrary()    # Load PARSEC library of stellar models
+m = MISTBCGrid("JWST") # Load MIST library of BCs
+isochrone(p.ts[1], m(MH(p.ts[1]), 0.0), 10.0)
 ```
 
 ```
@@ -76,6 +74,29 @@ Table with 35 columns and 1323 rows:
 """
 isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number) = _apply_bc(isochrone(ts, logAge), bc)
 # This generic fallback will work as long as isochrone(tl, logAge, mh) works
+"""
+    isochrone(tl::AbstractTrackLibrary,
+              bc::BolometricCorrections.AbstractBCTable,
+              logAge::Number,
+              mh::Number)
+Returns an isochrone as a `TypedTables.Table` calculated using the stellar
+evolutionary tracks contained in `tl` with bolometric corrections interpolated
+from the provided table `bc` at the logarithmic age `logAge` and metallicity
+[M/H] = `mh`. Column names can be retrieved with `TypedTables.columnnames`.
+The result can be converted to a matrix with `Tables.matrix`.
+
+```julia
+using StellarTracks, BolometricCorrections
+p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
+m = MISTBCGrid("JWST") # Load MIST library of BCs
+isochrone(p, m(-1.01, 0.0), 10.0, -1.01)
+```
+
+```
+Table with 36 columns and 1465 rows:
+...
+```
+"""
 isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
     _apply_bc(isochrone(tl, logAge, mh), bc)
 

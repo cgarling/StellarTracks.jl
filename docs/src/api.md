@@ -50,6 +50,7 @@ For ease of use, our main entry point is the [`AbstractTrackLibrary`](@ref Stell
 ```@docs
 StellarTracks.AbstractTrackLibrary
 isochrone(::StellarTracks.AbstractTrackLibrary, ::Number, ::Number)
+isochrone(::StellarTracks.AbstractTrackLibrary, ::StellarTracks.AbstractBCTable, ::Number, ::Number)
 ```
 
 ### Concrete Implementations
