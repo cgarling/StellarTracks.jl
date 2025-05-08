@@ -49,6 +49,7 @@ For ease of use, our main entry point is the [`AbstractTrackLibrary`](@ref Stell
 ### API
 ```@docs
 StellarTracks.AbstractTrackLibrary
+isochrone(::StellarTracks.AbstractTrackLibrary, ::Number, ::Number)
 ```
 
 ### Concrete Implementations

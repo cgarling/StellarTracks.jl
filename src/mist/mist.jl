@@ -379,6 +379,9 @@ function MISTLibrary(vvcrit::Number=0)
     ts = [MISTTrackSet(feh, vvcrit) for feh in feh_grid]
     return MISTLibrary(ts, feh_grid, vvcrit)
 end
+
+# Below is a stub for documentation,
+# calls down to generic method in StellarTracks.jl main file
 """
     isochrone(p::MISTLibrary, logAge::Number, mh::Number)
 Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and logarithmic metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the properties listed below:
@@ -389,61 +392,7 @@ Interpolates properties of the stellar tracks in the library at the requested lo
  - `logg`: Surface gravity of the stellar model.
  - `log_surf_cell_z`: Base-10 logarithm of the surface metal mass fraction (Z).
 """
-function isochrone(p::MISTLibrary, logAge::Number, mh::Number)
-    mh_vec = MH(p)
-    idx = findfirst(Base.Fix1(≈, mh), mh_vec) # Will be === nothing if no entry in MH(p) is ≈ mh
-    # If input mh is represented in base grid, no mh interpolation needed
-    if !isnothing(idx) # idx !== nothing
-        return isochrone(p.ts[idx], logAge)
-    end
-    # Check mh is in valid range
-    min_mh, max_mh = extrema(mh_vec)
-    if mh < min_mh || mh > max_mh
-        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for MIST library of $(extrema(mh_vec))."))
-    end
-    # mh is valid, so need to interpolate isochrone as a function of [M/H]
-    # Z is valid, need to interpolate isochrone as a function of Z
-    # According to Marigo2017, the interpolations (at least for BCs) in Z or [M/H]
-    # are linear, so the BCs overall are computed by a
-    # 3D linear interpolation in logTe x logg x [M/H] space.
-    # VandenBerg2014 suggests linear interpolation is sufficient for Z or [M/H] interpolation,
-    # although cubic interpolation was used in VandenBerg2012.
-    # Most pre-computed grid seems more uniform in [M/H] than they are in Z, so I think it might
-    # be a good idea to do linear interpolation in [M/H].
-    
-    # searchsortedfirst returns the index of the first value in mh_vec greater than or
-    # equivalent to mh. If mh is greater than all values in mh_vec, returns lastindex(mh_vec) + 1.
-    # We have already checked bounds so we know min_mh < mh < max_mh
-    idx = searchsortedfirst(mh_vec, mh)
-    # Evaluate isochrones on either side of intermediate point
-    y0 = isochrone(p.ts[idx-1], logAge)
-    y1 = isochrone(p.ts[idx], logAge)
-    # Get intersection of valid EEPs from each isochrone
-    min_eep = max(first(y0.eep), first(y1.eep))
-    max_eep = min(last(y0.eep), last(y1.eep))
-    # Get indices into y0 and y1 that correspond to the overlapping EEP points
-    y0_idxs = Vector{Int}(undef, 0)
-    y1_idxs = similar(y0_idxs)
-    good_eeps = similar(y0_idxs)
-    for (y0_idx, eep) in enumerate(y0.eep)
-        y1_idx = searchsortedfirst(y1.eep, eep)
-        if y1_idx < lastindex(y1.eep) + 1 # Match found
-            push!(y0_idxs, y0_idx)
-            push!(y1_idxs, y1_idx)
-            push!(good_eeps, eep)
-        end
-    end
-    # Get isochrone keys, removing EEP since that is fixed
-    goodkeys = filter(Base.Fix1(!==, :eep), keys(y0))
-    # Perform linear interpolation in _interp_kernel to establish a function
-    # barrier to improve performance since some of the types of the variables
-    # aren't known at runtime
-    result = NamedTuple{goodkeys}(_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, mh, mh_vec))
-    # Concatenate interpolated result with valid EEP points
-    return (eep = good_eeps, result...)
-end
-_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
-    ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
+isochrone(p::MISTLibrary, logAge::Number, mh::Number)
 
 # export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
 export MISTTrack, MISTTrackSet, MISTLibrary, MISTChemistry   # Unique module exports
