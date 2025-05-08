@@ -1,7 +1,7 @@
 # Isochrones generated from different stellar track libraries may have different keys
 # for the same quantities (though we try to avoid this). These functions parse the
 # isochrones and return the necessary quantities. 
-function _parse_teff(iso)
+@inline function _parse_teff(iso)
     iso_keys = keys(iso)
     if :logTe in iso_keys
         return exp10.(iso.logTe)
@@ -14,18 +14,18 @@ function _parse_teff(iso)
     end 
 end
 
-function _parse_logg(iso)
+@inline function _parse_logg(iso)
     iso_keys = keys(iso)
     if :logg in iso_keys
         return iso.logg
     elseif :log_g in iso_keys
         return iso.log_g
     else
-        throw(ArgumentError("Provided `iso` argument does not contain a recognized surface gravity key, `(:logg,)`."))
+        throw(ArgumentError("Provided `iso` argument does not contain a recognized surface gravity key, `(:logg, :log_g)`."))
     end
 end
 
-function _parse_Mbol(iso)
+@inline function _parse_Mbol(iso)
     iso_keys = keys(iso)
     if :Mbol in iso_keys
         return iso.Mbol
@@ -33,12 +33,32 @@ function _parse_Mbol(iso)
         throw(ArgumentError("Provided `iso` argument does not contain a recognized bolometric magnitude key, `(:Mbol,)`."))
     end
 end
+"""
+    _apply_bc(iso, bc::AbstractBCTable)
+Given a calculated isochrone `iso` and an `AbstractBCTable`, parse the isochrone
+for `Teff, logg, Mbol`, evaluate BCs as a function of `(Teff, logg)`, and apply
+BCs to `Mbol`, returning a joined `TypedTables.Table` with theoretical and
+observational quantities.
+"""
+@inline function _apply_bc(iso, bc::AbstractBCTable)
+    iso_teff = _parse_teff(iso)
+    iso_logg = _parse_logg(iso)
+    iso_Mbol = _parse_Mbol(iso)
+    BCs = permutedims(bc(iso_teff, iso_logg))
+    # Concatenate theoretical quantities with magnitudes
+    return Table(Table(iso),
+                 Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
+end
 
 """
     isochrone(ts::StellarTracks.AbstractTrackSet,
               bc::BolometricCorrections.AbstractBCTable,
               logAge::Number)
-Returns an isochrone as a `TypedTables.Table` calculated using the stellar evolutionary tracks contained in `ts` with bolometric corrections interpolated from the provided table `bc` at the logarithmic age `logAge`. Column names can be retrieved with `TypedTables.columnnames`. The result can be converted to a matrix with `Tables.matrix`.
+Returns an isochrone as a `TypedTables.Table` calculated using the stellar
+evolutionary tracks contained in `ts` with bolometric corrections interpolated
+from the provided table `bc` at the logarithmic age `logAge`. Column names
+can be retrieved with `TypedTables.columnnames`. The result can be converted
+to a matrix with `Tables.matrix`.
 
 # Examples
 
@@ -54,27 +74,10 @@ Table with 35 columns and 1323 rows:
 ...
 ```
 """
-function isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number)
-    iso = isochrone(ts, logAge)
-    iso_teff = _parse_teff(iso)
-    iso_logg = _parse_logg(iso)
-    iso_Mbol = _parse_Mbol(iso)
-    BCs = permutedims(bc(iso_teff, iso_logg))
-    # Concatenate theoretical quantities with magnitudes
-    return Table(Table(iso),
-                 Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
-end
+isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number) = _apply_bc(isochrone(ts, logAge), bc)
 # This generic fallback will work as long as isochrone(tl, logAge, mh) works
-function isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number)
-    iso = isochrone(tl, logAge, mh)
-    iso_teff = _parse_teff(iso)
-    iso_logg = _parse_logg(iso)
-    iso_Mbol = _parse_Mbol(iso)
-    BCs = permutedims(bc(iso_teff, iso_logg))
-    # Concatenate theoretical quantities with magnitudes
-    return Table(Table(iso),
-                 Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
-end
+isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
+    _apply_bc(isochrone(tl, logAge, mh), bc)
 
 # Not sure how to handle the fact that AbstractTrackLibrary and AbstractBCGrid can
 # have different dependent variables (Z, Av, α-abundance, etc.). Going to define
@@ -83,16 +86,7 @@ end
 ####################################################################################
 # Code for PARSEC stellar models
 
-function isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, Z::Number)
-    iso = isochrone(tl, logAge, Z)
-    iso_teff = _parse_teff(iso)
-    iso_logg = _parse_logg(iso)
-    iso_Mbol = _parse_Mbol(iso)
-    BCs = permutedims(bc(iso_teff, iso_logg))
-    # Concatenate theoretical quantities with magnitudes
-    return Table(Table(iso),
-                 Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
-end
+isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, Z::Number) = _apply_bc(isochrone(tl, logAge, Z), bc)
 function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::Number, Z::Number, Av::Number)
     # MISTBCGrid expects metallicity in [Fe/H] == [M/H], not Z, so convert
     mh = MH(chemistry(bcg), Z)
@@ -103,7 +97,8 @@ end
 # running a new one (9.381 ms vs 1.2 ms). When constructing isochrones in order to make
 # partial CMD templates, it is better just to sample them one-by-one in the threaded loop
 # rather than trying to pre-generate them all. 
-function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:Number}, Z::AbstractArray{<:Number}, Av::Number)
+function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:Number},
+                   Z::AbstractArray{<:Number}, Av::Number)
     result = []
     rlock = ReentrantLock()
     # This implementation returns a single Table, with Z and logAge rows 
