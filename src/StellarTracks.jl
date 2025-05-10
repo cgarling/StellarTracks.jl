@@ -5,6 +5,7 @@ using TypedTables: Table
 # For BCs.jl
 using BolometricCorrections: AbstractBCTable, MISTBCGrid, filternames
 import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry
+using DataInterpolations: PCHIPInterpolation
 import Tables
 
 # Top-level API definitions
@@ -64,6 +65,30 @@ Concrete instances are callable with an initial stellar mass (in solar masses),
 returning an interpolated track at the requested mass. """
 abstract type AbstractTrackSet end
 Base.Broadcast.broadcastable(ts::AbstractTrackSet) = Ref(ts)
+function (ts::AbstractTrackSet)(M::Number)
+    interps = ts.interps
+    interp_keys = keys(interps)
+    interp_length = length(first(interps))
+    results = Vector{Vector{eltype(ts)}}(undef, length(interps)) # +1 for age column
+    # Find EEP points where the requested mass is valid
+    good_idx = findall(ii -> begin
+                                  ee = extrema(first(interps)[ii])
+                                  (M >= ee[1]) && (M <= ee[2])
+                             end, eachindex(first(interps)))
+    # Loop over unique values that are being interpolated (logg, Teff, etc), one interp per property
+    for i in eachindex(values(interps))
+        interps_i = interps[i]
+        results[i] = [interps_i[j](M) for j in good_idx]
+    end
+    # Nearly all computation time is spent here -- faster interpolation inversion
+    # or *maybe* root-finding on existing interpolation would speed this up
+    ages = [begin
+                sortidx = sortperm(amr.u)
+                PCHIPInterpolation(amr.t[sortidx], amr.u[sortidx])(M)
+            end for amr in ts.AMRs[good_idx]]
+    sortidx = sortperm(ages)
+    return NamedTuple{(:logAge, keys(interps)...)}(tuple(ages[sortidx], (r[sortidx] for r in results)...))
+end
 """
     mass(ts::AbstractTrackSet)
 Returns the initial stellar masses (in solar masses) of the individual tracks contained in the track set. """
@@ -202,6 +227,7 @@ function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
     # Concatenate interpolated result with valid EEP points
     return (eep = good_eeps, result...)
 end
+# This does linear interpolation for isochrone
 _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
     ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
 

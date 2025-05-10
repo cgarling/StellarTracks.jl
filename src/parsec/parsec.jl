@@ -321,9 +321,6 @@ function PARSECTrackSet(data::Table, Z::Number, Y::Number)
     return PARSECTrackSet(eeps, amrs, (logTe = logte, Mbol = mbol, logg = logg, C_O = c_o),
                           (Z = Z, Y = Y, masses = unique(data.m_ini)))
 end
-function (ts::PARSECTrackSet)(M::Number) # Interpolation to get a Track with mass M
-    error("Not yet implemented.")
-end
 mass(ts::PARSECTrackSet) = ts.properties.masses
 Z(ts::PARSECTrackSet) = ts.properties.Z
 Y(ts::PARSECTrackSet) = ts.properties.Y
@@ -336,7 +333,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(ts.properties.masses)
+    track_extrema = extrema(mass(ts))
     # interp_masses = Vector{eltype(first(ts.AMRs).u)}(undef, 0)
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte = similar(interp_masses)

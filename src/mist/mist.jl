@@ -179,6 +179,9 @@ interface for the MIST stellar evolution library.
 julia> ts = StellarTracks.MIST.MISTTrackSet(0.0, 0.0)
 MISTTrackSet with MH=0.0, vvcrit=0.0, Z=0.0142014201420142, Y=0.2703270327032703, 1710 EEPs and 196 initial stellar mass points.
 
+julia> ts(1.01) isa NamedTuple # Interpolate track at new initial mass
+true
+
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
 ```
@@ -261,9 +264,7 @@ function MISTTrackSet(data::Table, feh::Number, vvcrit::Number)
                         (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz),
                         (feh = feh, vvcrit = vvcrit, masses = unique(data.m_ini)))
 end
-function (ts::MISTTrackSet)(M::Number) # Interpolation to get a Track with mass M
-    error("Not yet implemented.")
-end
+# Generic fallback for (ts::AbstractTrackSet)(M::Number) in StellarTracks.jl
 mass(ts::MISTTrackSet) = ts.properties.masses
 chemistry(::MISTTrackSet) = MISTChemistry()
 MH(ts::MISTTrackSet) = ts.properties.feh # MH(chemistry(ts), Z(ts))
