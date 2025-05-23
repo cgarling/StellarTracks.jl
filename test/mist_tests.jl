@@ -30,7 +30,7 @@ bcg = MISTBCGrid("JWST")
         for vvcrit in (0.0, 0.4)
             for feh in MIST.feh_grid
                 trackset = MISTTrackSet(feh, vvcrit)
-                @test trackset(1.0) isa NamedTuple
+                @test trackset(1.0) isa MISTTrack
                 @test mass(trackset) == MIST.mist_massgrid
                 @test chemistry(trackset) == MISTChemistry()
                 @test MH(trackset) == feh

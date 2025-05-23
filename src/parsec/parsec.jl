@@ -2,7 +2,8 @@
 module PARSEC
 
 # imports from parent module
-using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet, AbstractTrackLibrary, uniqueidx
+using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
+                       uniqueidx, _generic_trackset_interp
 import ..StellarTracks: mass, post_rgb, isochrone
 import ..StellarTracks: X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 
@@ -48,10 +49,11 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 const track_header = SVector{6, String}("logAge", "mass", "logTe", "Mbol", "logg", "C_O")
 const track_header_symbols = Tuple(Symbol.(i) for i in track_header)
 # Which columns to actually keep after reading track file; used in Track and track_table
-const select_columns = SVector(:logAge, :mass, :logTe, :Mbol, :logg, :C_O)
+const select_columns = SVector(:logAge, :logTe, :Mbol, :logg, :C_O)
 # Matrix columns to keep when reading track in track_matrix
 const keepcols = SVector(1,2,3,4,5,6)
 const track_type = Float64 # Float type to use to represent values
+const zgrid = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
 
 ##########################################################################
 # PARSEC chemistry
@@ -156,15 +158,30 @@ include("init.jl")
 
 ##########################################################################
 
-""" `PARSECTrack` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
-interface for the PARSEC stellar evolution library. """
+"""
+    PARSECTrack(zval::Number, mass::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+`PARSECTrack` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
+interface for the PARSEC stellar evolution library.
+
+Note that due to the organization of the PARSEC data files, this method requires
+constructing a [`PARSECTrackSet`](@ref) and is therefore
+not efficient if your aim is to construct multiple tracks of the same metallicity `zval`. In this
+case, you should construct a [`PARSECTrackSet`](@ref) and call it with the masses you want, e.g.,
+`ts = PARSECTrackSet(0.0001); ts.([0.12, 0.15])`. 
+```jldoctest
+julia> track = StellarTracks.PARSEC.PARSECTrack(0.0001, 0.15)
+PARSECTrack with M_ini=0.15, MH=-2.278223981363725, Z=0.0001, Y=0.248678, X=0.7512220000000001.
+
+julia> track(7.0) # interpolate track at log10(age [yr]) = 7
+(logTe = 3.6015066653099757, Mbol = 8.518315848633081, logg = 4.464972304683626, C_O = 0.0)
+```
+"""
 struct PARSECTrack{A,B,C} <: AbstractTrack
-    filename::String
     data::Table{A}
     itp::B
     properties::C
 end
-function PARSECTrack(filename::AbstractString) # Constructor from filename
+function PARSECTrack(filename::AbstractString) # Constructor from filename, raw parsec track files
     # Check file exists
     @argcheck isfile(filename)
     props = file_properties(filename)
@@ -175,14 +192,22 @@ function PARSECTrack(filename::AbstractString) # Constructor from filename
     # Construct interpolator as a function of proper age
     # itp = interpolate((exp10.(data.logAge),), [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
     itp = CubicSpline([SVector(values(i)[2:end]) for i in data], exp10.(data.logAge))
-    return PARSECTrack(convert(String, filename), data, itp, props)
+    return PARSECTrack(data, itp, (M = props.M, Z = props.Z, HB = props.HB))
+end
+# Constructor taking a subtable from one of the .jld2 reprocessed files
+function PARSECTrack(data::Table, zval::Number, mass::Number)
+    return PARSECTrack(data, CubicSpline([SVector(values(i)[2:end]) for i in data], exp10.(data.logAge)),
+                       (M = mass, Z = zval, HB = length(data) > eep_idxs.RG_TIP))
+end
+# Constructor taking Z value, initial stellar mass, loads Table, calls above method
+function PARSECTrack(zval::Number, mass::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+    # For PARSEC, individual tracks are not saved, so we need to load a trackset
+    data = PARSECTrackSet(zval, base_dir)(mass).data
+    return PARSECTrack(data, zval, mass) # Method above
 end
 # Make Track callable with logAge to get logTe, Mbol, and logg as a NamedTuple
 function (track::PARSECTrack)(logAge::Number)
-    # result = track.itp(logAge)
     result = track.itp(exp10(logAge))
-    # return NamedTuple{Tuple(Symbol(i) for i in track_header[3:5])}(result)
-    # return NamedTuple{(:logTe, :Mbol, :logg)}(result)
     return NamedTuple{Tuple(select_columns)[2:end]}(result)
 end
 function (track::PARSECTrack)(logAge::AbstractArray{<:Number})
@@ -194,18 +219,34 @@ function (track::PARSECTrack)(logAge::AbstractArray{<:Number})
 end
 Base.extrema(t::PARSECTrack) = log10.(extrema(t.itp.t))
 mass(t::PARSECTrack) = t.properties.M
-Z(t::PARSECTrack) = t.properties.Z
-Y(t::PARSECTrack) = t.properties.Y
-X(t::PARSECTrack) = 1 - Y(t) - Z(t)
 chemistry(::PARSECTrack) = PARSECChemistry()
 MH(t::PARSECTrack) = MH(chemistry(t), Z(t))
+Z(t::PARSECTrack) = t.properties.Z
+Y(t::PARSECTrack) = Y(chemistry(t), Z(t))
+X(t::PARSECTrack) = 1 - Y(t) - Z(t)
 post_rgb(t::PARSECTrack) = t.properties.HB #hashb()
 Base.eltype(t::PARSECTrack) = typeof(t.properties.Z)
+function Base.show(io::IO, mime::MIME"text/plain", t::PARSECTrack)
+    print(io, "PARSECTrack with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+end
 
 ##########################################################################
 
-""" `PARSECTrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
-interface for the PARSEC stellar evolution library. """
+"""
+    PARSECTrackSet(zval::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+`PARSECTrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
+interface for the PARSEC stellar evolution library.
+```jldoctest
+julia> ts = StellarTracks.PARSEC.PARSECTrackSet(0.0001)
+TrackSet with Y=0.248678, Z=0.0001, 1930 EEPs and 104 initial stellar mass points.
+
+julia> ts(1.01) # Interpolate track at new initial mass
+PARSECTrack with M_ini=1.01, MH=-2.278223981363725, Z=0.0001, Y=0.248678, X=0.7512220000000001.
+
+julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
+true
+```
+"""
 struct PARSECTrackSet{A <: AbstractVector{<:Integer},
                       B <: AbstractVector{<:AbstractInterpolation}, # AbstractInterpolation{T}
                       # C <: AbstractVector{<:AbstractVector{<:AbstractInterpolation}},
@@ -216,7 +257,7 @@ struct PARSECTrackSet{A <: AbstractVector{<:Integer},
     interps::C
     properties::D
 end
-function PARSECTrackSet(data::Table, Z::Number, Y::Number)
+function PARSECTrackSet(data::Table, Z::Number)
     # Now that we have an orderly data matrix, we need to construct the age-mass relations
     # age (dependent) is a monotonic function of m_ini (independent)
     eeps = sort(unique(data.eep))
@@ -316,21 +357,31 @@ function PARSECTrackSet(data::Table, Z::Number, Y::Number)
         # c_o[i] = LinearInterpolation(tmpdata.C_O, tmpdata.m_ini)
     end
     
-    # logte = PCHIP
-    # return pinterps
-    # return TrackSet(eeps, amrs, [logte, mbol, logg, c_o], (Z = Z, Y = Y, masses = ms_props.M))
     return PARSECTrackSet(eeps, amrs, (logTe = logte, Mbol = mbol, logg = logg, C_O = c_o),
-                          (Z = Z, Y = Y, masses = unique(data.m_ini)))
+                          (Z = Z, masses = unique(data.m_ini)))
 end
+function PARSECTrackSet(zval::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+    set_files = glob("Z*.jld2", base_dir)
+    # zvals = [file_properties(file).Z for file in set_files]
+    zvals = [parse(track_type, split( split(basename(file), "Z")[2], "Y")[1]) for file in set_files]
+    idx = findfirst(Base.Fix1(≈, zval), zvals)
+    if isnothing(idx)
+        throw(ArgumentError("Provided `zval` argument $zval to `PARSECTrackSet` is invalid; available metal mass fractions are $zvals. For metallicity interpolation, use `PARSECLibrary`."))
+    end
+    table = JLD2.load_object(set_files[idx])
+    return PARSECTrackSet(table, zval)
+end
+(ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M)), Z(ts), M)
 mass(ts::PARSECTrackSet) = ts.properties.masses
-Z(ts::PARSECTrackSet) = ts.properties.Z
-Y(ts::PARSECTrackSet) = ts.properties.Y
-X(ts::PARSECTrackSet) = 1 - Y(ts) - Z(ts)
 chemistry(::PARSECTrackSet) = PARSECChemistry()
+Z(ts::PARSECTrackSet) = ts.properties.Z
+Y(ts::PARSECTrackSet) = Y(chemistry(ts), Z(ts))
+X(ts::PARSECTrackSet) = 1 - Y(ts) - Z(ts)
 MH(ts::PARSECTrackSet) = MH(chemistry(ts), Z(ts))
+post_rgb(ts::PARSECTrackSet) = ts.eeps[end] > eep_idxs.RG_TIP
 Base.eltype(ts::PARSECTrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
-    print(io, "TrackSet with Y=$(ts.properties.Y), Z=$(ts.properties.Z), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
+    print(io, "TrackSet with Y=$(Y(ts)), Z=$(Z(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
     eeps = Vector{Int}(undef, 0)
@@ -405,10 +456,8 @@ julia> isochrone(p, 10.05, 0.001654) isa NamedTuple
 true
 ```
 """
-struct PARSECLibrary{A,B,C} <: AbstractTrackLibrary
+struct PARSECLibrary{A} <: AbstractTrackLibrary
     ts::A # Vector of `TrackSet`s
-    Z::B  # Vector of Z for each TrackSet
-    Y::C  # Vector of Y for each TrackSet
 end
 # Interpolation to get a TrackSet with metallicity Z
 function (ts::PARSECLibrary)(Z::Number)
@@ -418,38 +467,37 @@ end
 function (ts::PARSECLibrary)(Z::Number, M::Number)
     error("Not yet implemented.")
 end
-Z(p::PARSECLibrary) = p.Z
-Y(p::PARSECLibrary) = p.Y
-X(p::PARSECLibrary) = 1 .- p.Y .- p.Z
-# MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
 chemistry(::PARSECLibrary) = PARSECChemistry()
+Z(p::PARSECLibrary) = zgrid
+Y(p::PARSECLibrary) = Y.(chemistry(p), Z(p))
+X(p::PARSECLibrary) = 1 .- Y(p) .- Z(p)
+# MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
 MH(tl::PARSECLibrary) = MH.(chemistry(tl), Z(tl))
-Base.eltype(p::PARSECLibrary) = typeof(first(p.Z))
+post_rgb(t::PARSECLibrary) = true
+Base.eltype(p::PARSECLibrary) = typeof(first(Z(p)))
 Base.Broadcast.broadcastable(p::PARSECLibrary) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::PARSECLibrary)
-    print(io, "Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(p.Z)).")
+    print(io, "Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(Z(p))).")
 end
 function PARSECLibrary(base_dir::AbstractString=datadep"PARSECv1.2S")
-    # Load all data into Tables; 1.2s single-threaded, 0.8s multi-threaded
-    # ts = [CSV.read(fname, Table) for fname in glob("Z*.gz", base_dir)]
     # Processing into TrackSet structures takes additional time
-    set_files = glob("Z*.jld2", base_dir)
-    filestems = [splitext(basename(fi))[1] for fi in set_files]
-    Z = [parse(Float64, split(split(fi, 'Z')[2], 'Y')[1]) for fi in filestems]
-    Y = [parse(Float64, split(fi, 'Y')[2]) for fi in filestems]
-    # Sort according to Z; isochrone(p::PARSEC...) depends on this
-    idxs = sortperm(Z)
-    Z .= Z[idxs]
-    Y .= Y[idxs]
-    set_files .= set_files[idxs]
-    # Make vector of tracksets
-    # ts = [PARSECTrackSet(CSV.read(fname, Table), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
-    ts = [PARSECTrackSet(JLD2.load_object(fname), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
-    return PARSECLibrary(ts, Z, Y)
+    # set_files = glob("Z*.jld2", base_dir)
+    # filestems = [splitext(basename(fi))[1] for fi in set_files]
+    # Z = [parse(Float64, split(split(fi, 'Z')[2], 'Y')[1]) for fi in filestems]
+    # Y = [parse(Float64, split(fi, 'Y')[2]) for fi in filestems]
+    # # Sort according to Z; isochrone(p::PARSEC...) depends on this
+    # idxs = sortperm(Z)
+    # Z .= Z[idxs]
+    # Y .= Y[idxs]
+    # set_files .= set_files[idxs]
+    # # Make vector of tracksets
+    # ts = [PARSECTrackSet(JLD2.load_object(fname), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
+    # return PARSECLibrary(ts, Z, Y)
+    return PARSECLibrary(PARSECTrackSet.(zgrid))
 end
 """
-    isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
-Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and metal mass fraction `Z`. Returns a `NamedTuple` containing the properties listed below:
+    isochrone(p::PARSECLibrary, logAge::Number, zval::Number)
+Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and metal mass fraction `zval`. Returns a `NamedTuple` containing the properties listed below:
  - `eep`: Equivalent evolutionary points
  - `m_ini`: Initial stellar masses, in units of solar masses.
  - `logTe`: Base-10 logarithm of the effective temperature [K] of the stellar model.
@@ -457,16 +505,16 @@ Interpolates properties of the stellar tracks in the library at the requested lo
  - `logg`: Surface gravity of the stellar model calculated as `-10.616 + log10(mass) + 4 * logTe - (4.77 - Mbol) / 2.5`.
  - `C_O`: Photospheric C/O ratio (the ZAMS value is used before the TP-AGB).
 """
-function isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
-    idx = findfirst(Base.Fix1(≈, Z), p.Z) # Will be === nothing if no entry in p.Z is ≈ Z
+function isochrone(p::PARSECLibrary, logAge::Number, zval::Number)
+    idx = findfirst(Base.Fix1(≈, zval), Z(p)) # Will be === nothing if no entry in p.Z is ≈ Z
     # If input Z is represented in base grid, no Z interpolation needed
     if !isnothing(idx) # idx !== nothing
         return isochrone(p.ts[idx], logAge)
     end
     # Check Z is in valid range
-    minZ, maxZ = extrema(p.Z)
-    if Z < minZ || Z > maxZ
-        throw(DomainError(Z, "Requested metallicity Z=$Z is outside the valid range for PARSEC library of $(extrema(p.Z))."))
+    minZ, maxZ = extrema(Z(p))
+    if zval < minZ || zval > maxZ
+        throw(DomainError(zval, "Requested metallicity Z=$zval is outside the valid range for PARSEC library of $(extrema(Z(p)))."))
     end
     # Z is valid, need to interpolate isochrone as a function of Z
     # According to Marigo2017, the interpolations (at least for BCs) in Z or [M/H]
@@ -477,7 +525,7 @@ function isochrone(p::PARSECLibrary, logAge::Number, Z::Number)
     # The pre-computed grid seems more uniform in [M/H] than it is in Z, so I think it might
     # be a good idea to do linear interpolation in [M/H].
     xvec = MH(p) # [M/H] for all TrackSet in p, sorted least to greatest
-    x = MH(chemistry(p), Z)  # Requested [M/H]
+    x = MH(chemistry(p), zval)  # Requested [M/H]
     # searchsortedfirst returns the index of the first value in xvec greater than or
     # equivalent to x. If x is greater than all values in xvec, return lastindex(xvec) + 1.
     # We have already checked bounds so we know minZ < Z < maxZ
@@ -515,7 +563,7 @@ _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
 
 #################################################################################
 
-export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
+export PARSECTrack, PARSECTrackSet, PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 #################################################################################

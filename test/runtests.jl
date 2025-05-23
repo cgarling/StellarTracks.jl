@@ -7,6 +7,6 @@ DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks; import 
 doctest(StellarTracks)
 
 @testset verbose=true "StellarTracks.jl" begin
-    @safetestset "Isochrone Creation" include("isochrones.jl")
+    @safetestset "PARSEC Tracks" include("parsec_tests.jl")
     @safetestset "MIST Tracks" include("mist_tests.jl")
 end

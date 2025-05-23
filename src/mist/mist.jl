@@ -2,7 +2,8 @@
 module MIST
 
 # imports from parent module
-using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary, uniqueidx, Mbol
+using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
+                       uniqueidx, Mbol, _generic_trackset_interp
 import ..StellarTracks: X, Y, Z, MH, chemistry, mass, post_rgb, isochrone # X_phot, Y_phot, Z_phot,
 
 # Imports for data reading / processing
@@ -118,11 +119,19 @@ julia> track(7.0) # interpolate track at log10(age [yr]) = 7
 ```
 """
 struct MISTTrack{A,B,C} <: AbstractTrack
-    filename::String
     data::Table{A}
     itp::B
     properties::C
 end
+function MISTTrack(data::Table, props)
+    # Construct interpolator as a function of proper age
+    # itp = interpolate(deduplicate_knots!(data.star_age; move_knots=true),
+    #                   [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
+    itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
+                      deduplicate_knots!(data.star_age; move_knots=true))
+    return MISTTrack(data, itp, props)
+end
+# Given feh, mass, vvcrit, load the data table and call to function above
 function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     props = (M = mass, feh = feh, vvcrit = vvcrit)
     # Validate feh
@@ -141,13 +150,7 @@ function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     # Load data file into table
     filename = joinpath(dd_path, feh, mass * "M.track.jld2")
     data = JLD2.load_object(filename)
-    # return data
-    # Construct interpolator as a function of proper age
-    # itp = interpolate(deduplicate_knots!(data.star_age; move_knots=true),
-    #                   [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
-    itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
-                      deduplicate_knots!(data.star_age; move_knots=true))
-    return MISTTrack(convert(String, filename), data, itp, props)
+    return MISTTrack(data, props)
 end
 # Make Track callable with logAge to get properties as a NamedTuple
 function (track::MISTTrack)(logAge::Number)
@@ -179,8 +182,8 @@ interface for the MIST stellar evolution library.
 julia> ts = StellarTracks.MIST.MISTTrackSet(0.0, 0.0)
 MISTTrackSet with MH=0.0, vvcrit=0.0, Z=0.0142014201420142, Y=0.2703270327032703, 1710 EEPs and 196 initial stellar mass points.
 
-julia> ts(1.01) isa NamedTuple # Interpolate track at new initial mass
-true
+julia> ts(1.01) # Interpolate track at new initial mass
+MISTTrack with M_ini=1.01, MH=0.0, vvcrit=0.0, Z=0.0142014201420142, Y=0.2703270327032703, X=0.7154715471547155.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -264,12 +267,17 @@ function MISTTrackSet(data::Table, feh::Number, vvcrit::Number)
                         (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz),
                         (feh = feh, vvcrit = vvcrit, masses = unique(data.m_ini)))
 end
-# Generic fallback for (ts::AbstractTrackSet)(M::Number) in StellarTracks.jl
+function (ts::MISTTrackSet)(M::Number)
+    props = (M = M, feh = MH(ts), vvcrit = ts.properties.vvcrit)
+    nt = _generic_trackset_interp(ts, M)
+    table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
+    return MISTTrack(table, props)
+end
 mass(ts::MISTTrackSet) = ts.properties.masses
 chemistry(::MISTTrackSet) = MISTChemistry()
-MH(ts::MISTTrackSet) = ts.properties.feh # MH(chemistry(ts), Z(ts))
-Z(ts::MISTTrackSet) = Z(chemistry(ts), MH(ts)) # ts.properties.Z
-Y(ts::MISTTrackSet) = Y(chemistry(ts), Z(ts)) # ts.properties.Y
+MH(ts::MISTTrackSet) = ts.properties.feh
+Z(ts::MISTTrackSet) = Z(chemistry(ts), MH(ts))
+Y(ts::MISTTrackSet) = Y(chemistry(ts), Z(ts))
 X(ts::MISTTrackSet) = 1 - Y(ts) - Z(ts)
 post_rgb(t::MISTTrackSet) = true
 Base.eltype(ts::MISTTrackSet) = typeof(ts.properties.feh)
