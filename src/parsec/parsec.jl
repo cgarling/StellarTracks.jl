@@ -7,10 +7,11 @@ import ..StellarTracks: mass, post_rgb, isochrone
 import ..StellarTracks: X, X_phot, Y, Y_phot, Z, Z_phot, MH, chemistry
 
 import CSV
+using CodecZlib: GzipDecompressorStream
 using DataDeps: register, DataDep, @datadep_str, unpack
 using DelimitedFiles: readdlm
-using CodecZlib: GzipDecompressorStream
 using Glob: glob # file pattern matching
+import JLD2 # for saving files in binary format
 using ProgressMeter: @showprogress
 # import Tables # For Tables.matrix conversion, "1" compat
 import Tar
@@ -432,7 +433,7 @@ function PARSECLibrary(base_dir::AbstractString=datadep"PARSECv1.2S")
     # Load all data into Tables; 1.2s single-threaded, 0.8s multi-threaded
     # ts = [CSV.read(fname, Table) for fname in glob("Z*.gz", base_dir)]
     # Processing into TrackSet structures takes additional time
-    set_files = glob("Z*.gz", base_dir)
+    set_files = glob("Z*.jld2", base_dir)
     filestems = [splitext(basename(fi))[1] for fi in set_files]
     Z = [parse(Float64, split(split(fi, 'Z')[2], 'Y')[1]) for fi in filestems]
     Y = [parse(Float64, split(fi, 'Y')[2]) for fi in filestems]
@@ -442,7 +443,8 @@ function PARSECLibrary(base_dir::AbstractString=datadep"PARSECv1.2S")
     Y .= Y[idxs]
     set_files .= set_files[idxs]
     # Make vector of tracksets
-    ts = [PARSECTrackSet(CSV.read(fname, Table), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
+    # ts = [PARSECTrackSet(CSV.read(fname, Table), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
+    ts = [PARSECTrackSet(JLD2.load_object(fname), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
     return PARSECLibrary(ts, Z, Y)
 end
 """

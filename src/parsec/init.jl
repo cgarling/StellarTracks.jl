@@ -16,10 +16,13 @@ function file_properties(filename::AbstractString) # extract properties of origi
 end
 
 """
-    dir_properties(dir::AbstractString)
-Parse `Z` and `Y` from name of track directory (e.g., ".../tracks/Z0.0001Y0.249/") with or without trailing '/'. """
-function dir_properties(dir::AbstractString) # utility
-    @assert isdir(dir) # Check that directory exists
+    dir_properties(dir::AbstractString, checkdir::Bool=true)
+Parse `Z` and `Y` from name of track directory (e.g., ".../tracks/Z0.0001Y0.249/") with or without trailing '/'.
+If `checkdir` is `true`, this function will check that the provided directory `dir` exists on the file system. """
+function dir_properties(dir::AbstractString, checkdir::Bool=true) # utility
+    if checkdir
+        @argcheck isdir(dir) ArgumentError("`checkdir` argument to `dir_properties` is `true` and file system directory `dir` does not exist.")
+    end
     if dir[end] == '/'
         dir = split(dir, '/')[end-1]
     else
@@ -153,7 +156,10 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
         hbdata = Table(hbdata, m_ini = hb_masses, eep = hb_eep_vec)
         data = vcat(data, hbdata)
         # 1/3 size of uncompressed CSV, 2x read time, 80 ms per file -- totally fine
-        CSV.write(joinpath(fpath, dirstem)*".gz", data; compress=true)
+        # CSV.write(joinpath(fpath, dirstem)*".gz", data; compress=true)
+        # JLD2 loading takes 1 ms per file -- much faster than CSV ...
+        JLD2.save_object(joinpath(fpath, dirstem * ".jld2"), data)
+        # ; compress=true) halves size, 25x load time
         rm(dir; recursive=true)
     end
     @info "Cleaning up data directory"
