@@ -453,7 +453,7 @@ This type also supports isochrone construction
 julia> p = PARSECLibrary()
 Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is (0.0001, 0.06).
 
-julia> isochrone(p, 10.05, 0.001654) isa NamedTuple
+julia> isochrone(p, 10.05, -0.76) isa NamedTuple
 true
 ```
 """
@@ -497,8 +497,8 @@ function PARSECLibrary()
     return PARSECLibrary(PARSECTrackSet.(zgrid))
 end
 """
-    isochrone(p::PARSECLibrary, logAge::Number, zval::Number)
-Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and metal mass fraction `zval`. Returns a `NamedTuple` containing the properties listed below:
+    isochrone(p::PARSECLibrary, logAge::Number, mh::Number)
+Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and logarithmic metallicity `mh`. Returns a `NamedTuple` containing the properties listed below:
  - `eep`: Equivalent evolutionary points
  - `m_ini`: Initial stellar masses, in units of solar masses.
  - `logTe`: Base-10 logarithm of the effective temperature [K] of the stellar model.
@@ -506,61 +506,7 @@ Interpolates properties of the stellar tracks in the library at the requested lo
  - `logg`: Surface gravity of the stellar model calculated as `-10.616 + log10(mass) + 4 * logTe - (4.77 - Mbol) / 2.5`.
  - `C_O`: Photospheric C/O ratio (the ZAMS value is used before the TP-AGB).
 """
-function isochrone(p::PARSECLibrary, logAge::Number, zval::Number)
-    idx = findfirst(Base.Fix1(≈, zval), Z(p)) # Will be === nothing if no entry in p.Z is ≈ Z
-    # If input Z is represented in base grid, no Z interpolation needed
-    if !isnothing(idx) # idx !== nothing
-        return isochrone(p.ts[idx], logAge)
-    end
-    # Check Z is in valid range
-    minZ, maxZ = extrema(Z(p))
-    if zval < minZ || zval > maxZ
-        throw(DomainError(zval, "Requested metallicity Z=$zval is outside the valid range for PARSEC library of $(extrema(Z(p)))."))
-    end
-    # Z is valid, need to interpolate isochrone as a function of Z
-    # According to Marigo2017, the interpolations (at least for BCs) in Z or [M/H]
-    # are linear, so the BCs overall are computed by a 
-    # 3D linear interpolation in logTe x logg x [M/H] space.
-    # VandenBerg2014 suggests linear interpolation is sufficient for Z or [M/H] interpolation,
-    # although cubic interpolation was used in VandenBerg2012.
-    # The pre-computed grid seems more uniform in [M/H] than it is in Z, so I think it might
-    # be a good idea to do linear interpolation in [M/H].
-    xvec = MH(p) # [M/H] for all TrackSet in p, sorted least to greatest
-    x = MH(chemistry(p), zval)  # Requested [M/H]
-    # searchsortedfirst returns the index of the first value in xvec greater than or
-    # equivalent to x. If x is greater than all values in xvec, return lastindex(xvec) + 1.
-    # We have already checked bounds so we know minZ < Z < maxZ
-    idx = searchsortedfirst(xvec, x)
-    # Evaluate isochrones on either side of intermediate point
-    y0 = isochrone(p.ts[idx-1], logAge)
-    y1 = isochrone(p.ts[idx], logAge)
-    # Get intersection of valid EEPs from each isochrone
-    min_eep = max(first(y0.eep), first(y1.eep))
-    max_eep = min(last(y0.eep), last(y1.eep))
-    # Get indices into y0 and y1 that correspond to the overlapping EEP points
-    y0_idxs = Vector{Int}(undef, 0)
-    y1_idxs = similar(y0_idxs)
-    good_eeps = similar(y0_idxs)
-    for (y0_idx, eep) in enumerate(y0.eep)
-        y1_idx = searchsortedfirst(y1.eep, eep)
-        if y1_idx < lastindex(y1.eep) + 1 # Match found
-            push!(y0_idxs, y0_idx)
-            push!(y1_idxs, y1_idx)
-            push!(good_eeps, eep)
-        end
-    end
-    # Get isochrone keys, removing EEP since that is fixed
-    goodkeys = filter(Base.Fix1(!==, :eep), keys(y0))
-    # Linear interpolation here
-    # result = NamedTuple{goodkeys}((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
-    # Use a function barrier to improve performance since some of the types of the variables
-    # aren't known at runtime
-    result = NamedTuple{goodkeys}(_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec))
-    # Concatenate interpolated result with valid EEP points
-    return (eep = good_eeps, result...)
-end
-_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
-    ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
+isochrone(p::PARSECLibrary, logAge::Number, mh::Number) # Falls back to generic method in StellarTracks.jl
 
 #################################################################################
 
