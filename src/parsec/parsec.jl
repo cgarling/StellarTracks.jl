@@ -53,6 +53,7 @@ const select_columns = SVector(:logAge, :logTe, :Mbol, :logg, :C_O)
 # Matrix columns to keep when reading track in track_matrix
 const keepcols = SVector(1,2,3,4,5,6)
 const track_type = Float64 # Float type to use to represent values
+"""Valid metal mass fractions (Z) for PARSECv1.2S."""
 const zgrid = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
 
 ##########################################################################
@@ -159,7 +160,7 @@ include("init.jl")
 ##########################################################################
 
 """
-    PARSECTrack(zval::Number, mass::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+    PARSECTrack(zval::Number, mass::Number)
 `PARSECTrack` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
 interface for the PARSEC stellar evolution library.
 
@@ -200,9 +201,9 @@ function PARSECTrack(data::Table, zval::Number, mass::Number)
                        (M = mass, Z = zval, HB = length(data) > eep_idxs.RG_TIP))
 end
 # Constructor taking Z value, initial stellar mass, loads Table, calls above method
-function PARSECTrack(zval::Number, mass::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+function PARSECTrack(zval::Number, mass::Number)
     # For PARSEC, individual tracks are not saved, so we need to load a trackset
-    data = PARSECTrackSet(zval, base_dir)(mass).data
+    data = PARSECTrackSet(zval)(mass).data
     return PARSECTrack(data, zval, mass) # Method above
 end
 # Make Track callable with logAge to get logTe, Mbol, and logg as a NamedTuple
@@ -233,7 +234,7 @@ end
 ##########################################################################
 
 """
-    PARSECTrackSet(zval::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
+    PARSECTrackSet(zval::Number)
 `PARSECTrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
 interface for the PARSEC stellar evolution library.
 ```jldoctest
@@ -360,8 +361,8 @@ function PARSECTrackSet(data::Table, Z::Number)
     return PARSECTrackSet(eeps, amrs, (logTe = logte, Mbol = mbol, logg = logg, C_O = c_o),
                           (Z = Z, masses = unique(data.m_ini)))
 end
-function PARSECTrackSet(zval::Number, base_dir::AbstractString=datadep"PARSECv1.2S")
-    set_files = glob("Z*.jld2", base_dir)
+function PARSECTrackSet(zval::Number)
+    set_files = glob("Z*.jld2", datadep"PARSECv1.2S")
     # zvals = [file_properties(file).Z for file in set_files]
     zvals = [parse(track_type, split( split(basename(file), "Z")[2], "Y")[1]) for file in set_files]
     idx = findfirst(Base.Fix1(≈, zval), zvals)
@@ -479,7 +480,7 @@ Base.Broadcast.broadcastable(p::PARSECLibrary) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::PARSECLibrary)
     print(io, "Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(Z(p))).")
 end
-function PARSECLibrary(base_dir::AbstractString=datadep"PARSECv1.2S")
+function PARSECLibrary()
     # Processing into TrackSet structures takes additional time
     # set_files = glob("Z*.jld2", base_dir)
     # filestems = [splitext(basename(fi))[1] for fi in set_files]
