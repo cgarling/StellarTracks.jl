@@ -65,7 +65,10 @@ Concrete instances are callable with an initial stellar mass (in solar masses),
 returning an interpolated track at the requested mass. """
 abstract type AbstractTrackSet end
 Base.Broadcast.broadcastable(ts::AbstractTrackSet) = Ref(ts)
-function (ts::AbstractTrackSet)(M::Number)
+# Generic function to interpolate a trackset to a new initial stellar mass
+# This returns a NamedTuple; concrete subtypes should define methods to
+# construct the correct AbstractTrack type from this NamedTuple.
+function _generic_trackset_interp(ts::AbstractTrackSet, M::Number)
     interps = ts.interps
     interp_keys = keys(interps)
     interp_length = length(first(interps))
