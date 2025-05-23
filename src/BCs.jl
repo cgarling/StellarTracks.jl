@@ -107,11 +107,12 @@ isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Num
 ####################################################################################
 # Code for PARSEC stellar models
 
-isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, Z::Number) = _apply_bc(isochrone(tl, logAge, Z), bc)
-function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::Number, Z::Number, Av::Number)
-    # MISTBCGrid expects metallicity in [Fe/H] == [M/H], not Z, so convert
-    mh = MH(chemistry(bcg), Z)
-    return isochrone(tl, bcg(mh, Av), logAge, Z)
+isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
+    _apply_bc(isochrone(tl, logAge, mh), bc)
+function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::Number, mh::Number, Av::Number)
+    # Take PARSEC mh, convert to Z, then convert to MH for the MISTBCGrid chemistry
+    bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
+    return isochrone(tl, bcg(bc_mh, Av), logAge, mh)
 end
 # This is most useful for constructing large isochrone tables that can then be written out.
 # For large grids (3403 isochrones) selecting out a single isochrone takes longer than
@@ -119,17 +120,19 @@ end
 # partial CMD templates, it is better just to sample them one-by-one in the threaded loop
 # rather than trying to pre-generate them all. 
 function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:Number},
-                   Z::AbstractArray{<:Number}, Av::Number)
+                   mh::AbstractArray{<:Number}, Av::Number)
     result = []
     rlock = ReentrantLock()
     # This implementation returns a single Table, with Z and logAge rows 
-    Threads.@threads for Zval in Z
-        mh = MH(chemistry(bcg), Zval)
-        bc = bcg(mh, Av)
+    Threads.@threads for mhval in mh
+        Zval = Z(chemistry(tl), mhval)
+        bc_mh = MH(chemistry(bcg), Zval)
+        bc = bcg(bc_mh, Av)
         Threads.@threads for la in logAge
-            iso = isochrone(tl, bc, la, Zval)
+            iso = isochrone(tl, bc, la, mhval)
             # Lock and push into result, adding Z and logAge columns
             @lock rlock push!(result, Table(Table(Z_ini=fill(Zval, length(iso)),
+                                                  MH=fill(mhval, length(iso)),
                                                   logAge=fill(la, length(iso))), iso))
         end
     end

@@ -56,11 +56,13 @@ bcg = MISTBCGrid("JWST")
         @test eltype(tracklib) == PARSEC.track_type
 
         # Test isochrone, with and without BCs
-        @test isochrone(tracklib, 10.0, 0.00123) isa NamedTuple
+        @test isochrone(tracklib, 10.0, -1.234) isa NamedTuple
         # Test passing full stellar track library with single BC table
-        iso1 = isochrone(tracklib, bcg(MH(chemistry(bcg), 0.00123), 0.0), 10.0, 0.00123)
+        iso1 = isochrone(tracklib,
+                         bcg(MH(chemistry(bcg), Z(chemistry(tracklib), -1.234)), 0.0),
+                         10.0, -1.234)
         @test iso1 isa Table
-        iso2 = isochrone(tracklib, bcg, 10.0, 0.00123, 0.0)
+        iso2 = isochrone(tracklib, bcg, 10.0, -1.234, 0.0)
         @test iso2 isa Table
         # These should both be equivalent
         @test iso1 == iso2

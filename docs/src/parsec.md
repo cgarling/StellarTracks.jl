@@ -51,9 +51,9 @@ using StellarTracks.PARSEC
 p = PARSECLibrary()
 ```
 
-Now we use the [`PARSEC.PARSECLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metal mass fraction ``Z=0.001654``. The isochrone is returned as a `NamedTuple`.
+Now we use the [`PARSEC.PARSECLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and logarithmic metallicity \[M/H\]=-1.234. The isochrone is returned as a `NamedTuple`.
 ```@example
-iso = isochrone(p, 10.05, 0.001654)
+iso = isochrone(p, 10.05, -1.234)
 ```
 
 The `NamedTuple` returned by `isochrone` can be converted to table types, like `TypedTables.Table` to simplify further use.
@@ -76,12 +76,16 @@ fig # hide
 
 
 
-We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[Fe/H\]) and reddening values (``A_V``). The `isochrone` interface will convert the metal mass fraction ``Z`` argument (required for `PARSECLibrary`) to \[Fe/H\] (required for `MISTBCGrid`) using the correct conversion. This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, ``Z=0.001654``, and ``A_v=0.02`` mag. 
+We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[M/H\]) and reddening values (``A_V``).
+
+Because the solar metallicity calibrations of PARSEC and MIST are not exactly the same, the protostellar metal mass fraction ``Z`` that corresponds to a given \[M/H\] is not the same between the two libraries. The `isochrone` interface will convert the given \[M/H\], which is assumed to be the desired metallicity in the *stellar track* library, to its corresponding metal mass fraction, and then convert from the metal mass fraction to the correct \[M/H\] for the assumed chemical model of the bolometric correction grid.
+
+This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, \[M/H\]=-1.234, and ``A_v=0.02`` mag. 
 
 ```@example
 using BolometricCorrections.MIST: MISTBCGrid
 m = MISTBCGrid("JWST")
-iso = isochrone(p, m, 10.05, 0.001654, 0.02)
+iso = isochrone(p, m, 10.05, -1.234, 0.02)
 ```
 
 All available columns in the isochrone can be obtained with `TypedTables.columnnames`.
