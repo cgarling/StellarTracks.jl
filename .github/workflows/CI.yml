@@ -100,10 +100,17 @@ jobs:
           Pkg.build()
         env:
           PYTHON: ${{ steps.cpython3.outputs.python-path }}
+      - name: Install data dependencies
+        shell: julia --project=docs --color=yes {0}
+        run: |
+          using StellarTracks
+          using DataDeps
+          datadep"PARSECv1.2S"
+        env:
+          DATADEPS_ALWAYS_ACCEPT: 'true'
       - uses: julia-actions/julia-docdeploy@v1
         env:
           PYTHON: ${{ steps.cpython3.outputs.python-path }}
-          DATADEPS_ALWAYS_ACCEPT: 'true'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
       - name: Run doctests
@@ -111,7 +118,5 @@ jobs:
         run: |
           using Documenter: DocMeta, doctest
           using StellarTracks
-          DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks; using DataDeps: @datadep_str; datadep"PARSECv1.2S"); recursive=true)
+          DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks); recursive=true)
           doctest(StellarTracks)
-        env:
-          DATADEPS_ALWAYS_ACCEPT: 'true'
