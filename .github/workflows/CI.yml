@@ -100,19 +100,12 @@ jobs:
           Pkg.build()
         env:
           PYTHON: ${{ steps.cpython3.outputs.python-path }}
-      - name: Install data dependencies
-        shell: julia --project=docs --color=yes {0}
-        run: |
-          using StellarTracks
-          using DataDeps
-          datadep"PARSECv1.2S"
-        env:
-          DATADEPS_ALWAYS_ACCEPT: 'true'
       - uses: julia-actions/julia-docdeploy@v1
         env:
           PYTHON: ${{ steps.cpython3.outputs.python-path }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          DATADEPS_ALWAYS_ACCEPT: 'true'
       - name: Run doctests
         shell: julia --project=docs --color=yes {0}
         run: |
