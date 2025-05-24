@@ -85,30 +85,18 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
     @info "Reorganizing PARSEC v1.2S stellar tracks"
     # Process individual files into joined files
     @showprogress for dir in readdir(out_dir; join=true)
-        println("First data directory:\n")
-        dir |> println
         # Z, Y = dir_properties(dir)
         Z = parse(Float64, split(split(dir, 'Z')[end], 'Y')[1])
         Y = parse(Float64, split(dir, 'Y')[end])
-        # dirstem = split(dir, "/")[end] # Something like Z0.0001Y0.249
         dirstem = splitpath(dir)[end] # Something like Z0.0001Y0.249
         dir = joinpath(dir, dirstem)
-        println("Joined data directory:\n")
-        dir |> println
         files = readdir(dir; join=true) # List of files in directory
-        println("All files\n")
-        files |> display
         # Remove ._ files
         files = filter(Base.Fix1(!occursin, "._"), files)
         # Figure out which files are HB only and which contain main sequence -> trgb
         hb_idx = occursin.(".HB.", files) # BitVector
         hb_files = files[hb_idx]
         ms_files = files[broadcast(!, hb_idx)]
-
-        println("MS files\n")
-        ms_files |> display
-        println("HB files\n")
-        hb_files |> display
 
         # Load all MS files and process into a single data table for more efficient access        
         ms_props = Table(file_properties(file) for file in ms_files)
