@@ -90,7 +90,11 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
         Y = parse(Float64, split(dir, 'Y')[end])
         dirstem = split(dir, "/")[end] # Something like Z0.0001Y0.249
         dir = joinpath(dir, dirstem)
+        println("PARSEC data directory:\n")
+        dir |> println
         files = readdir(dir; join=true) # List of files in directory
+        println("All files\n")
+        files |> display
         # Remove ._ files
         files = filter(Base.Fix1(!occursin, "._"), files)
         # Figure out which files are HB only and which contain main sequence -> trgb
@@ -98,11 +102,12 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
         hb_files = files[hb_idx]
         ms_files = files[broadcast(!, hb_idx)]
 
-        # Load all MS files and process into a single data table for more efficient access
         println("MS files\n")
         ms_files |> display
         println("HB files\n")
         hb_files |> display
+
+        # Load all MS files and process into a single data table for more efficient access        
         ms_props = Table(file_properties(file) for file in ms_files)
         # Sort files according to initial mass
         idxs = sortperm(ms_props.M)
