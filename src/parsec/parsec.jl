@@ -87,6 +87,9 @@ true
 ```
 """
 struct PARSECChemistry <: AbstractChemicalMixture end
+# X(::PARSECChemistry) = 0.73626 # X⊙ = 1 - Y⊙ - Z⊙
+# Y(::PARSECChemistry) = 0.2485  # 0.28 # Y⊙ in Table 3 of Bressan2012
+# Z(::PARSECChemistry) = 0.01524 # 0.01774 # Z⊙ in Table 3 of Bressan2012
 X(::PARSECChemistry) = 0.70226
 X_phot(::PARSECChemistry) = 0.73616
 Y(::PARSECChemistry) = 0.28 # Y_initial in Table 3 of Bressan2012
