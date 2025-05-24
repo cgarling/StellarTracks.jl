@@ -15,24 +15,6 @@ function file_properties(filename::AbstractString) # extract properties of origi
     return (Z=Z, Y=Y, M=M, HB=HB)
 end
 
-"""
-    dir_properties(dir::AbstractString, checkdir::Bool=true)
-Parse `Z` and `Y` from name of track directory (e.g., ".../tracks/Z0.0001Y0.249/") with or without trailing '/'.
-If `checkdir` is `true`, this function will check that the provided directory `dir` exists on the file system. """
-function dir_properties(dir::AbstractString, checkdir::Bool=true) # utility
-    if checkdir
-        @argcheck isdir(dir) ArgumentError("`checkdir` argument to `dir_properties` is `true` and file system directory `dir` does not exist.")
-    end
-    if dir[end] == '/'
-        dir = split(dir, '/')[end-1]
-    else
-        dir = split(dir, '/')[end]
-    end
-    Z = parse(track_type, split(split(dir, 'Z')[end], 'Y')[1])
-    Y = parse(track_type, split(dir, 'Y')[end])
-    return (Z=Z, Y=Y)
-end
-
 # CSV actually seems faster, but this method returns a matrix rather than Table like CSV.
 """
     track_matrix(filename::AbstractString)
