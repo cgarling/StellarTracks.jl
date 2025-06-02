@@ -51,9 +51,9 @@ using StellarTracks.MIST
 p = MISTLibrary(0.0)
 ```
 
-Use the [`MIST.MISTLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metallicity ``[\text{M}/\text{H}] = -1.85``. The isochrone is returned as a `NamedTuple`.
+Use the [`MIST.MISTLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metallicity ``[\text{M}/\text{H}] = -1.234``. The isochrone is returned as a `NamedTuple`.
 ```@example
-iso = isochrone(p, 10.05, -1.85)
+iso = isochrone(p, 10.05, -1.234)
 ```
 
 The `NamedTuple` returned by `isochrone` can be converted to table types, like `TypedTables.Table` to simplify further use.
@@ -74,12 +74,12 @@ ax1.set_ylabel("Mbol") # hide
 fig # hide
 ```
 
-We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[Fe/H\]) and reddening values (``A_V``). This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, ``[\text{M}/\text{H}] = -1.85``, and ``A_v=0.02`` mag. 
+We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[Fe/H\]) and reddening values (``A_V``). This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, ``[\text{M}/\text{H}] = -1.234``, and ``A_v=0.02`` mag. 
 
 ```@example
 using BolometricCorrections.MIST: MISTBCGrid
 m = MISTBCGrid("JWST")
-iso = isochrone(p, m, 10.05, -1.85, 0.02)
+iso = isochrone(p, m, 10.05, -1.234, 0.02)
 ```
 
 All available columns in the isochrone can be obtained with `TypedTables.columnnames`.
@@ -95,7 +95,7 @@ A color-magnitude diagram constructed from the isochrone is plotted below.
 fig,ax1 = plt.subplots() # hide
 ax1.plot(iso.F090W .- iso.F150W, iso.F090W) # hide
 ax1.set_ylim(reverse(ax1.get_ylim())) # hide
-ax1.set_xlim([0.4, 1.65]) # hide
+ax1.set_xlim([0.4, 1.62]) # hide
 ax1.set_xlabel("F090W - F150W") # hide
 ax1.set_ylabel("F090W") # hide
 fig # hide

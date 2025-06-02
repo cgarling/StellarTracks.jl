@@ -101,7 +101,7 @@ A color-magnitude diagram constructed from the isochrone is plotted below.
 fig,ax1 = plt.subplots() # hide
 ax1.plot(iso.F090W .- iso.F150W, iso.F090W) # hide
 ax1.set_ylim(reverse(ax1.get_ylim())) # hide
-ax1.set_xlim([0.48, 1.62]) # hide
+ax1.set_xlim([0.4, 1.62]) # hide
 ax1.set_xlabel("F090W - F150W") # hide
 ax1.set_ylabel("F090W") # hide
 fig # hide
