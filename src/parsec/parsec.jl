@@ -54,7 +54,7 @@ const select_columns = SVector(:logAge, :logTe, :Mbol, :logg, :C_O)
 const keepcols = SVector(1,2,3,4,5,6)
 const track_type = Float64 # Float type to use to represent values
 """Valid metal mass fractions (Z) for PARSECv1.2S."""
-const zgrid = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
+const zgrid = track_type[0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
 
 ##########################################################################
 # PARSEC chemistry
