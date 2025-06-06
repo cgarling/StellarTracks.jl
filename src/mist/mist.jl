@@ -282,12 +282,12 @@ X(ts::MISTTrackSet) = 1 - Y(ts) - Z(ts)
 post_rgb(t::MISTTrackSet) = true
 Base.eltype(ts::MISTTrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTTrackSet)
-    print(io, "MISTTrackSet with MH=$(MH(ts)), vvcrit=$(ts.properties.vvcrit), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.")
+    print(io, "MISTTrackSet with MH=$(MH(ts)), vvcrit=$(ts.properties.vvcrit), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 
 function isochrone(ts::MISTTrackSet, logAge::Number) # 1 ms
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(ts.properties.masses)
+    track_extrema = extrema(mass(ts))
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte = similar(interp_masses)
     logl = similar(interp_masses)
