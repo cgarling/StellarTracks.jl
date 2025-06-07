@@ -211,6 +211,9 @@ function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
     # Evaluate isochrones on either side of intermediate point
     y0 = isochrone(p.ts[idx-1], logAge)
     y1 = isochrone(p.ts[idx], logAge)
+    if length(first(y0)) == 0 || length(first(y1)) == 0
+        throw(DomainError(logAge, "No valid EEPs were found for the requested logarithmic age $logAge."))
+    end
     # Get intersection of valid EEPs from each isochrone
     min_eep = max(first(y0.eep), first(y1.eep))
     max_eep = min(last(y0.eep), last(y1.eep))
