@@ -72,7 +72,8 @@ Table with 35 columns and 1323 rows:
 ...
 ```
 """
-isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number) = _apply_bc(isochrone(ts, logAge), bc)
+isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number) =
+    _apply_bc(isochrone(ts, logAge), bc)
 # This generic fallback will work as long as isochrone(tl, logAge, mh) works
 """
     isochrone(tl::AbstractTrackLibrary,
@@ -105,11 +106,12 @@ isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Num
 # specific call signatures for each type that will be relatively simple to extend.
 
 ####################################################################################
-# Code for PARSEC stellar models
+# Code for specific stellar models / BC grid combinations
 
 isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
     _apply_bc(isochrone(tl, logAge, mh), bc)
-function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::Number, mh::Number, Av::Number)
+function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library},
+                   bcg::MISTBCGrid, logAge::Number, mh::Number, Av::Number)
     # Take PARSEC mh, convert to Z, then convert to MH for the MISTBCGrid chemistry
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
     return isochrone(tl, bcg(bc_mh, Av), logAge, mh)
@@ -119,7 +121,8 @@ end
 # running a new one (9.381 ms vs 1.2 ms). When constructing isochrones in order to make
 # partial CMD templates, it is better just to sample them one-by-one in the threaded loop
 # rather than trying to pre-generate them all. 
-function isochrone(tl::PARSECLibrary, bcg::MISTBCGrid, logAge::AbstractArray{<:Number},
+function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library},
+                   bcg::MISTBCGrid, logAge::AbstractArray{<:Number},
                    mh::AbstractArray{<:Number}, Av::Number)
     result = []
     rlock = ReentrantLock()
