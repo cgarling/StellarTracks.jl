@@ -13,7 +13,7 @@ include("plotting.jl")
 
 **However, for the canonical models `p=BaSTILibrary(0, true)`, there are 40 initial masses for the [Pietrinferni2004](@citet) tracks and (30, 37) for Z=(1e-5, 0.05) from [Pietrinferni2013](@citet). For \[α/Fe\] = 0.4, presented in [Pietrinferni2006](@citet), average number of tracks per metallicity is 36 for canonical models and is either 17 or 26 for the non-canonical models.**
 
-**These low numbers of tracks create interpolation error when creating isochrones. Going to follow up with the BaSTI team and see if I can get new files that are not missing tracks.**
+**These low numbers of tracks create interpolation error when creating isochrones. Going to follow up with the BaSTI team and see if I can get new files that are not missing tracks. For now, I think the solar-scaled canonical models are the most complete and should be fairly safe to use.**
 
 Here we describe the interface we provide to the older BaSTI stellar models presented in [Pietrinferni2004,Pietrinferni2006,Pietrinferni2013](@citet) -- as there are newer BaSTI models (e.g., [Hidalgo2018](@citet)), we describe these older models as `BaSTIv1` to differentiate them. BaSTIv1 specific code is housed in the `BaSTIv1` submodule, which can be accessed as
 

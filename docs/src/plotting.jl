@@ -32,3 +32,24 @@ function plot_cmd(iso; xfilters=(:F090W, :F150W), yfilter=:F090W, xlim=[0.4, 1.6
     ax1.set_ylabel(string(yfilter)) # hide
     return fig # hide
 end
+
+# Plot mutiple isochrones on same HR diagram
+# p=BaSTIv1Library(0, true)
+# mh = -2.5:0.1:0.0
+# isos = [isochrone(p, 9, i) for i in mh]
+# plot_hrs(isos, mh)
+function plot_hrs(isos, mh)
+    fig,ax1 = plt.subplots()
+    cmap = plt.cm.gnuplot2
+    norm = plt.matplotlib.colors.Normalize(vmin=minimum(mh), vmax=maximum(mh))
+    for (i, iso) in enumerate(isos)
+        ax1.plot(iso.logTe, iso.Mbol, c=cmap(norm(mh[i])))
+    end
+    # ax1.set_xlim([3.85, 3.5])
+    ax1.set_xlim(reverse(ax1.get_xlim()))
+    ax1.set_ylim(reverse(ax1.get_ylim()))
+    ax1.set_xlabel("logTe")
+    ax1.set_ylabel("Mbol")
+    fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax1)
+    return fig
+end
