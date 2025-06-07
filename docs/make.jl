@@ -32,6 +32,7 @@ makedocs(;
         "index.md",
         "parsec.md",
         "mist.md",
+        "basti_v1.md",
         "api.md",
         "refs.md",
         "doc_index.md"

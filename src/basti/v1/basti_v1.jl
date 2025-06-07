@@ -1,5 +1,5 @@
 """StellarTracks.BASTIv1 provides access to the older BaSTI stellar tracks (circa 2013)."""
-module BASTIv1
+module BaSTIv1
 
 # imports from parent module
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
@@ -349,9 +349,9 @@ of [Pietrinferni2004](@citet)) which mainly alters the main sequence turn-off mo
 
 If you construct an instance as `p = BaSTIv1Library(0.0, false)`, it is callable as
  - `p(mh::Number)` to interpolate the full library to a new metallicity
-   (returning a [`MISTTrackSet`](@ref)), or
+   (returning a [`BaSTIv1TrackSet`](@ref)), or
  - `p(mh::Number, M::Number)` to interpolate the tracks to a specific metallicity
-   and initial stellar mass (returning a [`MISTTrack`](@ref)).
+   and initial stellar mass (returning a [`BaSTIv1Track`](@ref)).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.BaSTIv1.BaSTIv1Library, ::Number, ::Number))).
