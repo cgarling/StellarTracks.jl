@@ -9,6 +9,7 @@ import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, chemistry, mass, po
 # Imports for data reading / processing
 using DataDeps: register, DataDep, @datadep_str
 using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
+using Interpolations: deduplicate_knots!
 import JLD2 # for saving files in binary format
 using Printf: @sprintf
 using TypedTables: Table, columnnames
@@ -39,7 +40,7 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 """Data type to parse the BaSTIv1 tracks as."""
 const track_type = Float32
 """Valid metal mass fractions (Z) for BaSTIv1."""
-const zgrid = track_type[0.00001, 0.0001, 0.0003, 0.0006, 0.001, 0.002, 0.004, 0.008, 0.01, 0.0198, 0.003, 0.04, 0.05]
+const zgrid = track_type[0.00001, 0.0001, 0.0003, 0.0006, 0.001, 0.002, 0.004, 0.008, 0.01, 0.0198, 0.03, 0.04, 0.05]
 """Valid helium mass fractions (Z) for BaSTIv1."""
 const ygrid = track_type[0.245, 0.245, 0.245, 0.246, 0.246, 0.248, 0.251, 0.256, 0.259, 0.2734, 0.288, 0.303, 0.316]
 """Initial stellar masses for the stellar tracks in the BaSTIv1 grid. These are uniform for all metallicities and also for alpha-enhanced grids."""
@@ -71,7 +72,7 @@ The distribution of heavy metals is taken from [Grevesse1993](@citet), which the
 state is minimally different from [Grevesse1998](@citet).
 
 ```jldoctest
-julia> using StellarTracks.BASTIv1: BaSTIv1Chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
+julia> using StellarTracks.BaSTIv1: BaSTIv1Chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
 
 julia> chem = BaSTIv1Chemistry();
 
@@ -129,7 +130,7 @@ and call it with the masses you want, e.g.,
 `ts = BaSTIv1TrackSet(0.0001, 0.0, false); ts.([0.61, 0.82])`. 
 ```jldoctest
 julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(0.0001, 0.81, 0.0, true)
-Canonical BaSTIv1Track with M_ini=0.51, MH=-2.325177525233962, [α/Fe]=0.0, Z=0.0001, Y=0.24514, X=0.75476.
+Canonical BaSTIv1Track with M_ini=0.81, MH=-2.325177525233962, [α/Fe]=0.0, Z=0.0001, Y=0.24514, X=0.75476.
 
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
 (log_L = -0.15993145249931723, log_Teff = 3.7952196900545214, log_g = 4.640365439934053)
@@ -144,7 +145,7 @@ end
 function BaSTIv1Track(data::Table, props)
     # Construct interpolator as a function of proper age
     itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
-                      data.star_age)
+                      deduplicate_knots!(data.star_age; move_knots=true))
     return BaSTIv1Track(data, itp, props)
 end
 # Constructor taking Z value, α_fe, canonical, initial stellar mass, loads Table, calls above method
@@ -167,10 +168,10 @@ MH(t::BaSTIv1Track) = MH(chemistry(t), Z(t))
 Z(t::BaSTIv1Track) = t.properties.Z
 Y(t::BaSTIv1Track) = Y(chemistry(t), Z(t))
 X(t::BaSTIv1Track) = 1 - Y(t) - Z(t)
-post_rgb(t::BaSTIv1Track) = t.properties.HB #hashb()
+post_rgb(t::BaSTIv1Track) = length(t.data) > eep_idxs.HE_BEG
 Base.eltype(t::BaSTIv1Track) = typeof(t.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", t::BaSTIv1Track)
-    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1Track with M_ini=$(mass(t)), MH=$(MH(t)), [α/Fe]=$(ts.properties.α_fe), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).""")
+    print(io, """$(ifelse(t.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1Track with M_ini=$(mass(t)), MH=$(MH(t)), [α/Fe]=$(t.properties.α_fe), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).""")
 end
 
 ##########################################################################
@@ -181,8 +182,8 @@ end
 interface for the older BaSTI stellar evolution library
 [Pietrinferni2004,Pietrinferni2006,Pietrinferni2013](@citep).
 ```jldoctest
-julia> ts = StellarTracks.BASTIv1.BaSTIv1TrackSet(1e-3, 0.0, false)
-Non-canonical, BaSTIv1TrackSet with MH=-1.3239328427169887, [α/Fe]=0.0, Z=0.001, Y=0.24640000006649643, 1999 EEPs and 25 initial stellar mass points.
+julia> ts = StellarTracks.BaSTIv1.BaSTIv1TrackSet(1e-3, 0.0, false)
+Non-canonical BaSTIv1TrackSet with MH=-1.3239328427169887, [α/Fe]=0.0, Z=0.001, Y=0.24640000006649643, 1999 EEPs and 25 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
 Non-canonical BaSTIv1Track with M_ini=1.01, MH=-1.3239328427169887, [α/Fe]=0.0, Z=0.001, Y=0.24640000006649643, X=0.7525999998860061.
@@ -214,7 +215,13 @@ function BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=false)
     # println(group)
     bfile = joinpath(dd_path, "basti2013.jld2")
     data = JLD2.load(bfile, group)
-    # return data
+    # data will now have whatever data types were originally saved into the jld2 file
+    # We will promote to track_type here
+    # data = Table(eep = data.eep, m_ini = convert(Vector{track_type}, data.m_ini),
+    #              logAge = convert(Vector{track_type}, data.logAge),
+    #              logL = convert(Vector{track_type}, data.logL),
+    #              Teff = convert(Vector{track_type}, data.Teff),
+    #              logg = convert(Vector{track_type}, data.logg))
     return BaSTIv1TrackSet(data, parse(track_type, zval), parse(track_type, α_fe), canonical)
 end
 function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bool)
@@ -359,7 +366,7 @@ This type also supports isochrone construction
 # Examples
 ```jldoctest
 julia> p = BaSTIv1Library(0.0, false)
-Structure of interpolants for the older BaSTI library of non-canonical stellar tracks with [α/Fe]=0. Valid range of metallicities is (-3.325301806420611, 0.4488276373116895)
+Structure of interpolants for the older BaSTI library of non-canonical stellar tracks with [α/Fe]=0.0. Valid range of metallicities is (-3.325301806420611, 0.4488276373116895).
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
