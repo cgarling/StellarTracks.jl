@@ -9,4 +9,5 @@ doctest(StellarTracks)
 @testset verbose=true "StellarTracks.jl" begin
     @safetestset "PARSEC Tracks" include("parsec_tests.jl")
     @safetestset "MIST Tracks" include("mist_tests.jl")
+    @safetestset "BaSTIv1 Tracks" include("basti_v1_tests.jl")
 end
