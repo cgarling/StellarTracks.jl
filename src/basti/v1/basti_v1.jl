@@ -230,8 +230,8 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
     logl = similar(logte)
     logg = similar(logte)
 
-    # Threads.@threads for i in eachindex(eeps)
-    for i in eachindex(eeps)
+    Threads.@threads for i in eachindex(eeps)
+    # for i in eachindex(eeps)
         eep = eeps[i]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
         # Sort by age, which will be the independent variable in the AMR interpolation
