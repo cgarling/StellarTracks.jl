@@ -12,6 +12,7 @@ Isochrones representing stellar populations of uniform age and chemical composit
 We currently support the following stellar track libraries:
  - [PARSECv1.2S](@ref PARSEC)
  - [MIST](@ref MIST)
+ - [BaSTIv1](@ref BaSTIv1) (older BaSTI models, circa 2013)
 
 ## Chemistry
 We include information on the chemical mixtures assumed in each supported library above. We use the interface defined in [BolometricCorrections.jl](https://cgarling.github.io/BolometricCorrections.jl/stable/) to provide this information.
