@@ -21,3 +21,14 @@ function plot_hr(iso)
     ax1.set_ylabel("Mbol") # hide
     return fig # hide
 end
+
+function plot_cmd(iso; xfilters=(:F090W, :F150W), yfilter=:F090W, xlim=[0.4, 1.62])
+    fig,ax1 = plt.subplots() # hide
+    ax1.plot(getproperty(iso, xfilters[1]) .- getproperty(iso, xfilters[2]),
+             getproperty(iso, yfilter)) # hide
+    ax1.set_ylim(reverse(ax1.get_ylim())) # hide
+    ax1.set_xlim(xlim) # hide
+    ax1.set_xlabel(string(xfilters[1]) * " - " * string(xfilters[2])) # hide
+    ax1.set_ylabel(string(yfilter)) # hide
+    return fig # hide
+end
