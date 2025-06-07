@@ -1,5 +1,6 @@
 module StellarTracks
 
+using ArgCheck: @argcheck
 using TypedTables: Table
 
 # For BCs.jl
@@ -69,6 +70,10 @@ Base.Broadcast.broadcastable(ts::AbstractTrackSet) = Ref(ts)
 # This returns a NamedTuple; concrete subtypes should define methods to
 # construct the correct AbstractTrack type from this NamedTuple.
 function _generic_trackset_interp(ts::AbstractTrackSet, M::Number)
+    # Validate that mass is in range
+    # throw(DomainError(M, "Requested mass $M is outside the valid range $(extrema(mass(ts))) for the track set."))
+    m_min, m_max = extrema(mass(ts))
+    @argcheck m_min <= M <= m_max "Requested mass $M is outside the valid range $(extrema(mass(ts))) for the track set."
     interps = ts.interps
     interp_keys = keys(interps)
     interp_length = length(first(interps))
