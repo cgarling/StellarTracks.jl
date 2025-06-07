@@ -7,14 +7,11 @@ using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, chemistry, mass, post_rgb, isochrone
 
 # Imports for data reading / processing
-# import CSV
 using DataDeps: register, DataDep, @datadep_str
 using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
-# using DelimitedFiles: readdlm
-# using Glob: glob
 import JLD2 # for saving files in binary format
 using Printf: @sprintf
-using TypedTables: Table
+using TypedTables: Table, columnnames
 
 # Imports for core module code
 using ArgCheck: @argcheck
@@ -117,83 +114,78 @@ include("init.jl")
 
 ##########################################################################
 
-# """
-#     MISTTrack(mh::Number, mass::Number, vvcrit::Number=0)
-# `MISTTrack` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
-# interface for the MIST stellar evolution library.
-# ```jldoctest
-# julia> track = StellarTracks.MIST.MISTTrack(-2, 0.15, 0.0)
-# MISTTrack with M_ini=0.15, MH=-2, vvcrit=0.0, Z=0.00014899227095992976, Y=0.24922374966753474, X=0.7506272580615054.
+"""
+    BaSTIv1Track(zval::Number, mass::Number, α_fe::Number, canonical::Bool)
+`BaSTIv1Track` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
+interface for the older BaSTI stellar evolution library
+[Pietrinferni2004,Pietrinferni2006,Pietrinferni2013](@citep).
 
-# julia> track(7.0) # interpolate track at log10(age [yr]) = 7
-# (log_L = -1.5293719450743, log_Teff = 3.587337261741102, log_g = 4.447603584617846, log_surf_cell_z = -3.8450984758441953)
-# ```
-# """
-# struct MISTTrack{A,B,C} <: AbstractTrack
-#     data::Table{A}
-#     itp::B
-#     properties::C
-# end
-# function MISTTrack(data::Table, props)
-#     # Construct interpolator as a function of proper age
-#     # itp = interpolate(deduplicate_knots!(data.star_age; move_knots=true),
-#     #                   [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
-#     itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
-#                       deduplicate_knots!(data.star_age; move_knots=true))
-#     return MISTTrack(data, itp, props)
-# end
-# # Given feh, mass, vvcrit, load the data table and call to function above
-# function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
-#     props = (M = mass, feh = feh, vvcrit = vvcrit)
-#     # Validate feh
-#     @argcheck feh in feh_grid
-#     feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
-#     # Validate vvcrit
-#     vvcrit = _parse_vvcrit(vvcrit)
-#     dd_path = @datadep_str("MISTv1.2_vvcrit"*vvcrit)
-#     # Validate mass
-#     allfiles = readdir(joinpath(dd_path, feh); join=true)
-#     masses = mist_mass.(allfiles)
-#     @argcheck mass in masses ArgumentError("Invalid mass=$mass argument; available track masses for [Fe/H]=$feh and vvcrit=$vvcrit are $masses.")
-#     # mass = string(Int(mass * 100))
-#     mass = string(round(Int, mass * 100))
-#     mass = repeat("0", 5 - length(mass)) * mass # Pad to length 5
-#     # Load data file into table
-#     filename = joinpath(dd_path, feh, mass * "M.track.jld2")
-#     data = JLD2.load_object(filename)
-#     return MISTTrack(data, props)
-# end
-# # Make Track callable with logAge to get properties as a NamedTuple
-# function (track::MISTTrack)(logAge::Number)
-#     # result = track.itp(logAge)
-#     result = track.itp(exp10(logAge))
-#     return NamedTuple{Tuple(select_columns)[2:end]}(result)
-# end
-# Base.extrema(t::MISTTrack) = log10.(extrema(t.itp.t))
-# mass(t::MISTTrack) = t.properties.M
-# chemistry(::MISTTrack) = MISTChemistry()
-# MH(t::MISTTrack) = t.properties.feh # MH(chemistry(t), Z(t))
-# Z(t::MISTTrack) = Z(chemistry(t), MH(t)) # t.properties.Z
-# Y(t::MISTTrack) = Y(chemistry(t), Z(t))  # t.properties.Y
-# X(t::MISTTrack) = 1 - Y(t) - Z(t)
-# # Whether there is post-rgb evolution or not is dependent on how many EEPs in track
-# post_rgb(t::MISTTrack) = length(t.itp.u) > eep_idxs.RG_TIP
-# Base.eltype(t::MISTTrack) = typeof(t.properties.feh)
-# function Base.show(io::IO, mime::MIME"text/plain", t::MISTTrack)
-#     print(io, "MISTTrack with M_ini=$(mass(t)), MH=$(MH(t)), vvcrit=$(t.properties.vvcrit), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
-# end
+Note that due to the organization of the BaSTIv1 data files, this method requires
+constructing a [`BaSTIv1TrackSet`](@ref) and is therefore
+not efficient if your aim is to construct multiple tracks of the same metallicity `zval`,
+α-enrichment `α_fe`, and core overshoot prescription (`canonical=true` uses models with no
+convective overshooting). In this case, you should construct a [`BaSTIv1TrackSet`](@ref)
+and call it with the masses you want, e.g.,
+`ts = BaSTIv1TrackSet(0.0001, 0.0, false); ts.([0.61, 0.82])`. 
+```jldoctest
+julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(0.0001, 0.81, 0.0, true)
+Canonical BaSTIv1Track with M_ini=0.51, MH=-2.325177525233962, [α/Fe]=0.0, Z=0.0001, Y=0.24514, X=0.75476.
+
+julia> track(9.0) # interpolate track at log10(age [yr]) = 9
+(log_L = -0.15993145249931723, log_Teff = 3.7952196900545214, log_g = 4.640365439934053)
+```
+"""
+struct BaSTIv1Track{A,B,C} <: AbstractTrack
+    data::Table{A}
+    itp::B
+    properties::C
+end
+# Constructor taking a subtable from one of the .jld2 reprocessed files
+function BaSTIv1Track(data::Table, props)
+    # Construct interpolator as a function of proper age
+    itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
+                      data.star_age)
+    return BaSTIv1Track(data, itp, props)
+end
+# Constructor taking Z value, α_fe, canonical, initial stellar mass, loads Table, calls above method
+function BaSTIv1Track(zval::Number, mass::Number, α_fe::Number, canonical::Bool)
+    # For BaSTIv1, individual tracks are not saved, so we need to load a trackset
+    props = (M = mass, Z = zval, α_fe = α_fe, canonical = canonical)
+    data = BaSTIv1TrackSet(zval, α_fe, canonical)(mass).data
+    return BaSTIv1Track(data, props) # Method above
+end
+# Make Track callable with logAge to get logTe, Mbol, and logg as a NamedTuple
+function (track::BaSTIv1Track)(logAge::Number)
+    result = track.itp(exp10(logAge))
+    return NamedTuple{columnnames(track.data)[2:end]}(result)
+end
+(track::BaSTIv1Track)(logAge::AbstractArray{<:Number}) = Table(track(la) for la in logAge)
+Base.extrema(t::BaSTIv1Track) = log10.(extrema(t.itp.t))
+mass(t::BaSTIv1Track) = t.properties.M
+chemistry(::BaSTIv1Track) = BaSTIv1Chemistry()
+MH(t::BaSTIv1Track) = MH(chemistry(t), Z(t))
+Z(t::BaSTIv1Track) = t.properties.Z
+Y(t::BaSTIv1Track) = Y(chemistry(t), Z(t))
+X(t::BaSTIv1Track) = 1 - Y(t) - Z(t)
+post_rgb(t::BaSTIv1Track) = t.properties.HB #hashb()
+Base.eltype(t::BaSTIv1Track) = typeof(t.properties.Z)
+function Base.show(io::IO, mime::MIME"text/plain", t::BaSTIv1Track)
+    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1Track with M_ini=$(mass(t)), MH=$(MH(t)), [α/Fe]=$(ts.properties.α_fe), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).""")
+end
 
 ##########################################################################
 
 """
     BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=false)
 `BaSTIv1TrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
-interface for the older BaSTI stellar evolution library.
+interface for the older BaSTI stellar evolution library
+[Pietrinferni2004,Pietrinferni2006,Pietrinferni2013](@citep).
 ```jldoctest
 julia> ts = StellarTracks.BASTIv1.BaSTIv1TrackSet(1e-3, 0.0, false)
 Non-canonical, BaSTIv1TrackSet with MH=-1.3239328427169887, [α/Fe]=0.0, Z=0.001, Y=0.24640000006649643, 1999 EEPs and 25 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
+Non-canonical BaSTIv1Track with M_ini=1.01, MH=-1.3239328427169887, [α/Fe]=0.0, Z=0.001, Y=0.24640000006649643, X=0.7525999998860061.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -222,11 +214,6 @@ function BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=false)
     # println(group)
     bfile = joinpath(dd_path, "basti2013.jld2")
     data = JLD2.load(bfile, group)
-    # eeps = reduce(vcat, [begin
-    #                          tmpdata = data[data.m_ini .== m]
-    #                          1:length(tmpdata)
-    #                      end for m in unique(data.m_ini)])
-    # data = Table(eeps = eeps, data)
     # return data
     return BaSTIv1TrackSet(data, parse(track_type, zval), parse(track_type, α_fe), canonical)
 end
@@ -243,6 +230,7 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
     logl = similar(logte)
     logg = similar(logte)
 
+    # Threads.@threads for i in eachindex(eeps)
     for i in eachindex(eeps)
         eep = eeps[i]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
@@ -253,11 +241,15 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
         tmpdata = tmpdata[uniqueidx(tmpdata.logAge)]
 
         # We'll start the interpolation at the most massive model and enforce a monotonic
-        # decrease in stellar initial mass with increasing age at fixed EEP
+        # decrease in stellar initial mass with increasing age at fixed EEP while EEP < eep_idxs[3]
         _, p1 = findmax(tmpdata.m_ini)
         idxs = p1:lastindex(tmpdata)
-        goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
-        goodidxs = vcat(true, goodidxs) # add true for first element as well
+        if eep < eep_idxs[3]
+            goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
+            goodidxs = vcat(true, goodidxs) # add true for first element as well
+        else
+            goodidxs = trues(length(idxs))
+        end
         tmpdata = tmpdata[idxs[goodidxs]]
 
         # PCHIPInterpolation is a type of CubicHermiteSpline
@@ -275,12 +267,12 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
                            (Z = zval, α_fe = α_fe, canonical = canonical,
                            masses = unique(data.m_ini)))
 end
-# function (ts::BaSTIv1TrackSet)(M::Number)
-#     props = (M = M, feh = MH(ts), vvcrit = ts.properties.vvcrit)
-#     nt = _generic_trackset_interp(ts, M)
-#     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
-#     return MISTTrack(table, props)
-# end
+function (ts::BaSTIv1TrackSet)(M::Number)
+    props = (M = M, Z = Z(ts), α_fe = ts.properties.α_fe, canonical = ts.properties.canonical)
+    nt = _generic_trackset_interp(ts, M)
+    table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
+    return BaSTIv1Track(table, props)
+end
 mass(ts::BaSTIv1TrackSet) = ts.properties.masses
 chemistry(::BaSTIv1TrackSet) = BaSTIv1Chemistry()
 Z(ts::BaSTIv1TrackSet) = ts.properties.Z
@@ -288,20 +280,18 @@ MH(ts::BaSTIv1TrackSet) = MH(chemistry(ts), Z(ts))
 Y(ts::BaSTIv1TrackSet) = Y(chemistry(ts), Z(ts))
 X(ts::BaSTIv1TrackSet) = 1 - Y(ts) - Z(ts)
 post_rgb(t::BaSTIv1TrackSet) = true
-Base.eltype(ts::BaSTIv1TrackSet) = typeof(ts.properties.feh)
+Base.eltype(ts::BaSTIv1TrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::BaSTIv1TrackSet)
-    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1TrackSet with MH=$(MH(ts)), [α/Fe]=$(ts.properties.α_fe), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(ts.properties.masses)) initial stellar mass points.""")
+    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1TrackSet with MH=$(MH(ts)), [α/Fe]=$(ts.properties.α_fe), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.""")
 end
 
-function isochrone(ts::MISTTrackSet, logAge::Number) # 1 ms
+function isochrone(ts::BaSTIv1TrackSet, logAge::Number)
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(ts.properties.masses)
+    track_extrema = extrema(mass(ts))
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte = similar(interp_masses)
     logl = similar(interp_masses)
     logg = similar(interp_masses)
-    logsurfz = similar(interp_masses)
-    # data = Vector{eltype(first(ts.AMRs))}(undef, 0)
     for (i, amr) in enumerate(ts.AMRs)
         drange = extrema(amr) # Get valid age range for the EEP
         if logAge >= first(drange) && logAge <= last(drange)
@@ -318,101 +308,122 @@ function isochrone(ts::MISTTrackSet, logAge::Number) # 1 ms
                 # We can't be sure if last point was overly bright or current point is overly faint,
                 # so we delete last point and continue so this point isn't output
                 # Maybe not necessary, revisit later
-                if length(logl) > 0 && i < eep_idxs[4] && logli < last(logl)
-                    li = lastindex(logl)
-                    deleteat!(eeps, li)
-                    deleteat!(interp_masses, li)
-                    deleteat!(logte, li)
-                    deleteat!(logl, li)
-                    deleteat!(logg, li)
-                    deleteat!(logsurfz, li)
-                    continue
-                end
+                # if length(logl) > 0 && i < eep_idxs[4] && logli < last(logl)
+                # # if length(logl) > 0 && (i >= eep_idxs[3] && i <= eep_idxs[4]) && logli < last(logl)
+                #     # li = lastindex(logl)
+                #     # deleteat!(eeps, li)
+                #     # deleteat!(interp_masses, li)
+                #     # deleteat!(logte, li)
+                #     # deleteat!(logl, li)
+                #     # deleteat!(logg, li)
+                #     continue
+                # end
                 push!(eeps, i)
                 push!(interp_masses, imass)
                 push!(logl, logli)
                 push!(logte, ts.interps.log_Teff[i](imass))
                 push!(logg, ts.interps.log_g[i](imass))
-                push!(logsurfz, ts.interps.log_surf_cell_z[i](imass))
             end
         end
     end
-    # return (eep = eeps, m_ini = interp_masses, log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz)
-    return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl, 4.74),
-            logg = logg, logL = logl, log_surf_cell_z = logsurfz)
+    return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl),
+            logg = logg, logL = logl)
 end
 
 ##########################################################################
 
 """
-    MISTLibrary(vvcrit::Number=0)
-`MISTLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
-interface for the MIST stellar evolution library. Instances can be constructed by providing a supported
-`vvcrit` argument for the rotation parameter, which must be equal to either `0` (no rotation) or `0.4`.
-We set `vvcrit=0` by default. If you construct an instance as `p = MISTLibrary(0.0)`, it is callable as
+    BaSTIv1Library(α_fe::Number=0, canonical::Bool=false)
+`BaSTIv1Library` implements the
+[`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
+interface for the older BaSTI stellar evolution models presented in
+[Pietrinferni2004,Pietrinferni2006,Pietrinferni2013](@citet).
+Instances can be constructed by providing a supported `α_fe` argument
+for the [α/Fe] enrichment, which must be equal to either `0`
+(scaled-solar abundances) or `0.4` with a default of `α_fe=0`.
+You must also provide a `Bool` (either `true` or `false`) for
+the `canonical` argument -- if `true`, we load the "canonical" models which do not
+include convective overshooting from the Schwarzschild boundary. The non-canonical models
+(used when `canonical=false`) do include a treatment of convective overshoot (see section 3
+of [Pietrinferni2004](@citet)) which mainly alters the main sequence turn-off morphology.
+
+If you construct an instance as `p = BaSTIv1Library(0.0, false)`, it is callable as
  - `p(mh::Number)` to interpolate the full library to a new metallicity
    (returning a [`MISTTrackSet`](@ref)), or
  - `p(mh::Number, M::Number)` to interpolate the tracks to a specific metallicity
    and initial stellar mass (returning a [`MISTTrack`](@ref)).
 
 This type also supports isochrone construction
-(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.MIST.MISTLibrary, ::Number, ::Number))).
+(see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.BaSTIv1.BaSTIv1Library, ::Number, ::Number))).
 
 # Examples
 ```jldoctest
-julia> p = MISTLibrary(0.0)
-Structure of interpolants for the MIST library of stellar tracks with vvcrit=0.0. Valid range of metallicities is (-4.0, 0.5).
+julia> p = BaSTIv1Library(0.0, false)
+Structure of interpolants for the older BaSTI library of non-canonical stellar tracks with [α/Fe]=0. Valid range of metallicities is (-3.325301806420611, 0.4488276373116895)
 
-julia> isochrone(p, 10.05, -2) isa NamedTuple
+julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
 ```
 """
-struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
-    ts::A  # Vector of `TrackSet`s
-    MH::B  # Vector of MH for each TrackSet
-    vvcrit::C
+struct BaSTIv1Library{A,B,C} <: AbstractTrackLibrary
+    ts::A   # Vector of `TrackSet`s
+    Z::B    # Vector of Z for each TrackSet
+    α_fe::C # α-enhancement
+    canonical::Bool
 end
 # Interpolation to get a TrackSet with metallicity MH
-function (ts::MISTLibrary)(mh::Number)
+function (ts::BaSTIv1Library)(mh::Number)
     error("Not yet implemented.")
 end
 # Interpolation to get a Track with mass M and metallicity MH
-function (ts::MISTLibrary)(mh::Number, M::Number)
+function (ts::BaSTIv1Library)(mh::Number, M::Number)
     error("Not yet implemented.")
 end
-chemistry(::MISTLibrary) = MISTChemistry()
-MH(p::MISTLibrary) = p.MH # MH.(chemistry(tl), Z(tl))
-Z(p::MISTLibrary) = Z.(chemistry(p), p.MH)
-Y(p::MISTLibrary) = Y.(chemistry(p), Z(p))
-X(p::MISTLibrary) = 1 .- Y(p) .- Z(p)
-post_rgb(::MISTLibrary) = true
-Base.eltype(p::MISTLibrary) = typeof(first(p.MH))
-Base.Broadcast.broadcastable(p::MISTLibrary) = Ref(p)
-function Base.show(io::IO, mime::MIME"text/plain", p::MISTLibrary)
-    print(io, "Structure of interpolants for the MIST library of stellar tracks with vvcrit=$(p.vvcrit). Valid range of metallicities is $(extrema(MH(p))).")
+chemistry(::BaSTIv1Library) = BaSTIv1Chemistry()
+Z(p::BaSTIv1Library) = p.Z # Z.(chemistry(p), p.MH)
+MH(p::BaSTIv1Library) = MH.(chemistry(p), Z(p))
+Y(p::BaSTIv1Library) = Y.(chemistry(p), Z(p))
+X(p::BaSTIv1Library) = 1 .- Y(p) .- Z(p)
+post_rgb(::BaSTIv1Library) = true
+Base.eltype(p::BaSTIv1Library) = typeof(first(Z(p)))
+Base.Broadcast.broadcastable(p::BaSTIv1Library) = Ref(p)
+function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv1Library)
+    print(io, """Structure of interpolants for the older BaSTI library of $(ifelse(p.canonical, "canonical", "non-canonical")) stellar tracks with [α/Fe]=$(p.α_fe). Valid range of metallicities is $(extrema(MH(p))).""")
 end
-function MISTLibrary(vvcrit::Number=0)
+function BaSTIv1Library(α_fe::Number=0, canonical::Bool=false)
     # Make vector of tracksets
-    ts = [MISTTrackSet(feh, vvcrit) for feh in feh_grid]
-    return MISTLibrary(ts, feh_grid, vvcrit)
+    ts = [BaSTIv1TrackSet(z, α_fe, canonical) for z in zgrid]
+    return BaSTIv1Library(ts, zgrid, α_fe, canonical)
 end
 
 # Below is a stub for documentation,
 # calls down to generic method in StellarTracks.jl main file
 """
-    isochrone(p::MISTLibrary, logAge::Number, mh::Number)
+    isochrone(p::BaSTIv1Library, logAge::Number, mh::Number)
 Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and logarithmic metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the properties listed below:
  - `eep`: Equivalent evolutionary points
  - `m_ini`: Initial stellar masses, in units of solar masses.
  - `logTe`: Base-10 logarithm of the effective temperature [K] of the stellar model.
  - `Mbol`: Bolometric luminosity of the stellar model.
  - `logg`: Surface gravity of the stellar model.
- - `log_surf_cell_z`: Base-10 logarithm of the surface metal mass fraction (Z).
 """
-isochrone(p::MISTLibrary, logAge::Number, mh::Number)
+isochrone(p::BaSTIv1Library, logAge::Number, mh::Number)
 
-# export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
-export MISTTrack, MISTTrackSet, MISTLibrary, MISTChemistry   # Unique module exports
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
+export BaSTIv1Track, BaSTIv1TrackSet, BaSTIv1Library, BaSTIv1Chemistry # Unique module exports
+export mass, chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH, post_rgb, isochrone # Export generic API methods
 
 end # module
+
+
+# function plot_iso(iso)
+#     fig,ax1 = plt.subplots()
+#     ax1.plot(iso.logTe, iso.logL, marker="o", markersize=2, markeredgecolor="k")
+#     # ax1.scatter([iso.logTe[iso.eep .== eep][1] for eep in values(eep_idxs)[2:end]],
+#     # 	    [iso.logL[iso.eep .== eep][1] for eep in values(eep_idxs)[2:end]],
+#     # 	    c="k")
+#     ax1.scatter([iso.logTe[searchsortedfirst(iso.eep, eep)] for eep in values(eep_idxs)],
+# 	        [iso.logL[searchsortedfirst(iso.eep, eep)] for eep in values(eep_idxs)],
+# 	        c="k")
+#     ax1.set_xlim([3.82, 3.65])
+#     ax1.set_ylim([-0.5, 1.7])
+# end
