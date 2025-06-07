@@ -51,35 +51,38 @@ bcg = MISTBCGrid("JWST")
     end
 
     @testset "BaSTIv1Library" begin
-        tracklib = BaSTIv1Library(0, true)
-        @test_throws "Not yet implemented." tracklib(0.0001234)
-        @test chemistry(tracklib) == BaSTIv1Chemistry()
-        @test Z(tracklib) == BaSTIv1.zgrid
-        @test MH(tracklib) == MH.(chemistry(tracklib), Z(tracklib))
-        @test Y(tracklib) == Y.(chemistry(tracklib), Z(tracklib))
-        @test X(tracklib) == X.(chemistry(tracklib), Z(tracklib))
-        @test post_rgb(tracklib) == true
-        @test eltype(tracklib) == BaSTIv1.track_type
+        for canonical in (true, false)
+            for α_fe in BaSTIv1.αFegrid
+                tracklib = BaSTIv1Library(α_fe, canonical)
+                @test_throws "Not yet implemented." tracklib(0.0001234)
+                @test chemistry(tracklib) == BaSTIv1Chemistry()
+                @test Z(tracklib) == BaSTIv1.zgrid
+                @test MH(tracklib) == MH.(chemistry(tracklib), Z(tracklib))
+                @test Y(tracklib) == Y.(chemistry(tracklib), Z(tracklib))
+                @test X(tracklib) == X.(chemistry(tracklib), Z(tracklib))
+                @test post_rgb(tracklib) == true
+                @test eltype(tracklib) == BaSTIv1.track_type
 
-        # Test isochrone, with and without BCs
-        @test isochrone(tracklib, 10.0, -1.234) isa NamedTuple
-        # Test passing full stellar track library with single BC table
-        iso1 = isochrone(tracklib,
-                         bcg(MH(chemistry(bcg), Z(chemistry(tracklib), -1.234)), 0.0),
-                         10.0, -1.234)
-        @test iso1 isa Table
-        iso2 = isochrone(tracklib, bcg, 10.0, -1.234, 0.0)
-        @test iso2 isa Table
-        # These should both be equivalent
-        @test iso1 == iso2
-        # Test that we can interpolate across the range of valid MH
-        for z in range(extrema(Z(tracklib))...; length=10)
-            @test_nowarn isochrone(tracklib, 10.0, z)
-            @test_nowarn isochrone(tracklib, bcg, 10.0, z, 0.0)
+                # Test isochrone, with and without BCs
+                @test isochrone(tracklib, 9.0, -1.234) isa NamedTuple
+                # Test passing full stellar track library with single BC table
+                iso1 = isochrone(tracklib,
+                                 bcg(MH(chemistry(bcg), Z(chemistry(tracklib), -1.234)), 0.0),
+                                 9.0, -1.234)
+                @test iso1 isa Table
+                iso2 = isochrone(tracklib, bcg, 9.0, -1.234, 0.0)
+                @test iso2 isa Table
+                # These should both be equivalent
+                @test iso1 == iso2
+                # Test that we can interpolate across the range of valid MH
+                for z in range(extrema(Z(tracklib))...; length=10)
+                    @test_nowarn isochrone(tracklib, 9.0, z)
+                    @test_nowarn isochrone(tracklib, bcg, 9.0, z, 0.0)
+                end
+                # Make sure error is thrown for out of MH range
+                @test_throws DomainError isochrone(tracklib, 9.0, -5)
+                @test_throws DomainError isochrone(tracklib, 9.0, 1.0)
+            end
         end
-        # Make sure error is thrown for out of MH range
-        @test_throws DomainError isochrone(tracklib, 10.0, -5)
-        @test_throws DomainError isochrone(tracklib, 10.0, 1.0)
     end
-    
 end
