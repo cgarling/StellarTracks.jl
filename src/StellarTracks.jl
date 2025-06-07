@@ -268,11 +268,14 @@ logL(Mbol::Number, solmbol::Number=4.74) = (solmbol - Mbol) / 5 * 2
 
 ###############################################
 # Include files containing submodules for different track libraries
-include("parsec/parsec.jl")
+include(joinpath("parsec", "parsec.jl"))
 using .PARSEC
 
-include("mist/mist.jl")
+include(joinpath("mist", "mist.jl"))
 using .MIST
+
+include(joinpath("basti", "v1", "basti_v1.jl"))
+using .BaSTIv1
 
 # Include bolometric correction-related functionality
 include("BCs.jl")
@@ -280,6 +283,6 @@ include("BCs.jl")
 # Common API exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone
 # Submodule exports
-export PARSECLibrary, MISTLibrary
+export PARSECLibrary, MISTLibrary, BaSTIv1Library
 
 end
