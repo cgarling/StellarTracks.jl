@@ -78,16 +78,8 @@ columnnames(iso)
 A color-magnitude diagram constructed from the isochrone is plotted below.
 
 ```@example
-fig,ax1 = plt.subplots() # hide
-ax1.plot(iso.F090W .- iso.F150W, iso.F090W) # hide
-ax1.set_ylim(reverse(ax1.get_ylim())) # hide
-ax1.set_xlim([0.4, 1.62]) # hide
-ax1.set_xlabel("F090W - F150W") # hide
-ax1.set_ylabel("F090W") # hide
-fig # hide
+plot_cmd(iso) # hide
 ```
-
-
 
 ## Chemistry API
 We provide the [`StellarTracks.PARSEC.PARSECChemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to access information on the chemical mixture assumed for the PARSEC models.
