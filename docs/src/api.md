@@ -61,4 +61,6 @@ isochrone(::StellarTracks.AbstractTrackLibrary, ::StellarTracks.AbstractBCTable,
 ```@docs
 StellarTracks.Mbol
 StellarTracks.logL
+StellarTracks.radius
+StellarTracks.surface_gravity
 ```
