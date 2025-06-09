@@ -23,6 +23,14 @@ This will return a `NamedTuple` containing the available properties (e.g., logL,
 of the modeled star at that age. Not all libraries will have the same properties available. """
 abstract type AbstractTrack end 
 Base.Broadcast.broadcastable(t::AbstractTrack) = Ref(t)
+(track::AbstractTrack)(logAge::AbstractArray{<:Number}) = Table(track(la) for la in logAge)
+# function (track::AbstractTrack)(logAge::AbstractArray{<:Number})
+#     # result = track.itp(logAge)
+#     # return Table(NamedTuple{(:logTe, :Mbol, :logg)}(i) for i in result)
+#     # return Table(NamedTuple{(:logTe, :Mbol, :logg)}(track.itp(la)) for la in logAge)
+#     # Conversion to Table is slightly slow ~40ns 
+#     return Table(track(la) for la in logAge)
+# end
 """
     Base.extrema(t::AbstractTrack)
 Returns the minimum and maximum logarithmic age (`log10(age [yr])`) of the stellar model.
