@@ -54,7 +54,7 @@ Convert a metal mass fraction `zval` into a properly formatted string for use in
 """
 _parse_zval(zval::Number) = @sprintf("%.5f", zval)
 """
-    _parse_zval(_parse_α_fe(α_fe::Number))
+    _parse_α_fe(α_fe::Number)
 Convert an alpha enrichment factor `α_fe` into a properly formatted string for use in loading the JLD2 file.
 """
 _parse_α_fe(α_fe::Number) = @sprintf("%.1f", α_fe)
