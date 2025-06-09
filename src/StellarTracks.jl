@@ -320,12 +320,15 @@ using .MIST
 include(joinpath("basti", "v1", "basti_v1.jl"))
 using .BaSTIv1
 
+include(joinpath("basti", "v2", "basti_v2.jl"))
+using .BaSTIv2
+
 # Include bolometric correction-related functionality
 include("BCs.jl")
 
 # Common API exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone
 # Submodule exports
-export PARSECLibrary, MISTLibrary, BaSTIv1Library
+export PARSECLibrary, MISTLibrary, BaSTIv1Library, BaSTIv2Library
 
 end
