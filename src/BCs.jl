@@ -110,7 +110,7 @@ isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Num
 
 isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
     _apply_bc(isochrone(tl, logAge, mh), bc)
-function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library},
+function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
                    bcg::MISTBCGrid, logAge::Number, mh::Number, Av::Number)
     # Take PARSEC mh, convert to Z, then convert to MH for the MISTBCGrid chemistry
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
@@ -121,7 +121,7 @@ end
 # running a new one (9.381 ms vs 1.2 ms). When constructing isochrones in order to make
 # partial CMD templates, it is better just to sample them one-by-one in the threaded loop
 # rather than trying to pre-generate them all. 
-function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library},
+function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
                    bcg::MISTBCGrid, logAge::AbstractArray{<:Number},
                    mh::AbstractArray{<:Number}, Av::Number)
     result = []

@@ -155,7 +155,7 @@ function BaSTIv1Track(zval::Number, mass::Number, α_fe::Number, canonical::Bool
     data = BaSTIv1TrackSet(zval, α_fe, canonical)(mass).data
     return BaSTIv1Track(data, props) # Method above
 end
-# Make Track callable with logAge to get logTe, Mbol, and logg as a NamedTuple
+# Make Track callable with logAge to get log_L, log_Teff, and log_g as a NamedTuple
 function (track::BaSTIv1Track)(logAge::Number)
     result = track.itp(exp10(logAge))
     return NamedTuple{columnnames(track.data)[2:end]}(result)
@@ -208,11 +208,10 @@ function BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=false)
     # Convert to strings
     zval = _parse_zval(zgrid[searchsortedfirst(zgrid, zval)])
     α_fe = _parse_α_fe(αFegrid[searchsortedfirst(αFegrid, α_fe)])
-    # Validate vvcrit
     dd_path = @datadep_str("BaSTIv1")
+    bfile = joinpath(dd_path, "basti2013.jld2")
     group = ifelse(canonical, "canonical", "noncanonical") * "/" * α_fe * "/" * zval
     # println(group)
-    bfile = joinpath(dd_path, "basti2013.jld2")
     data = JLD2.load(bfile, group)
     # data will now have whatever data types were originally saved into the jld2 file
     # We will promote to track_type here
@@ -263,7 +262,7 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
         # Sort by initial stellar mass for defining the other interpolations
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
-        # Now interpolate mass against logte, mbol, logg, c_o
+        # Now interpolate mass against logte, logl, logg
         logte[i] = PCHIPInterpolation(log10.(tmpdata.Teff), tmpdata.m_ini)
         logl[i] = PCHIPInterpolation(tmpdata.logL, tmpdata.m_ini)
         logg[i] = PCHIPInterpolation(tmpdata.logg, tmpdata.m_ini)
