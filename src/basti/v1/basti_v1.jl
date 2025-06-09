@@ -160,7 +160,6 @@ function (track::BaSTIv1Track)(logAge::Number)
     result = track.itp(exp10(logAge))
     return NamedTuple{columnnames(track.data)[2:end]}(result)
 end
-(track::BaSTIv1Track)(logAge::AbstractArray{<:Number}) = Table(track(la) for la in logAge)
 Base.extrema(t::BaSTIv1Track) = log10.(extrema(t.itp.t))
 mass(t::BaSTIv1Track) = t.properties.M
 chemistry(::BaSTIv1Track) = BaSTIv1Chemistry()

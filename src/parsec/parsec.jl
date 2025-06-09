@@ -65,8 +65,7 @@ We presently only include scaled-solar models. The solar protostellar chemical
 mixture for PARSEC was calibrated to reproduce solar photospheric observations
 via a forward modeling approach (see section 3 of [Bressan2012](@citet)). The
 full solar calibration assumed for PARSEC is given in Table 3 of [Bressan2012](@citet).
-The distribution of heavy metals is taken from [Grevesse1998](@citet) and [Caffau2011](@citet)
-(see section 4 of [Bressan2012](@citet)).
+The distribution of heavy metals is taken from [Grevesse1998](@citet) and [Caffau2011](@citet) (see section 4 of [Bressan2012](@citet)).
 
 ```jldoctest
 julia> using StellarTracks.PARSEC: PARSECChemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
@@ -213,13 +212,6 @@ end
 function (track::PARSECTrack)(logAge::Number)
     result = track.itp(exp10(logAge))
     return NamedTuple{Tuple(select_columns)[2:end]}(result)
-end
-function (track::PARSECTrack)(logAge::AbstractArray{<:Number})
-    # result = track.itp(logAge)
-    # return Table(NamedTuple{(:logTe, :Mbol, :logg)}(i) for i in result)
-    # return Table(NamedTuple{(:logTe, :Mbol, :logg)}(track.itp(la)) for la in logAge)
-    # Conversion to Table is slightly slow ~40ns 
-    return Table(track(la) for la in logAge)
 end
 Base.extrema(t::PARSECTrack) = log10.(extrema(t.itp.t))
 mass(t::PARSECTrack) = t.properties.M
