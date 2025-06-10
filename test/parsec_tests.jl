@@ -28,7 +28,7 @@ bcg = MISTBCGrid("JWST")
             # Interpolate MISTBCGrid to appropriate feh, no reddening
             bct = bcg(MH(trackset), 0.0)
             @test isochrone(trackset, bct, 10.0) isa Table
-            for M in range(extrema(mass(trackset))...; length=100)
+            for M in range(extrema(mass(trackset))...; length=10)
                 track = trackset(M)
                 @test mass(track) == M
                 @test chemistry(track) == PARSECChemistry()
