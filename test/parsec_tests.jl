@@ -67,9 +67,9 @@ bcg = MISTBCGrid("JWST")
         # These should both be equivalent
         @test iso1 == iso2
         # Test that we can interpolate across the range of valid MH
-        for z in range(extrema(Z(tracklib))...; length=10)
-            @test_nowarn isochrone(tracklib, 10.0, z)
-            @test_nowarn isochrone(tracklib, bcg, 10.0, z, 0.0)
+        for mh in range(extrema(MH(tracklib))...; length=10)
+            @test_nowarn isochrone(tracklib, 10.0, mh)
+            @test_nowarn isochrone(tracklib, bcg, 10.0, mh, 0.0)
         end
         # Make sure error is thrown for out of MH range
         @test_throws DomainError isochrone(tracklib, 10.0, -5)
