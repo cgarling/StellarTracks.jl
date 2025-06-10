@@ -18,13 +18,13 @@ using StellarTracks.BaSTIv2: BaSTIv2Library, X, Y, Z # load specific methods
 
 ## Data Acquisition
 
-The tracks will be downloaded automatically using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl) the first time you try to access them. The main access point we provide is [`BaSTIv2Library`](@ref StellarTracks.BaSTIv2.BaSTIv2Library), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume is **XX** MB. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"BaSTIv2"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the BaSTIv2 parameter space.
+The tracks will be downloaded automatically using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl) the first time you try to access them. The main access point we provide is [`BaSTIv2Library`](@ref StellarTracks.BaSTIv2.BaSTIv2Library), which will load and make available a set of stellar models corresponding to a specific chemical mixture and set of input physics. The first time you call this method, you will be prompted to download the required data files. The total data volume is ~110 MB. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"BaSTIv2"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the BaSTIv2 parameter space.
 
 ## Grid Properties
 The BaSTIv2 model grid contains models for the following iron abundances:
 
 ```@example
-BaSTIv2.feh_grid
+println(BaSTIv2.feh_grid)
 ```
 
 This is a superset of all available iron abundances; not all combinations of physics and chemistry will have all these iron abundances available. In particular, the α-enhanced models with \[α/Fe\]=0.4 presently have a limited number of iron abundances available.
@@ -35,7 +35,7 @@ For scaled-solar abundance patterns, models are available with different physics
 
 The α-depleted [Pietrinferni2024](@citep) and α-enhanced [Pietrinferni2021](@citep) models are only available with overshooting and diffusion (`canonical=false`, `diffusion=true`, with `η=0.3`). Additional α-enhanced models with enhanced primordial helium abundances are also available (`yp = 0.247 (fiducial), 0.275, 0.3, 0.32`).
 
-Not all combinations of `canonical`, `diffusion`, α-element abundance, and primordial helium abundance `yp` are valid. The table below summarizes the available combinations of parameters.
+Not all combinations of `canonical`, `diffusion`, α-element abundance, primordial helium abundance `yp`, and Reimers mass loss parameter `η` are valid. The table below summarizes the available combinations of parameters.
 
 | \[α/Fe\] | canonical | diffusion | yp    | η   |
 |----------|-----------|-----------|-------|-----|
@@ -52,7 +52,7 @@ Not all combinations of `canonical`, `diffusion`, α-element abundance, and prim
 As setting up these arguments can be arduous, we have attempted to provide useful error messages when an invalid combination of arguments is requested.
 
 ## Examples
-First we load the non-canonical BaSTIv2 library with diffusion and \[α/Fe\]=0.0, which is downloaded via DataDeps.jl if not already available.
+First we load the non-canonical BaSTIv2 library with diffusion, \[α/Fe\]=0.0, primordial helium abundance 0.247, and Reimers mass loss parameter `η=0.3` which is downloaded via DataDeps.jl if not already available.
 ```@example
 using StellarTracks.BaSTIv2
 p = BaSTIv2Library(0.0, false, true, 0.247, 0.3)
@@ -77,7 +77,7 @@ plot_hr(iso) # hide
 
 We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[M/H\]) and reddening values (``A_V``).
 
-Because the solar metallicity calibrations of BaSTIv2 and MIST are not exactly the same, the protostellar metal mass fraction ``Z`` that corresponds to a given \[M/H\] is not the same between the two libraries. The `isochrone` interface will convert the given \[M/H\], which is assumed to be the desired metallicity in the *stellar track* library, to its corresponding metal mass fraction, and then convert from the metal mass fraction to the correct \[M/H\] for the assumed chemical model of the bolometric correction grid.
+Because the solar metallicity calibrations of BaSTIv2 and MIST are not exactly the same, the protostellar metal mass fraction ``Z`` that corresponds to a given \[M/H\] is not the same between the two libraries. The `isochrone` interface will convert the given \[M/H\], which is assumed to be the desired metallicity in the *stellar track* library, to its corresponding metal mass fraction, and then convert from the metal mass fraction to the correct \[M/H\] for the assumed chemical model of the bolometric correction grid. For non-solar-scaled BaSTIv2 models, we will try to use the same α-abundance for the bolometric corrections if they are available. If BCs with the correct α-abundance are not available in the bolometric correction grid you supply, we will instead match the metal mass fractions ``Z`` between the stellar tracks and the bolometric corrections, following the canonical wisdom that stellar tracks and isochrones with altered α abundances can be well approximated by scaled-solar models with the same total metallicity (see, e.g., section 3.2 of [Pietrinferni2021](@cite)). 
 
 This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, \[M/H\]=-1.234, and ``A_v=0.02`` mag. 
 
