@@ -258,9 +258,9 @@ and call it with the masses you want, e.g.,
 `ts = BaSTIv2TrackSet(-2.2, 0.0, true, true, 0.247, 0.3); ts.([0.61, 0.82])`.
 
 # Arguments
- - `feh::Number`: [Fe/H] of stellar model
- - `mass::Number`: Initial stellar mass of stellar model in solar masses
- - `α_fe::Number`: [α/Fe] of stellar model
+ - `feh::Number`: [Fe/H] of stellar model.
+ - `mass::Number`: Initial stellar mass of stellar model in solar masses.
+ - `α_fe::Number`: [α/Fe] of stellar model.
  - `canonical::Bool`: Whether to use models with convective overshooting (`true`) or without (`false`).
  - `diffusion::Bool`: Whether to use models with atomic diffusion (`true`) or without (`false`).
  - `yp::Number`: Primordial helium abundance assumed for stellar model.
@@ -328,7 +328,7 @@ interface for the updated BaSTI stellar evolution library
  - `feh::Number`: [Fe/H] of stellar model
 
 # Optional Arguments
- - `α_fe::Number = 0`: [α/Fe] of stellar model
+ - `α_fe::Number = 0`: [α/Fe] of stellar model.
  - `canonical::Bool = false`: Whether to use models with convective overshooting (`true`) or without (`false`).
  - `diffusion::Bool = true`: Whether to use models with atomic diffusion (`true`) or without (`false`).
  - `yp::Number = 0.247`: Primordial helium abundance assumed for stellar model.
@@ -508,7 +508,7 @@ interface for the updated BaSTI stellar evolution models presented in
 [Hidalgo2018,Pietrinferni2021,Salaris2022,Pietrinferni2024](@citep).
 
 # Optional Arguments
- - `α_fe::Number = 0`: [α/Fe] of stellar model
+ - `α_fe::Number = 0`: [α/Fe] of stellar model.
  - `canonical::Bool = false`: Whether to use models with convective overshooting (`true`) or without (`false`).
  - `diffusion::Bool = true`: Whether to use models with atomic diffusion (`true`) or without (`false`).
  - `yp::Number = 0.247`: Primordial helium abundance assumed for stellar model.
@@ -583,7 +583,7 @@ end
 """
     isochrone(p::BaSTIv2Library, logAge::Number, mh::Number)
 Interpolates properties of the stellar tracks in the library at the requested logarithmic age (`logAge = log10(age [yr])`) and logarithmic metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the properties listed below:
- - `eep`: Equivalent evolutionary points
+ - `eep`: Equivalent evolutionary points.
  - `m_ini`: Initial stellar masses, in units of solar masses.
  - `logTe`: Base-10 logarithm of the effective temperature [K] of the stellar model.
  - `Mbol`: Bolometric luminosity of the stellar model.
