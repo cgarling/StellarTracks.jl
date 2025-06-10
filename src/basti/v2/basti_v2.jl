@@ -407,15 +407,13 @@ function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Boo
 
         # We'll start the interpolation at the most massive model and enforce a monotonic
         # decrease in stellar initial mass with increasing age at fixed EEP while EEP < eep_idxs[3]
-        _, p1 = findmax(tmpdata.m_ini)
-        idxs = p1:lastindex(tmpdata)
         if eep < eep_idxs.MS_TO
+            _, p1 = findmax(tmpdata.m_ini)
+            idxs = p1:lastindex(tmpdata)
             goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
             goodidxs = vcat(true, goodidxs) # add true for first element as well
-        else
-            goodidxs = trues(length(idxs))
+            tmpdata = tmpdata[idxs[goodidxs]]
         end
-        tmpdata = tmpdata[idxs[goodidxs]]
 
         # PCHIPInterpolation is a type of CubicHermiteSpline
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, tmpdata.logAge)
@@ -472,17 +470,17 @@ function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
             # underlying EEP tracks).
             if imass >= first(track_extrema) && imass <= last(track_extrema)
                 logli = ts.interps.log_L[i](imass) # 120 ns
-                # Enforce monotonically increasing luminosity along the MS (which ends at eep_idxs[4])
+                # Enforce monotonically increasing luminosity along the MS
                 # We can't be sure if last point was overly bright or current point is overly faint,
                 # so we delete last point and continue so this point isn't output
                 # Maybe not necessary, revisit later
-                # if length(logl) > 0 && i < eep_idxs[4] && logli < last(logl)
-                # # if length(logl) > 0 && (i >= eep_idxs[3] && i <= eep_idxs[4]) && logli < last(logl)
-                #     # li = lastindex(logl)
-                #     # deleteat!(eeps, li)
-                #     # deleteat!(interp_masses, li)
-                #     # deleteat!(logte, li)
-                #     # deleteat!(logl, li)
+                # if length(logl) > 0 && i < eep_idxs.MS_TO && logli < last(logl)
+                #     li = lastindex(logl)
+                #     deleteat!(eeps, li)
+                #     deleteat!(interp_masses, li)
+                #     deleteat!(logte, li)
+                #     deleteat!(logl, li)
+                #     deleteat!(logg, li)
                 #     continue
                 # end
                 push!(eeps, i)
