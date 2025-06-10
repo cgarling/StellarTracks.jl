@@ -27,6 +27,8 @@ The BaSTIv2 model grid contains models for the following iron abundances:
 BaSTIv2.feh_grid
 ```
 
+This is a superset of all available iron abundances; not all combinations of physics and chemistry will have all these iron abundances available. In particular, the α-enhanced models with \[α/Fe\]=0.4 presently have a limited number of iron abundances available.
+
 The BaSTIv2 grid includes models with scaled-solar abundance patterns, α-enhanced models with an average \[α/Fe\]=0.4 (presented in [Pietrinferni2021](@citet)), and α-depleted models with \[α/Fe\]=-0.2 (presented in [Pietrinferni2024](@citet). For these models, the abundances of the α elements O, Ne, Mg, Si, S, Ar, Ca, and Ti have been changed relative to Fe. These α-enhanced models are useful for modeling low-metallicity stars that formed prior to significant iron enrichment from type Ia supernovae. These stars are most common in the Galactic halo and low-mass dwarf galaxies. Note that the conversion between metal mass fraction ``Z`` and logarithmic metal abundance \[M/H\] is the same for the scaled-solar models as for the α-enhanced models, however the iron abundance \[Fe/H\] is not the same as \[M/H\] -- see Table 1 of [Pietrinferni2021](@citet) and [Pietrinferni2024](@citet) for the full elemental abundance tables.
 
 For scaled-solar abundance patterns, models are available with different physics models varying convective overshooting during central H-burning and atomic diffusion. So-called "canonical" models do not including overshooting, while "non-canonical" models do include a convective overshooting treatment (see section 3 of [Pietrinferni2004](@citet)). Inclusion of convective overshooting during central H-burning mainly changes the main sequence turn-off morphology and generally results in better fits to simple stellar populations like globular clusters. For methods in this module that take a `canonical::Bool` argument, a value of `canonical=true` indicates you want to use the "canonical" stellar models, while a value of `canonical=false` means you want to use the "non-canonical" models that include convective core overshooting. Similarly, setting an argument `diffusion::Bool=true` indicates you wish to use the models with atomic diffusion. For scaled-solar abundance patterns, models with different Reimers mass loss parameters `η` are also available.
@@ -46,6 +48,8 @@ Not all combinations of `canonical`, `diffusion`, α-element abundance, and prim
 | 0.4      | false     | true      | 0.275 | 0.3 |
 | 0.4      | false     | true      | 0.300 | 0.3 |
 | 0.4      | false     | true      | 0.320 | 0.3 |
+
+As setting up these arguments can be arduous, we have attempted to provide useful error messages when an invalid combination of arguments is requested.
 
 ## Examples
 First we load the non-canonical BaSTIv2 library with diffusion and \[α/Fe\]=0.0, which is downloaded via DataDeps.jl if not already available.
@@ -94,6 +98,14 @@ A color-magnitude diagram constructed from the isochrone is plotted below.
 
 ```@example
 plot_cmd(iso) # hide
+```
+
+## Chemistry API
+
+We provide the [`StellarTracks.BaSTIv2.BaSTIv2Chemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to access information on the chemical mixture assumed for the BaSTIv2 models.
+
+```@docs
+StellarTracks.BaSTIv2.BaSTIv2Chemistry
 ```
 
 ## Library API

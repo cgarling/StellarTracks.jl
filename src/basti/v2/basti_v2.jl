@@ -69,14 +69,14 @@ const eep_lengths = NamedTuple{keys(eep_idxs)[begin:end-1]}(eep_idxs[i+1] - eep_
 """Data type to parse the BaSTIv2 tracks as."""
 const track_type = Float32
 """Available [Fe/H] values in the BaSTIv2 stellar track grid."""
-const feh_grid = track_type[-3.2, -2.5, -2.2, -1.9, -1.7, -1.55, -1.4, -1.3, -1.2, -1.05, -0.9, -0.7, -0.6, -0.4, -0.3, -0.2, -0.1, 0.06, 0.15, 0.3] # -0.1 is listed as -0.08 in paper but -0.1 in the online grids...
+const feh_grid = track_type[-3.2, -2.5, -2.2, -1.9, -1.7, -1.55, -1.4, -1.3, -1.2, -1.05, -0.9, -0.7, -0.6, -0.4, -0.3, -0.2, -0.1, 0.06, 0.15, 0.3, 0.45] # -0.1 is listed as -0.08 in paper but -0.1 in the online grids...
 """Initial stellar masses for the stellar tracks in the BaSTIv2 grid. These are uniform for all metallicities and also for alpha-enhanced grids."""
 const massgrid = track_type[0.1, 0.12, 0.15, 0.18, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0]
 """α-element enrichment parameters [α/Fe] available for the BaSTIv2 grid."""
 const αFegrid = track_type[-0.2, 0.0, 0.4]
 
 function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion::Bool, yp::Number, η::Number)
-    if ~any(Base.Fix1(isapprox, -2.2), BaSTIv2.feh_grid)
+    if ~any(Base.Fix1(isapprox, feh), BaSTIv2.feh_grid)
         throw(ArgumentError("Input [Fe/H] $feh invalid; available [Fe/H] values are $(feh_grid)."))
     end
     if α_fe ≈ 0
@@ -97,7 +97,10 @@ function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion
                     throw(ArgumentError("Non-canonical models with diffusion and scaled-solar abundance patterns are only available for primordial helium abundance `yp = 0.247`."))
                 end
                 if ~(η ≈ 0.3)
-                    throw(ArgumentError("Canonical models with diffusion and scaled-solar abundance patterns are only available with Reimers mass loss parameter `η = 0.3`."))
+                    throw(ArgumentError("Non-canonical models with diffusion and scaled-solar abundance patterns are only available with Reimers mass loss parameter `η = 0.3`."))
+                end
+                if feh ≈ 0.45
+                    throw(ArgumentError("Non-canonical models with diffusion and scaled-solar abundance patterns are only available for [Fe/H] values <= 0.3, you requested $feh."))
                 end
             else
                 if ~(yp ≈ 0.247)
@@ -109,12 +112,43 @@ function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion
             end
         end
     elseif α_fe ≈ 0.4
+        if canonical
+            throw(ArgumentError("Canonical models are not available for α-enhanced models with [α/Fe]=$α_fe. Set `canonical=false`."))
+        else
+            if diffusion
+                
+                if ~(η ≈ 0.3)
+                    throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe are only available for Reimers mass loss parameter `η=0.3`."))
+                end
+                if yp ≈ 0.247
+                    if ~(feh < 0.06 || feh ≈ 0.06)
+                        throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe and Y_p=$yp are only available for iron abundances up to [Fe/H] = 0.06, you requested $feh."))
+                    end
+                elseif yp ≈ 0.275
+                    if ~(feh < -0.6 || feh ≈ -0.6)
+                        throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe and Y_p=$yp are only available for iron abundances up to [Fe/H] = -0.6, you requested $feh."))
+                    end                    
+                elseif yp ≈ 0.3
+                    if ~(feh < -0.1 || feh ≈ -0.1)
+                        throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe and Y_p=$yp are only available for iron abundances up to [Fe/H] = -0.08, you requested $feh."))
+                    end
+                elseif yp ≈ 0.32
+                    if ~(feh ≈ 0.06)
+                        throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe and Y_p=$yp are only available for [Fe/H] = 0.06, you requested $feh."))
+                    end
+                end
+                
+            else
+                throw(ArgumentError("Models without diffusion are not available for α-enhanced models with [α/Fe]=$α_fe. Set `diffusion=true`."))
+            end
+        end
 
     elseif α_fe ≈ -0.2
 
     else
         throw(ArgumentError("Provided [α/Fe] abundance $α_fe invalid; available values are (-0.2, 0.0, 0.4)."))
     end
+    return true
 end
 
 """
@@ -527,9 +561,19 @@ function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv2Library)
 end
 function BaSTIv2Library(α_fe::Number=0, canonical::Bool=false, diffusion::Bool=true,
                         yp::Number=0.247, η::Number=0.3)
-    # Make vector of tracksets
-    ts = [BaSTIv2TrackSet(feh, α_fe, canonical, diffusion, yp, η) for feh in feh_grid]
-    return BaSTIv2Library(ts, (feh = feh_grid, α_fe = convert(track_type, α_fe),
+    # Not all values in feh_grid are supported for every combination of parameters
+    # Need try/catch to gracefully handle unsupported feh values
+    ts = [begin
+              try
+                  BaSTIv2TrackSet(feh, α_fe, canonical, diffusion, yp, η)
+              catch
+              end
+          end for feh in feh_grid]
+    if any(isnothing, ts)
+        ts = filter(!isnothing, ts)
+    end
+    return BaSTIv2Library(ts, (feh = [tt.properties.feh for tt in ts],
+                               α_fe = convert(track_type, α_fe),
                                canonical = canonical, diffusion = diffusion,
                                yp = convert(track_type, yp), η = convert(track_type, η)))
 end
