@@ -206,8 +206,8 @@ function BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=false)
     @argcheck any(Base.Fix1(isapprox, zval), zgrid)
     @argcheck any(Base.Fix1(isapprox, α_fe), αFegrid)
     # Convert to strings
-    zval = _parse_zval(zgrid[searchsortedfirst(zgrid, zval)])
-    α_fe = _parse_α_fe(αFegrid[searchsortedfirst(αFegrid, α_fe)])
+    zval = _parse_zval(zval)
+    α_fe = _parse_α_fe(α_fe)
     dd_path = @datadep_str("BaSTIv1")
     bfile = joinpath(dd_path, "basti2013.jld2")
     group = ifelse(canonical, "canonical", "noncanonical") * "/" * α_fe * "/" * zval

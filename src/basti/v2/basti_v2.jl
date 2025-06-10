@@ -151,13 +151,15 @@ are taken from [Caffau2011](@citet).
 As the BaSTIv2 grid was run with uniform [Fe/H] values but differing [α/Fe], the
 metal mass fraction ``Z`` and the logarithmic metal abundance [M/H] are not uniform
 for every [α/Fe] in the grid. We therefore need to know [α/Fe] so that we can convert
-the [Fe/H] values to [M/H] and ``Z``.
+the [Fe/H] values to [M/H] and ``Z``. The α-enhanced library also includes models
+with enhanced primordial helium abundance (`yp` here), so we require that information
+as well.
 
 For the [α/Fe] = 0.4 models presented in [Pietrinferni2021(@citet) and the [α/Fe] = -0.2 models
 presented in [Pietrinferni2024](@citet), the α elements
 O, Ne, Mg, Si, S, Ca, and Ti have all been uniformly modified with respect to the Fe abundance
 relative to the [Caffau2011](@citet) heavy element distribution. As C and N are not changed,
-[M/H] = [Fe/H] + 0.75 * [α/Fe] (see, e.g., Equation 4 of [Vazdekis2015](@citet)).
+[M/H] = [Fe/H] + 0.75 * [α/Fe]; see, e.g., Equation 4 of [Vazdekis2015](@citet).
 
 ```jldoctest
 julia> using StellarTracks.BaSTIv2: BaSTIv2Chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH;
@@ -324,8 +326,8 @@ function BaSTIv2TrackSet(feh::Number, α_fe::Number=0, canonical::Bool=false, di
     # Validate arguments
     _validate_params(feh, α_fe, canonical, diffusion, yp, η)
     # Convert to strings
-    feh = _parse_feh(feh_grid[searchsortedfirst(feh_grid, feh)])
-    α_fe = _parse_α_fe(αFegrid[searchsortedfirst(αFegrid, α_fe)])
+    feh = _parse_feh(feh)
+    α_fe = _parse_α_fe(α_fe)
     yp = _parse_yp(yp)
     η = _parse_η(η)
     dd_path = @datadep_str("BaSTIv2")
