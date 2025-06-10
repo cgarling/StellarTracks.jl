@@ -273,7 +273,7 @@ julia> track = StellarTracks.BaSTIv2.BaSTIv2Track(-2.2, 0.81, 0.0, false, true, 
 Non-canonical BaSTIv2Track with diffusion, M_ini=0.81, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.870952533235687e-5, Y=0.24712930947818537, X=0.7527719809964823, Y_p=0.247, η=0.3.
 
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = -0.14188867667533753, log_Teff = 3.799111830003377, log_g = 4.639490166221381)
+(log_L = -0.1362482951194984, log_Teff = 3.801176847293261, log_g = 4.642115349406555)
 ```
 """
 struct BaSTIv2Track{A,B,C} <: AbstractTrack
@@ -336,10 +336,10 @@ interface for the updated BaSTI stellar evolution library
 
 ```jldoctest
 julia> ts = StellarTracks.BaSTIv2.BaSTIv2TrackSet(-2.2, 0.0, false, true, 0.247, 0.3)
-Non-canonical BaSTIv2TrackSet with diffusion, [M/H]=-1.9, [Fe/H]=-1.9, [α/Fe]=0.0, Z=0.00019689206760795184, Y=0.2472579286085664, Y_p=0.247, η=0.3, 2099 EEPs and 56 initial stellar mass points.
+Non-canonical BaSTIv2TrackSet with diffusion, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.870951724808943e-5, Y=0.24712930338792122, Y_p=0.247, η=0.3, 2099 EEPs and 56 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-Non-canonical BaSTIv2Track with diffusion, M_ini=1.01, [M/H]=-1.9, [Fe/H]=-1.9, [α/Fe]=0.0, Z=0.00019689206760795184, Y=0.2472579286085664, X=0.7525451793238256, Y_p=0.247, η=0.3.
+Non-canonical BaSTIv2Track with diffusion, M_ini=1.01, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.870951724808943e-5, Y=0.24712930338792122, X=0.7527719870948307, Y_p=0.247, η=0.3.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -369,7 +369,7 @@ function BaSTIv2TrackSet(feh::Number, α_fe::Number=0, canonical::Bool=false, di
     group = ifelse(canonical, "canonical", "noncanonical") * "/" *
             ifelse(diffusion, "diffusion", "nodiffusion") * "/" *
             α_fe * "/" * feh * "/" * yp * "/" * η
-    println(group)
+    # println(group)
     data = JLD2.load(bfile, group)
     # data will now have whatever data types were originally saved into the jld2 file
     # We will promote to track_type here
@@ -525,7 +525,7 @@ This type also supports isochrone construction
 
 ```jldoctest
 julia> p = BaSTIv2Library(0.0, false, true, 0.247, 0.3)
-Structure of interpolants for the updated BaSTI library of non-canonical stellar tracks with diffusion, [α/Fe]=0.0, Y_p=0.247, η=0.3. Valid range of metallicities is [Fe/H] = $(extrema(feh_grid)), [M/H] = $(extrema(feh_grid)).
+Structure of interpolants for the updated BaSTI library of non-canonical stellar tracks with diffusion, [α/Fe]=0.0, Y_p=0.247, η=0.3. Valid range of metallicities is [Fe/H] = $(extrema(feh_grid[begin:end-1])), [M/H] = $(extrema(feh_grid[begin:end-1])).
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
