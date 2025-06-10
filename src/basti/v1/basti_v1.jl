@@ -133,7 +133,7 @@ julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(0.0001, 0.81, 0.0, true)
 Canonical BaSTIv1Track with M_ini=0.81, MH=-2.325177525233962, [α/Fe]=0.0, Z=0.0001, Y=0.24514, X=0.75476.
 
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = -0.15993145249931723, log_Teff = 3.7952196900545214, log_g = 4.640365439934053)
+(log_L = -0.14842196551884101, log_Teff = 3.799248168116745, log_g = 4.644963154921838)
 ```
 """
 struct BaSTIv1Track{A,B,C} <: AbstractTrack
