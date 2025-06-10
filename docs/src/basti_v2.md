@@ -126,6 +126,9 @@ StellarTracks.BaSTIv2.BaSTIv2TrackSet
 StellarTracks.BaSTIv2.BaSTIv2Track
 ```
 
+## Acknowledgements
+We would like to thank Alessandro Savino for his assistance acquiring and working with the updated BaSTI tracks.
+
 ## BaSTIv2 References
 This page cites the following references:
 
