@@ -24,7 +24,7 @@ The core function of this package is to provide an interface to libraries of ste
 For integrated stellar photometry, this is typically done by applying [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction) that integrate a stellar atmosphere over an observational bandpass to predict the stellar model's magnitude in that bandpass. An interface to these bolometric correction grids is provided by [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl). We take advantage of this interface to support the generation of isochrones in observational bandpasses.
 
 ## API
-Our full API documentation is available [here](@ref api).
+Documentation for our generic API is available [here](@ref api).
 
 ## References
 This page cites the following references:
