@@ -513,12 +513,12 @@ function (ts::BaSTIv2Library)(mh::Number, M::Number)
     error("Not yet implemented.")
 end
 chemistry(p::BaSTIv2Library) = BaSTIv2Chemistry(p.properties.α_fe, p.properties.yp)
-Z(p::BaSTIv2Library) = Z.(chemistry(p), p.properties.MH)
+Z(p::BaSTIv2Library) = Z.(chemistry(p), MH(p))
 MH(p::BaSTIv2Library) = p.properties.feh .+ 3//4 .* p.properties.α_fe # MH.(chemistry(p), Z(p))
 Y(p::BaSTIv2Library) = Y.(chemistry(p), Z(p))
 X(p::BaSTIv2Library) = 1 .- Y(p) .- Z(p)
 post_rgb(::BaSTIv2Library) = true
-Base.eltype(p::BaSTIv2Library) = typeof(first(Z(p)))
+Base.eltype(p::BaSTIv2Library) = typeof(first(MH(p)))
 Base.Broadcast.broadcastable(p::BaSTIv2Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv2Library)
     print(io, """Structure of interpolants for the updated BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.diffusion, "with diffusion", "without diffusion")), [α/Fe]=$(p.properties.α_fe), Y_p=$(p.properties.yp), η=$(p.properties.η). Valid range of metallicities is [Fe/H] = $(extrema(p.properties.feh)), [M/H] = $(extrema(MH(p))).""")
@@ -527,8 +527,9 @@ function BaSTIv2Library(α_fe::Number=0, canonical::Bool=false, diffusion::Bool=
                         yp::Number=0.247, η::Number=0.3)
     # Make vector of tracksets
     ts = [BaSTIv2TrackSet(feh, α_fe, canonical, diffusion, yp, η) for feh in feh_grid]
-    return BaSTIv2Library(ts, (feh = feh_grid, α_fe = α_fe, canonical = canonical, diffusion = diffusion,
-                               yp = yp, η = η))
+    return BaSTIv2Library(ts, (feh = feh_grid, α_fe = convert(track_type, α_fe),
+                               canonical = canonical, diffusion = diffusion,
+                               yp = convert(track_type, yp), η = convert(track_type, η)))
 end
 
 # Below is a stub for documentation,
