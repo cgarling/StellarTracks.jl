@@ -247,15 +247,13 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
 
         # We'll start the interpolation at the most massive model and enforce a monotonic
         # decrease in stellar initial mass with increasing age at fixed EEP while EEP < eep_idxs[3]
-        _, p1 = findmax(tmpdata.m_ini)
-        idxs = p1:lastindex(tmpdata)
-        if eep < eep_idxs[3]
+        if eep < eep_idxs.MS_TO
+            _, p1 = findmax(tmpdata.m_ini)
+            idxs = p1:lastindex(tmpdata)
             goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
             goodidxs = vcat(true, goodidxs) # add true for first element as well
-        else
-            goodidxs = trues(length(idxs))
+            tmpdata = tmpdata[idxs[goodidxs]]
         end
-        tmpdata = tmpdata[idxs[goodidxs]]
 
         # PCHIPInterpolation is a type of CubicHermiteSpline
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, tmpdata.logAge)
