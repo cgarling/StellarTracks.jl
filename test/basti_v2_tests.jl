@@ -28,7 +28,7 @@ param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30
                 try
                     _validate_params(feh, vp...)
                 catch
-                    @info "Parameters $(merge((feh = feh,), p)) invalid and caught"
+                    # @info "Parameters $(merge((feh = feh,), p)) invalid and caught"
                     continue
                 end
                 chem = BaSTIv2Chemistry(convert(track_type, p.α),
