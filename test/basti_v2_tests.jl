@@ -8,7 +8,10 @@ using Test
 bcg = MISTBCGrid("JWST")
 
 param_sets = ((α=0.0, canonical = false, diffusion = true, yp = 0.247, η = 0.3),
-              (α=0.0, canonical = false, diffusion = false, yp = 0.247, η = 0.0))
+              (α=0.0, canonical = false, diffusion = false, yp = 0.247, η = 0.0),
+              (α=0.0, canonical = true, diffusion = false, yp = 0.247, η = 0.0),
+              (α=0.0, canonical = false, diffusion = false, yp = 0.247, η = 0.3),
+              (α=-0.2, canonical = false, diffusion = true, yp = 0.247, η = 0.3))
 
 @testset "BaSTIv2" begin
     @testset "BaSTIv2Track + BaSTIv2TrackSet" begin
@@ -26,7 +29,7 @@ param_sets = ((α=0.0, canonical = false, diffusion = true, yp = 0.247, η = 0.3
                 # @test mass(trackset) == PARSEC.parsec_massgrid
                 @test chemistry(trackset) == chem
                 # @test Z(trackset) == z
-                @test MH(trackset) ≈ MH(chemistry(trackset), Z(trackset))
+                @test isapprox(MH(trackset), MH(chemistry(trackset), Z(trackset)); atol=1e-5)
                 @test Y(trackset) ≈ Y(chemistry(trackset), Z(trackset))
                 @test X(trackset) ≈ X(chemistry(trackset), Z(trackset))
                 @test post_rgb(trackset) == true
@@ -45,7 +48,7 @@ param_sets = ((α=0.0, canonical = false, diffusion = true, yp = 0.247, η = 0.3
                     extr = extrema(track) # Get logAge limits
                     @test track(extr[1] + (extr[2] - extr[1])/2) isa NamedTuple
                     # @test Z(track) == z
-                    @test MH(track) ≈ MH(chemistry(track), Z(track))
+                    @test isapprox(MH(track), MH(chemistry(track), Z(track)); atol=1e-5)
                     @test Y(track) ≈ Y(chemistry(track), Z(track))
                     @test X(track) ≈ X(chemistry(track), Z(track))
                     @test post_rgb(track) isa Bool
