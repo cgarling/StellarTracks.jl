@@ -24,7 +24,7 @@ using StellarTracks.BaSTIv1: BaSTIv1Library, X, Y, Z # load specific methods
 
 ## Data Acquisition
 
-The tracks will be downloaded automatically using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl) the first time you try to access them. The main access point we provide is [`BaSTIv1Library`](@ref StellarTracks.BaSTIv1.BaSTIv1Library), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume is ~32 MB. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"BaSTIv1"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the BaSTIv1 parameter space.
+The tracks will be downloaded automatically using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl) the first time you try to access them. The main access point we provide is [`BaSTIv1Library`](@ref StellarTracks.BaSTIv1.BaSTIv1Library), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume is ~100 MB. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"BaSTIv1"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the BaSTIv1 parameter space.
 
 ## Grid Properties
 The BaSTIv1 model grid contains models for the following metal mass fractions:
@@ -39,7 +39,9 @@ which correspond to the following values of \[M/H\]:
 MH.(BaSTIv1Chemistry(), BaSTIv1.zgrid)
 ```
 
-Note that the BaSTIv1 stellar models only include initial stellar masses from 0.5 to 10 solar masses. They therefore do not include the lower main sequence that can be important for modeling very nearby stellar populations. Nor do they include very high-mass stars (e.g., O-type stars) that can be important when studying populations with high present0-day SFRs.
+The grid contains models with and without convective overshooting during core H-burning (function arguments `canonical=false` and `true`, respectively), with and without a synthetic AGB extension (`agb = true` and `false`, respectively), and different values of the Reimers mass loss parameter `η = 0.2, 0.4`. Values of `Z=1e-5, 0.05` (models presented in [Pietrinferni2013](@citet)) are only available without AGB extension (`agb=false`) with Reimers mass loss parameter `η=0.4`. α-enhanced models with [α/Fe] ≈ 0.4 (presented in [Pietrinferni2006](@citet)) are also available.
+
+Note that the BaSTIv1 stellar models **at best** include initial stellar masses from 0.5 to 10 solar masses. The canonical models (`canonical = true`) without AGB extensions (`agb = false`) and `η=0.4` seem to have the best mass sampling, and the α-enhanced set is also fairly good. Many of the other parameter sets have minimum masses closer to 1 solar mass, which can be troublesome for applications in stellar populations. None of the model sets reach the lower main sequence that is important when modeling very nearby stellar populations. Nor do they include very high-mass stars (e.g., O-type stars) that can be important when studying populations with high present0-day SFRs.
 
 The BaSTIv1 grid includes models with scaled-solar abundance patterns as well as α-enhanced models with an average \[α/Fe\]=0.4 (presented in [Pietrinferni2006](@citet)). These α-enhanced models are useful for modeling low-metallicity stars that formed prior to significant iron enrichment from type Ia supernovae. These stars are most common in the Galactic halo and low-mass dwarf galaxies. Note that the conversion between metal mass fraction ``Z`` and logarithmic metal abundance \[M/H\] is the same for the scaled-solar models as for the α-enhanced models, however the iron abundance \[Fe/H\] is not the same as \[M/H\] -- see Table 1 of [Pietrinferni2006](@citet).
 
@@ -49,7 +51,7 @@ The BaSTIv1 models are also differentiated by whether they include convective ov
 First we load the full BaSTIv1 library, which is downloaded via DataDeps.jl if not already available.
 ```@example
 using StellarTracks.BaSTIv1
-p = BaSTIv1Library(0.0, false)
+p = BaSTIv1Library(0.0, true, false, 0.4)
 ```
 
 Now we use the [`BaSTIv1Library`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and logarithmic metallicity \[M/H\]=-1.234. The isochrone is returned as a `NamedTuple`.

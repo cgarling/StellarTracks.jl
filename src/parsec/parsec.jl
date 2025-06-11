@@ -97,7 +97,7 @@ Y_p(::PARSECChemistry) = 0.2485
 Z(::PARSECChemistry) = 0.01774 # Z_initial in Table 3 of Bressan2012
 Z_phot(::PARSECChemistry) = 0.01597 # Z_S in Table 3 of Bressan2012
 
-Y(mix::PARSECChemistry, Zval) = Y_p(mix) + 1.78 * Zval # γ = 1.78
+Y(mix::PARSECChemistry, Zval) = Y_p(mix) + 178//10 * Zval # γ = 1.78
 # X generic
 MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z(mix) / X(mix))
 # MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval) / Z(mix) * X(mix))
@@ -131,7 +131,7 @@ function Z(mix::PARSECChemistry, MHval)
     # Z (1 + (1 + γ) * A) = (1 - Y_p) * A
     # Z = (1 - Y_p) * A / (1 + (1 + γ) * A)
     zoverx = exp10(MHval + log10(Z(mix) / X(mix)))
-    γ = 1.78
+    γ = 178//100
     return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
 end
 """
