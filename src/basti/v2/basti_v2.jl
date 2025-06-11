@@ -76,7 +76,7 @@ const massgrid = track_type[0.1, 0.12, 0.15, 0.18, 0.2, 0.25, 0.3, 0.35, 0.4, 0.
 const αFegrid = track_type[-0.2, 0.0, 0.4]
 
 function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion::Bool, yp::Number, η::Number)
-    if ~any(Base.Fix1(isapprox, feh), BaSTIv2.feh_grid)
+    if ~any(Base.Fix1(isapprox, feh), feh_grid)
         throw(ArgumentError("Input [Fe/H] $feh invalid; available [Fe/H] values are $(feh_grid)."))
     end
     if α_fe ≈ 0
@@ -226,7 +226,7 @@ Y_p(mix::BaSTIv2Chemistry) = mix.yp # 0.247  # First paragraph, section 4, Hidal
 Z(::BaSTIv2Chemistry) = 0.0172 # Protostellar abundance of calibrated solar model
 Z_phot(::BaSTIv2Chemistry) = 0.0153 # Caffau2011
 
-Y(mix::BaSTIv2Chemistry, Zval) = Y_p(mix) + 1.31 * Zval # First paragraph, section 4, Hidalgo2018
+Y(mix::BaSTIv2Chemistry, Zval) = Y_p(mix) + 131//100 * Zval # First paragraph, section 4, Hidalgo2018
 # X generic
 
 # Its just [M/H] = [Fe/H] + 0.75 * [α/Fe]
@@ -234,7 +234,7 @@ MH(mix::BaSTIv2Chemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z_phot(mix)
 function Z(mix::BaSTIv2Chemistry, MHval)
     # Derivation in parsec code
     zoverx = exp10(MHval + log10(Z_phot(mix) / X_phot(mix)))
-    γ = 1.31
+    γ = 131//100
     return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
 end
 
