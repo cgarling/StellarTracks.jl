@@ -76,7 +76,7 @@ const massgrid = track_type[0.1, 0.12, 0.15, 0.18, 0.2, 0.25, 0.3, 0.35, 0.4, 0.
 const αFegrid = track_type[-0.2, 0.0, 0.4]
 
 function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion::Bool, yp::Number, η::Number)
-    if ~any(Base.Fix1(isapprox, feh), feh_grid)
+    if ~any(≈(feh), feh_grid)
         throw(ArgumentError("Input [Fe/H] $feh invalid; available [Fe/H] values are $(feh_grid)."))
     end
     if α_fe ≈ 0
@@ -106,7 +106,7 @@ function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion
                 if ~(yp ≈ 0.247)
                     throw(ArgumentError("Non-canonical models without diffusion with scaled-solar abundance patterns are only available for primordial helium abundance `yp = 0.247`."))
                 end
-                if ~any(η .≈ (0.0, 0.3))
+                if ~any(≈(η), (0.0, 0.3))
                     throw(ArgumentError("Canonical models without diffusion with scaled-solar abundance patterns are only available with Reimers mass loss parameters `η = (0.0, 0.3)`."))
                 end
             end
@@ -136,6 +136,8 @@ function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion
                     if ~(feh ≈ 0.06)
                         throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe and Y_p=$yp are only available for [Fe/H] = 0.06, you requested $feh."))
                     end
+                else
+                    throw(ArgumentError("α-enhanced models with [α/Fe]=$α_fe are available for primordial helium abundances (0.247, 0.275, 0.3, 0.32); you requested $yp."))
                 end
                 
             else
@@ -144,7 +146,19 @@ function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion
         end
 
     elseif α_fe ≈ -0.2
-
+        if canonical
+            throw(ArgumentError("Models with [α/Fe] = -0.2 are only available with core overshooting. Set `canonical=false`."))
+        else
+            if ~diffusion
+                throw(ArgumentError("Models with [α/Fe] = -0.2 are only available with atomic diffusion. Set `diffusion=true`."))
+            end
+        end
+        if ~(yp ≈ 0.247)
+            throw(ArgumentError("Models with [α/Fe] = -0.2 are only available with primordial helium abundances `yp = 0.247`. Set `yp = 0.247`."))
+        end
+        if ~(η ≈ 0.3)
+            throw(ArgumentError("Models with [α/Fe] = -0.2 are only available with Reimers mass loss parameter `η=0.3`. Set `η=0.3`."))
+        end
     else
         throw(ArgumentError("Provided [α/Fe] abundance $α_fe invalid; available values are (-0.2, 0.0, 0.4)."))
     end

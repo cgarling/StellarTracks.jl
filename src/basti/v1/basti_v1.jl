@@ -52,21 +52,19 @@ const αFegrid = track_type[0.0, 0.4]
 const ηgrid = track_type[0.2, 0.4]
 
 function _validate_params(zval::Number, α_fe::Number, canonical::Bool, agb::Bool, η::Number)
-    if ~any(Base.Fix1(isapprox, zval), zgrid)
+    if ~any(≈(zval), zgrid)
         throw(ArgumentError("Input Z $zval invalid; available Z values are $(zgrid)."))
     end
     if (1e-5 ≈ zval || 0.05 ≈ zval) && (~(η ≈ 0.4) || agb)
         throw(ArgumentError("""Z value $zval is only available for η=0.4 models without AGB extension; you requested η=$η $(ifelse(agb, "with AGB extension", "without AGB extension"))."""))
     end
-    if ~any(Base.Fix1(isapprox, α_fe), αFegrid)
+    if ~any(≈(α_fe), αFegrid)
         throw(ArgumentError("Supported [α/Fe] values for the BaSTIv1 grid are 0.0, 0.4; you requested $α_fe."))
     end
-    if ~any(Base.Fix1(isapprox, α_fe), αFegrid)
-        throw(ArgumentError("Supported [α/Fe] values for the BaSTIv1 grid are 0.0, 0.4; you requested $α_fe."))
-    end
-    if ~any(Base.Fix1(isapprox, η), ηgrid)
+    if ~any(≈(η), ηgrid)
         throw(ArgumentError("Supported values of the Reimers mass loss parameter η are 0.2, 0.4; you requested $η."))
     end
+    return true
 end
 
 """
