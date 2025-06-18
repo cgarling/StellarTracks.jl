@@ -201,7 +201,7 @@ function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
     # Check mh is in valid range
     min_mh, max_mh = extrema(mh_vec)
     if mh < min_mh || mh > max_mh
-        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for MIST library of $(extrema(mh_vec))."))
+        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for the stellar track library of $(extrema(mh_vec))."))
     end
     # mh is valid, so need to interpolate isochrone as a function of [M/H]
     # According to Marigo2017, the interpolations (at least for BCs) in Z or [M/H]

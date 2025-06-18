@@ -52,13 +52,13 @@ Not all combinations of `canonical`, `diffusion`, α-element abundance, primordi
 As setting up these arguments can be arduous, we have attempted to provide useful error messages when an invalid combination of arguments is requested.
 
 ## Examples
-First we load the non-canonical BaSTIv2 library with diffusion, \[α/Fe\]=0.0, primordial helium abundance 0.247, and Reimers mass loss parameter `η=0.3` which is downloaded via DataDeps.jl if not already available.
+First we load the scaled-solar models (`[α/Fe] = 0.0`) with convective core overshooting (`canonical = false`), diffusion (`diffusion = true`), primordial helium abundance `yp = 0.247`, and Reimers mass loss parameter `η = 0.3`. These models will be downloaded via DataDeps.jl if not already available.
 ```@example
 using StellarTracks.BaSTIv2
 p = BaSTIv2Library(0.0, false, true, 0.247, 0.3)
 ```
 
-Now we use the [`BaSTIv2Library`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and logarithmic metallicity \[M/H\]=-1.234. The isochrone is returned as a `NamedTuple`.
+Now we use the [`BaSTIv2Library`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and logarithmic metallicity \[M/H\] = -1.234. The isochrone is returned as a `NamedTuple`.
 ```@example
 iso = isochrone(p, 10.05, -1.234)
 ```
@@ -79,7 +79,7 @@ We can load a grid of bolometric corrections from [BolometricCorrections.jl](htt
 
 Because the solar metallicity calibrations of BaSTIv2 and MIST are not exactly the same, the protostellar metal mass fraction ``Z`` that corresponds to a given \[M/H\] is not the same between the two libraries. The `isochrone` interface will convert the given \[M/H\], which is assumed to be the desired metallicity in the *stellar track* library, to its corresponding metal mass fraction, and then convert from the metal mass fraction to the correct \[M/H\] for the assumed chemical model of the bolometric correction grid. For non-solar-scaled BaSTIv2 models, we will try to use the same α-abundance for the bolometric corrections if they are available. If BCs with the correct α-abundance are not available in the bolometric correction grid you supply, we will instead match the metal mass fractions ``Z`` between the stellar tracks and the bolometric corrections, following the canonical wisdom that stellar tracks and isochrones with altered α abundances can be well approximated by scaled-solar models with the same total metallicity (see, e.g., section 3.2 of [Pietrinferni2021](@cite)). 
 
-This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, \[M/H\]=-1.234, and ``A_v=0.02`` mag. 
+This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, \[M/H\] = -1.234, and ``A_v = 0.02`` mag. 
 
 ```@example
 using BolometricCorrections.MIST: MISTBCGrid
