@@ -78,44 +78,35 @@ true
 julia> X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1 # solar photospheric values
 true
 
-julia> MH(chem, Z(chem) * 0.1) ≈ -1.0265716016323736
+julia> MH(chem, Z(chem) * 0.1) ≈ -0.9400696788068212
 true
 
-julia> Z(chem, -1.0265716016323736) ≈ Z(chem) * 0.1
+julia> Z(chem, -0.9400696788068212) ≈ Z(chem) * 0.1
 true
 ```
 """
 struct PARSECChemistry <: AbstractChemicalMixture end
-# X(::PARSECChemistry) = 0.73626 # X⊙ = 1 - Y⊙ - Z⊙
-# Y(::PARSECChemistry) = 0.2485  # 0.28 # Y⊙ in Table 3 of Bressan2012
-# Z(::PARSECChemistry) = 0.01524 # 0.01774 # Z⊙ in Table 3 of Bressan2012
+# For PARSEC, a choice can be made as to whether the initial solar
+# chemical composition is taken to be the observed reference value
+# i.e., Z⊙, Y⊙ in Table 3 of Bressan2012, or the photospheric abundances
+# of the best-fit solar calibration model, i.e., Zs, Ys in Table 3. 
+# For consistency with PARSEC's conversion between Z and [M/H], we will
+# assume the observed reference values.
+
 X(mix::PARSECChemistry) = 1 - Y(mix) - Z(mix) # 0.70226
 X_phot(mix::PARSECChemistry) = 1 - Y_phot(mix) - Z_phot(mix)  # 0.73616
 Y(::PARSECChemistry) = 0.28 # Y_initial in Table 3 of Bressan2012
-Y_phot(::PARSECChemistry) = 0.24787 # Y_S in Table 3 of Bressan2012
-Y_p(::PARSECChemistry) = 0.2485
+Y_phot(::PARSECChemistry) = 0.2485  # Y⊙ in Table 3 of Bressan2012
+# Y_phot(::PARSECChemistry) = 0.24787 # Y_S in Table 3 of Bressan2012
 Z(::PARSECChemistry) = 0.01774 # Z_initial in Table 3 of Bressan2012
-Z_phot(::PARSECChemistry) = 0.01597 # Z_S in Table 3 of Bressan2012
+Z_phot(::PARSECChemistry) = 0.01524 # 0.01774 # Z⊙ in Table 3 of Bressan2012
+# Z_phot(::PARSECChemistry) = 0.01597 # Z_S in Table 3 of Bressan2012
+Y_p(::PARSECChemistry) = 0.2485
 
 Y(mix::PARSECChemistry, Zval) = Y_p(mix) + 178//100 * Zval # γ = 1.78
 # X generic
-MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z(mix) / X(mix))
+MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z_phot(mix) / X_phot(mix))
 # MH(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval) / Z(mix) * X(mix))
-"""
-    MH_canon(mix::PARSECChemistry, Zval)
-Returns the [M/H] value for the provided protostellar value of `Z`, where the solar abundances
-are taken to be *photospheric* rather than protostellar, while the provided `Zval` is assumed
-to be protostellar. This matches the convention of Table 4
-of [Bressan2012](@citet) and the CMD webform for PARSEC.
-
-```jldoctest
-julia> using StellarTracks.PARSEC: PARSECChemistry, MH_canon;
-
-julia> MH_canon(PARSECChemistry(), 0.0005) ≈ -1.4921252963659897
-true
-```
-"""
-MH_canon(mix::PARSECChemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(0.0207)
 function Z(mix::PARSECChemistry, MHval)
     # [M/H] = log(Z/X) - log(Z/X)☉ with Z☉ = solz
     # Z/X = exp10( [M/H] + log(Z/X)☉ )
@@ -130,27 +121,8 @@ function Z(mix::PARSECChemistry, MHval)
     # Z + (1 + γ) * Z * A = (1 - Y_p) * A
     # Z (1 + (1 + γ) * A) = (1 - Y_p) * A
     # Z = (1 - Y_p) * A / (1 + (1 + γ) * A)
-    zoverx = exp10(MHval + log10(Z(mix) / X(mix)))
+    zoverx = exp10(MHval + log10(Z_phot(mix) / X_phot(mix)))
     γ = 178//100
-    return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
-end
-"""
-    Z_canon(mix::PARSECChemistry, MHval)
-Returns the *protostellar* metal mass fraction corresponding to the provided value
-of [M/H] where the solar abundances are taken to be *photospheric* rather
-than protostellar. This matches the convention of Table 4
-of [Bressan2012](@citet) and the CMD webform for PARSEC.
-
-```jldoctest
-julia> using StellarTracks.PARSEC: PARSECChemistry, Z_canon;
-
-julia> Z_canon(PARSECChemistry(), -1.4921252963659897) ≈ 0.0005
-true
-```
-"""
-function Z_canon(mix::PARSECChemistry, MHval)
-    zoverx = exp10(MHval + log10(0.0207))
-    γ = 1.78
     return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
 end
 
@@ -173,7 +145,7 @@ case, you should construct a [`PARSECTrackSet`](@ref) and call it with the masse
 `ts = PARSECTrackSet(0.0001); ts.([0.12, 0.15])`. 
 ```jldoctest
 julia> track = StellarTracks.PARSEC.PARSECTrack(0.0001, 0.15)
-PARSECTrack with M_ini=0.15, MH=-2.278223981363725, Z=0.0001, Y=0.248678, X=0.7512220000000001.
+PARSECTrack with M_ini=0.15, MH=-2.191722058538173, Z=0.0001, Y=0.248678, X=0.7512220000000001.
 
 julia> track(7.0) # interpolate track at log10(age [yr]) = 7
 (logTe = 3.6015066653099757, Mbol = 8.518315848633081, logg = 4.464972304683626, C_O = 0.0)
@@ -237,7 +209,7 @@ julia> ts = StellarTracks.PARSEC.PARSECTrackSet(0.0001)
 TrackSet with Y=0.248678, Z=0.0001, 1930 EEPs and 104 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-PARSECTrack with M_ini=1.01, MH=-2.278223981363725, Z=0.0001, Y=0.248678, X=0.7512220000000001.
+PARSECTrack with M_ini=1.01, MH=-2.191722058538173, Z=0.0001, Y=0.248678, X=0.7512220000000001.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -505,12 +477,12 @@ isochrone(p::PARSECLibrary, logAge::Number, mh::Number) # Falls back to generic 
 
 #################################################################################
 
-export PARSECTrack, PARSECTrackSet, PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
+export PARSECTrack, PARSECTrackSet, PARSECLibrary, PARSECChemistry # Unique module exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
 #################################################################################
 
-# padova_tracks does some shit to interpolate between the base track and the HB tracks
+# padova_tracks does something to interpolate between the base track and the HB tracks
 # by doing a linear interpolation between the two with a number of points equal to the
 # number used for the HE_BEG stage which is 500. This feels like overkill to me ...
 # in the parsec isochrones it's just a step function from the TRGB to the ZAHB

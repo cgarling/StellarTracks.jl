@@ -56,7 +56,7 @@ The theoretical isochrone is plotted below.
 plot_hr(iso) # hide
 ```
 
-We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[M/H\]) and reddening values (``A_V``).
+We can load a grid of bolometric corrections from [BolometricCorrections.jl](@extref BolometricCorrections overview) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[M/H\]) and reddening values (``A_V``).
 
 Because the solar metallicity calibrations of PARSEC and MIST are not exactly the same, the protostellar metal mass fraction ``Z`` that corresponds to a given \[M/H\] is not the same between the two libraries. The `isochrone` interface will convert the given \[M/H\], which is assumed to be the desired metallicity in the *stellar track* library, to its corresponding metal mass fraction, and then convert from the metal mass fraction to the correct \[M/H\] for the assumed chemical model of the bolometric correction grid.
 
@@ -82,18 +82,13 @@ plot_cmd(iso) # hide
 ```
 
 ## Chemistry API
-We provide the [`StellarTracks.PARSEC.PARSECChemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to access information on the chemical mixture assumed for the PARSEC models.
+We provide the [`StellarTracks.PARSEC.PARSECChemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](@extref BolometricCorrections chemistry_api) to access information on the chemical mixture assumed for the PARSEC models.
 
 ```@docs
 StellarTracks.PARSEC.PARSECChemistry
 ```
 
-Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *protostellar* solar values for `Z⊙` and `X⊙` (these are `Z_initial` and `X_initial = 1 - Z_initial - Y_initial` in Table 4 of [Bressan2012](@citet)). We do this as ``X`` and ``Z`` for the PARSEC tracks also refer to the protostellar chemical composition of the stars -- photospheric metallicities are not generally uniform due to diffusive properties that can redistribute the metals in a star over time. It therefore seems proper for `Z⊙` and `X⊙` to be the solar protostellar values rather than the present-day photospheric values. Our definition differs from the standard PARSEC convention -- for example, Table 4 of [Bressan2012](@citet) and the online CMD webform for PARSEC isochrones both assume `Z⊙/X⊙ = 0.0207` when computing \[M/H\], which is the photospheric result of [Caffau2011](@citet). As such, it is expected that our `MH` function will correspond to a different value of `Z` than these sources. To facilitate comparisons, we provide the following functions to convert between ``Z`` and \[M/H\] using the PARSEC convention -- i.e., these functions will return the same ``Z`` for a given value of \[M/H\] as found in Table 4 of [Bressan2012](@citet) and as returned by the CMD webform.
-
-```@docs
-StellarTracks.PARSEC.MH_canon
-StellarTracks.PARSEC.Z_canon
-```
+Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *photospheric* solar values for `Z⊙` and `X⊙` (these are `Z_⊙` and `X_⊙ = 1 - Z_⊙ - Y_⊙` in Table 3 of [Bressan2012](@citet)). This reproduces the relation between `Z` and \[M/H\] defined in Table 4 of [Bressan2012](@citet), which is also used in the "CMD" webform provided by the PARSEC team.
 
 ## Library API
 ```@docs
