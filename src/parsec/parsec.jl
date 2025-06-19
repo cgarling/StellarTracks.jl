@@ -89,8 +89,8 @@ struct PARSECChemistry <: AbstractChemicalMixture end
 # X(::PARSECChemistry) = 0.73626 # X⊙ = 1 - Y⊙ - Z⊙
 # Y(::PARSECChemistry) = 0.2485  # 0.28 # Y⊙ in Table 3 of Bressan2012
 # Z(::PARSECChemistry) = 0.01524 # 0.01774 # Z⊙ in Table 3 of Bressan2012
-X(::PARSECChemistry) = 0.70226
-X_phot(::PARSECChemistry) = 0.73616
+X(mix::PARSECChemistry) = 1 - Y(mix) - Z(mix) # 0.70226
+X_phot(mix::PARSECChemistry) = 1 - Y_phot(mix) - Z_phot(mix)  # 0.73616
 Y(::PARSECChemistry) = 0.28 # Y_initial in Table 3 of Bressan2012
 Y_phot(::PARSECChemistry) = 0.24787 # Y_S in Table 3 of Bressan2012
 Y_p(::PARSECChemistry) = 0.2485
