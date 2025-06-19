@@ -112,28 +112,28 @@ true
 julia> X_phot(chem) + Y_phot(chem) + Z_phot(chem) ≈ 1 # solar photospheric values
 true
 
-julia> MH(chem, Z(chem) * 0.1) ≈ -1.025908305527913
+julia> MH(chem, Z(chem) * 0.1) ≈ -0.9659287781921233
 true
 
-julia> Z(chem, -1.025908305527913) ≈ Z(chem) * 0.1
+julia> Z(chem, -0.9659287781921233) ≈ Z(chem) * 0.1
 true
 ```
 """
 struct BaSTIv1Chemistry <: AbstractChemicalMixture end
-X(::BaSTIv1Chemistry) = 0.7068 # Protostellar abundance of calibrated solar model
-X_phot(::BaSTIv1Chemistry) = 0.73709 # Calculated from (Z/X) = 0.0244
+X(mix::BaSTIv1Chemistry) = 1 - Y(mix) - Z(mix) # Protostellar abundance of calibrated solar model
+X_phot(::BaSTIv1Chemistry) = 0.737993 # Calculated from Y_phot = 0.244, (Z/X)_phot = 0.0244
 Y(::BaSTIv1Chemistry) = 0.2734 # Protostellar abundance of calibrated solar model
 Y_phot(::BaSTIv1Chemistry) = 0.244 # Assumed present-day photospheric abundance
 Y_p(::BaSTIv1Chemistry) = 0.245  # Second paragraph, section 5.1, Pietrinferni2004
 Z(::BaSTIv1Chemistry) = 0.0198 # Protostellar abundance of calibrated solar model
-Z_phot(::BaSTIv1Chemistry) = 0.01891 # Calculated from (Z/X) = 0.0244
+Z_phot(::BaSTIv1Chemistry) = 0.018007 # Calculated from Y_phot = 0.244, (Z/X)_phot = 0.0244
 
 Y(mix::BaSTIv1Chemistry, Zval) = Y_p(mix) +  14//10 * Zval # Second paragraph, section 5.1, Pietrinferni2004
 # X generic
-MH(mix::BaSTIv1Chemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z(mix) / X(mix))
+MH(mix::BaSTIv1Chemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z_phot(mix) / X_phot(mix))
 function Z(mix::BaSTIv1Chemistry, MHval)
     # Derivation in parsec code
-    zoverx = exp10(MHval + log10(Z(mix) / X(mix)))
+    zoverx = exp10(MHval + log10(Z_phot(mix) / X_phot(mix)))
     γ = 14//10
     return (1 - Y_p(mix)) * zoverx / (1 + (1 + γ) * zoverx)
 end
@@ -168,7 +168,7 @@ and call it with the masses you want, e.g.,
 
 ```jldoctest
 julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(1e-4, 1.2, 0.0, true, true, 0.4)
-Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.325177525233962, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
+Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.2651979978981727, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
 (log_L = 0.703673172754993, log_Teff = 3.9489346126913416, log_g = 4.5638088647090145)
 ```
@@ -227,10 +227,10 @@ interface for the older BaSTI stellar evolution library
 
 ```jldoctest
 julia> ts = StellarTracks.BaSTIv1.BaSTIv1TrackSet(1e-3, 0.0, true, false, 0.4)
-Canonical BaSTIv1TrackSet without AGB extension, MH=-1.3239328427169887, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.24640000006649643, 1999 EEPs and 40 initial stellar mass points.
+Canonical BaSTIv1TrackSet without AGB extension, MH=-1.263953315381199, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.24640000006649643, 1999 EEPs and 40 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-Canonical BaSTIv1Track without AGB extension, M_ini=1.01, MH=-1.3239328427169887, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.24640000006649643, X=0.7525999998860061.
+Canonical BaSTIv1Track without AGB extension, M_ini=1.01, MH=-1.263953315381199, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.24640000006649643, X=0.7525999998860061.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -409,7 +409,7 @@ This type also supports isochrone construction
 # Examples
 ```jldoctest
 julia> p = BaSTIv1Library(0.0, true, false, 0.4)
-Structure of interpolants for the older BaSTI library of canonical stellar tracks without AGB extension, [α/Fe]=0.0, η=0.4. Valid range of metallicities is (-3.3253018064208204, 0.4488276368021231).
+Structure of interpolants for the older BaSTI library of canonical stellar tracks without AGB extension, [α/Fe]=0.0, η=0.4. Valid range of metallicities is (-3.265322279085031, 0.5088071641379128).
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
