@@ -56,7 +56,7 @@ The theoretical isochrone is plotted below.
 plot_hr(iso) # hide
 ```
 
-We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[Fe/H\]) and reddening values (``A_V``). This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, ``[\text{M}/\text{H}] = -1.234``, and ``A_v=0.02`` mag. 
+We can load a grid of bolometric corrections from [BolometricCorrections.jl](@extref BolometricCorrections overview) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[Fe/H\]) and reddening values (``A_V``). This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, ``[\text{M}/\text{H}] = -1.234``, and ``A_v=0.02`` mag. 
 
 ```@example
 using BolometricCorrections.MIST: MISTBCGrid
@@ -78,7 +78,7 @@ plot_cmd(iso) # hide
 ```
 
 ## Chemistry API
-We re-export the `MIST.MISTChemistry` **add interlink** type defined in BolometricCorrections.jl that can be used to access information on the chemical mixture assumed for the MIST models. All models have scaled-solar chemical compositions.
+We re-export the [`BolometricCorrections.MIST.MISTChemistry`](@extref) type defined in BolometricCorrections.jl that can be used to access information on the chemical mixture assumed for the MIST models. All models have scaled-solar chemical compositions.
 
 ## Library API
 

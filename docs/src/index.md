@@ -16,12 +16,12 @@ We currently support the following stellar track libraries:
  - [BaSTIv2](@ref BaSTIv2) (updated BaSTI tracks)
 
 ## Chemistry
-We include information on the chemical mixtures assumed in each supported library above. We use the interface defined in [BolometricCorrections.jl](https://cgarling.github.io/BolometricCorrections.jl/stable/) to provide this information.
+We include information on the chemical mixtures assumed in each supported library above. We use the interface defined in [BolometricCorrections.jl](@extref BolometricCorrections chemistry_api) to provide this information.
 
 ## Bolometric Corrections
 The core function of this package is to provide an interface to libraries of stellar evolutionary tracks. One of the most common uses of these tracks is to make predictions for stellar observations, which requires placing the theoretical tracks (which model only stellar interior evolution) into the observed space by applying model stellar atmospheres.
 
-For integrated stellar photometry, this is typically done by applying [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction) that integrate a stellar atmosphere over an observational bandpass to predict the stellar model's magnitude in that bandpass. An interface to these bolometric correction grids is provided by [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl). We take advantage of this interface to support the generation of isochrones in observational bandpasses.
+For integrated stellar photometry, this is typically done by applying [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction) that integrate a stellar atmosphere over an observational bandpass to predict the stellar model's magnitude in that bandpass. An interface to these bolometric correction grids is provided by [BolometricCorrections.jl](@extref BolometricCorrections overview). We take advantage of this interface to support the generation of isochrones in observational bandpasses.
 
 ## API
 Documentation for our generic API is available [here](@ref api).

@@ -75,7 +75,7 @@ The theoretical isochrone is plotted below.
 plot_hr(iso) # hide
 ```
 
-We can load a grid of bolometric corrections from [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[M/H\]) and reddening values (``A_V``).
+We can load a grid of bolometric corrections from [BolometricCorrections.jl](@extref BolometricCorrections overview) to add observational magnitudes to the theoretical isochrone. In this example, we use the MIST bolometric correction grid, which offers bolometric corrections for varying metallicities (\[M/H\]) and reddening values (``A_V``).
 
 Because the solar metallicity calibrations of BaSTIv2 and MIST are not exactly the same, the protostellar metal mass fraction ``Z`` that corresponds to a given \[M/H\] is not the same between the two libraries. The `isochrone` interface will convert the given \[M/H\], which is assumed to be the desired metallicity in the *stellar track* library, to its corresponding metal mass fraction, and then convert from the metal mass fraction to the correct \[M/H\] for the assumed chemical model of the bolometric correction grid. For non-solar-scaled BaSTIv2 models, we will try to use the same α-abundance for the bolometric corrections if they are available. If BCs with the correct α-abundance are not available in the bolometric correction grid you supply, we will instead match the metal mass fractions ``Z`` between the stellar tracks and the bolometric corrections, following the canonical wisdom that stellar tracks and isochrones with altered α abundances can be well approximated by scaled-solar models with the same total metallicity (see, e.g., section 3.2 of [Pietrinferni2021](@cite)). 
 
@@ -102,11 +102,13 @@ plot_cmd(iso) # hide
 
 ## Chemistry API
 
-We provide the [`StellarTracks.BaSTIv2.BaSTIv2Chemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to access information on the chemical mixture assumed for the BaSTIv2 models.
+We provide the [`StellarTracks.BaSTIv2.BaSTIv2Chemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](@extref BolometricCorrections chemistry_api) to access information on the chemical mixture assumed for the BaSTIv2 models.
 
 ```@docs
 StellarTracks.BaSTIv2.BaSTIv2Chemistry
 ```
+
+Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *photospheric* solar values for `Z⊙` and `X⊙` (these are defined in section 3 of [Hidalgo2018](@citet)). This reproduces the relation between `Z` and \[M/H\] defined in Table 2 of [Hidalgo2018](@citet).
 
 ## Library API
 ```@docs

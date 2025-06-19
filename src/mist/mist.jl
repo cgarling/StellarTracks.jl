@@ -403,7 +403,6 @@ Interpolates properties of the stellar tracks in the library at the requested lo
 """
 isochrone(p::MISTLibrary, logAge::Number, mh::Number)
 
-# export PARSECLibrary, PARSECChemistry, MH_canon, Z_canon # Unique module exports
 export MISTTrack, MISTTrackSet, MISTLibrary, MISTChemistry   # Unique module exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
 
