@@ -86,8 +86,8 @@ function custom_unpack(fname::AbstractString)
     fbasename = splitext(basename(fname))[1]
     @info "Unpacking $fbasename"
     out_dir = joinpath(fpath, fbasename)
+    isdir(out_dir) && @info "rm $out_dir"
     if isdir(out_dir)
-        @info "rm $out_dir"
         rm(out_dir; force=true, recursive=true)
     end
     # unpack_txz is imported from BolometricCorrections.MIST
