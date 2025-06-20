@@ -1,4 +1,5 @@
 using StellarTracks.MIST
+using StellarTracks: InterpolatedTrack
 using BolometricCorrections.MIST: MISTBCGrid
 using TypedTables: Table
 
@@ -52,7 +53,7 @@ bcg = MISTBCGrid("JWST")
         for vvcrit in (0.0, 0.4)
             tracklib = MISTLibrary(vvcrit)
             @test_throws "Not yet implemented." tracklib(-4)
-            @test_throws "Not yet implemented." tracklib(-4, 0)
+            @test tracklib(-2.05, 1.05) isa InterpolatedTrack
             @test chemistry(tracklib) == MISTChemistry()
             @test MH(tracklib) == MIST.feh_grid
             @test Z(tracklib) == Z.(chemistry(tracklib), MH(tracklib))

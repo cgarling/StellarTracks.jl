@@ -61,7 +61,7 @@ const eep_lengths = (PMS_BEG = 201,   # beginning of PMS; log(T_c) = 5
 const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[begin:end-1]) .+ 1)...))
 # Which columns to actually keep after reading track file; used in Track and track_table
 """Columns to save from the MIST tracks."""
-const select_columns = SVector(:star_age, :log_L, :log_Teff, :log_g, :log_surf_cell_z) # :star_mass,
+const select_columns = (:star_age, :log_L, :log_Teff, :log_g, :log_surf_cell_z) # :star_mass,
 """Data type to parse the MIST tracks as."""
 const track_type = Float64 # MIST track files have Float64 precision
 """Available [Fe/H] values in the MIST stellar track grid."""
@@ -153,10 +153,11 @@ function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     return MISTTrack(data, props)
 end
 # Make Track callable with logAge to get properties as a NamedTuple
+Base.keys(::MISTTrack) = select_columns[2:end]
 function (track::MISTTrack)(logAge::Number)
     # result = track.itp(logAge)
     result = track.itp(exp10(logAge))
-    return NamedTuple{Tuple(select_columns)[2:end]}(result)
+    return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::MISTTrack) = log10.(extrema(t.itp.t))
 mass(t::MISTTrack) = t.properties.M
@@ -344,8 +345,8 @@ interface for the MIST stellar evolution library. Instances can be constructed b
 We set `vvcrit=0` by default. If you construct an instance as `p = MISTLibrary(0.0)`, it is callable as
  - `p(mh::Number)` to interpolate the full library to a new metallicity
    (returning a [`MISTTrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` to interpolate the tracks to a specific metallicity
-   and initial stellar mass (returning a [`MISTTrack`](@ref)).
+ - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.MIST.MISTLibrary, ::Number, ::Number))).
@@ -357,6 +358,9 @@ Structure of interpolants for the MIST library of stellar tracks with vvcrit=0.0
 
 julia> isochrone(p, 10.05, -2) isa NamedTuple
 true
+
+julia> p(-2.05, 1.05)
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.0001327966689875739, Y=0.249199427865246, X=0.7506677754657665.
 ```
 """
 struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
@@ -366,10 +370,6 @@ struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
 end
 # Interpolation to get a TrackSet with metallicity MH
 function (ts::MISTLibrary)(mh::Number)
-    error("Not yet implemented.")
-end
-# Interpolation to get a Track with mass M and metallicity MH
-function (ts::MISTLibrary)(mh::Number, M::Number)
     error("Not yet implemented.")
 end
 chemistry(::MISTLibrary) = MISTChemistry()

@@ -37,6 +37,11 @@ Returns the minimum and maximum logarithmic age (`log10(age [yr])`) of the stell
 """
 function Base.extrema(t::AbstractTrack) end
 """
+    Base.keys(t::AbstractTrack)
+Returns a tuple of symbols that will be used to set the keys of the `NamedTuple`s returned by `t(logAge::Number)`.
+"""
+function Base.keys(t::AbstractTrack) end
+"""
     mass(t::AbstractTrack)
 Returns the initial stellar mass of the modeled star in solar masses. """
 function mass(t::AbstractTrack) end
@@ -170,6 +175,77 @@ Concrete instances can be called to interpolate tracks
 at other metallicities and initial stellar masses --
 specifics of this behavior depend on the library. """
 abstract type AbstractTrackLibrary end
+
+"""
+    InterpolatedTrack(track0, track1, track1_prefac, track2_prefac) <: AbstractTrack
+
+Type allowing for linear interpolation between two stellar tracks of identical mass but different metallicity (`track0` and `track1`). Simple linear interpolation between the two tracks is applied. The track can be evaluated at a particular logarithmic age by calling `(track::InterpolatedTrack)(logAge::Number)`.
+
+Tracks of this type are constructed from track libraries by calling them with the signature `(tracklib::AbstractTrackLibrary)(mh::Number, M::Number)` where `mh` is the logarithmic metallicity [M/H] and `M` is the initial stellar mass in solar masses.
+
+```jldoctest
+julia> using StellarTracks.PARSEC: PARSECLibrary
+
+julia> p = PARSECLibrary();
+
+julia> track = p(-2.05, 1.05)
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013856708164357998, Y=0.24874664940532557, X=0.7511147835130308.
+
+julia> track(9.0)
+(logTe = 3.8820487347062302, Mbol = 3.7411721770340987, logg = 4.521853108813156, C_O = 0.0)
+```
+"""
+struct InterpolatedTrack{A <: AbstractTrack, B <: Number} <: AbstractTrack
+    track0::A
+    track1::A
+    track0_prefac::B
+    track1_prefac::B
+end
+function (track::InterpolatedTrack)(logAge::Number)
+    # Just let it fail if logAge errors for one of the two tracks
+    result0 = track.track0(logAge)
+    result1 = track.track1(logAge)
+    result = values(result0) .* track.track0_prefac .+ values(result1) .* track.track1_prefac
+    return NamedTuple{keys(track.track0)}(result)
+end
+function Base.extrema(track::InterpolatedTrack)
+    ext0 = extrema(track.track0)
+    ext1 = extrema(track.track1)
+    return (max(ext0[1], ext1[1]), min(ext0[2], ext1[2]))
+end
+Base.keys(track::InterpolatedTrack) = keys(track.track0)
+Base.eltype(track::InterpolatedTrack) = promote_type(eltype(track.track0), eltype(track.track1))
+mass(track::InterpolatedTrack) = mass(track.track0) == mass(track.track1) ? mass(track.track0) : mass(track.track0) * track.track0_prefac + mass(track.track1) * track.track1_prefac
+chemistry(track::InterpolatedTrack) = chemistry(track.track0)
+MH(track::InterpolatedTrack) = MH(track.track0) * track.track0_prefac + MH(track.track1) * track.track1_prefac
+Z(track::InterpolatedTrack) = Z(chemistry(track), MH(track))
+Y(track::InterpolatedTrack) = Y(chemistry(track), Z(track))
+X(track::InterpolatedTrack) = X(chemistry(track), Z(track))
+post_rgb(track::InterpolatedTrack) = all(post_rgb, (track.track0, track.track1)) ? true : false
+function Base.show(io::IO, mime::MIME"text/plain", t::InterpolatedTrack{A}) where A
+    print(io, "InterpolatedTrack with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+end
+# function Base.show(io::IO, mime::MIME"text/plain", t::InterpolatedTrack{A}) where A
+#     print(io, "Interpolation between two `$(split(string(A), "{")[1])`s with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+# end
+
+function (tracklib::AbstractTrackLibrary)(mh::Number, M::Number)
+    ts = tracklib.ts # vector of tracksets that make up tracklib
+    # Assume that MH(tracklib) is sorted; we should write tests that verify this
+    mhvec = MH(tracklib)
+    idx = searchsortedfirst(mhvec, mh)
+    if mhvec[idx] == mh # Exact match
+        return ts[idx](M) # Assume a method (trackset)(M) exists
+    else
+        # Need to interpolate between two tracks with same mass, different metallicity
+        track0 = ts[idx-1](M)
+        track1 = ts[idx](M)
+        mh0 = mhvec[idx-1]
+        mh1 = mhvec[idx]
+        # return track1, track2
+        return InterpolatedTrack(track0, track1, ((mh1-mh)/(mh1-mh0)), ((mh-mh0)/(mh1-mh0)))
+    end
+end
 
 # This generic method was originally developed for MIST;
 # should work for PARSEC as well after refactoring

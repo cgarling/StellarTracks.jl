@@ -1,4 +1,5 @@
 using StellarTracks.PARSEC
+using StellarTracks: InterpolatedTrack
 using BolometricCorrections.MIST: MISTBCGrid
 using TypedTables: Table
 
@@ -46,6 +47,7 @@ bcg = MISTBCGrid("JWST")
 
     @testset "PARSECLibrary" begin
         tracklib = PARSECLibrary()
+        @test tracklib(-2.05, 1.05) isa InterpolatedTrack
         @test_throws "Not yet implemented." tracklib(0.0001234)
         @test chemistry(tracklib) == PARSECChemistry()
         @test Z(tracklib) == PARSEC.zgrid

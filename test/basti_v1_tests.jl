@@ -1,4 +1,5 @@
 using StellarTracks.BaSTIv1
+using StellarTracks: InterpolatedTrack
 using BolometricCorrections.MIST: MISTBCGrid
 using TypedTables: Table
 
@@ -75,6 +76,7 @@ bcg = MISTBCGrid("JWST")
                     for α_fe in BaSTIv1.αFegrid
                         tracklib = BaSTIv1Library(α_fe, canonical, agb, η)
                         @test_throws "Not yet implemented." tracklib(0.0001234)
+                        tracklib(-1.05, 1.51) isa InterpolatedTrack
                         @test chemistry(tracklib) == BaSTIv1Chemistry()
                         @test Z(tracklib) == zg # BaSTIv1.zgrid
                         @test MH(tracklib) == MH.(chemistry(tracklib), Z(tracklib))

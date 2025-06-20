@@ -312,9 +312,10 @@ function BaSTIv2Track(feh::Number, mass::Number, α_fe::Number, canonical::Bool,
     return BaSTIv2Track(data, props) # Method above
 end
 # Make Track callable with logAge to get log_L, log_Teff as a NamedTuple
+Base.keys(track::BaSTIv2Track) = columnnames(track.data)[2:end]
 function (track::BaSTIv2Track)(logAge::Number)
     result = track.itp(exp10(logAge))
-    return NamedTuple{columnnames(track.data)[2:end]}(result)
+    return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::BaSTIv2Track) = log10.(extrema(t.itp.t))
 mass(t::BaSTIv2Track) = t.properties.M
@@ -529,8 +530,8 @@ interface for the updated BaSTI stellar evolution models presented in
 If you construct an instance as `p = BaSTIv2Library(0.0, false)`, it is callable as
  - `p(mh::Number)` to interpolate the full library to a new metallicity
    (returning a [`BaSTIv2TrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` to interpolate the tracks to a specific metallicity
-   and initial stellar mass (returning a [`BaSTIv2Track`](@ref)).
+ - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.BaSTIv2.BaSTIv2Library, ::Number, ::Number))).
@@ -541,6 +542,9 @@ Structure of interpolants for the updated BaSTI library of non-canonical stellar
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
+
+julia> p(-2.05, 1.05)
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013941349859095735, Y=0.2471826256034804, X=0.7526779608979287.
 ```
 """
 struct BaSTIv2Library{A,B} <: AbstractTrackLibrary
@@ -554,10 +558,6 @@ struct BaSTIv2Library{A,B} <: AbstractTrackLibrary
 end
 # Interpolation to get a TrackSet with metallicity MH
 function (ts::BaSTIv2Library)(mh::Number)
-    error("Not yet implemented.")
-end
-# Interpolation to get a Track with mass M and metallicity MH
-function (ts::BaSTIv2Library)(mh::Number, M::Number)
     error("Not yet implemented.")
 end
 chemistry(p::BaSTIv2Library) = BaSTIv2Chemistry(p.properties.α_fe, p.properties.yp)

@@ -193,9 +193,10 @@ function BaSTIv1Track(zval::Number, mass::Number, α_fe::Number, canonical::Bool
     return BaSTIv1Track(data, props) # Method above
 end
 # Make Track callable with logAge to get log_L, log_Teff, and log_g as a NamedTuple
+Base.keys(track::BaSTIv1Track) = columnnames(track.data)[2:end]
 function (track::BaSTIv1Track)(logAge::Number)
     result = track.itp(exp10(logAge))
-    return NamedTuple{columnnames(track.data)[2:end]}(result)
+    return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::BaSTIv1Track) = log10.(extrema(t.itp.t))
 mass(t::BaSTIv1Track) = t.properties.M
@@ -400,8 +401,8 @@ interface for the older BaSTI stellar evolution models presented in
 If you construct an instance as `p = BaSTIv1Library(0.0, true, false, 0.4)`, it is callable as
  - `p(mh::Number)` to interpolate the full library to a new metallicity
    (returning a [`BaSTIv1TrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` to interpolate the tracks to a specific metallicity
-   and initial stellar mass (returning a [`BaSTIv1Track`](@ref)).
+ - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.BaSTIv1.BaSTIv1Library, ::Number, ::Number))).
@@ -413,6 +414,9 @@ Structure of interpolants for the older BaSTI library of canonical stellar track
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
+
+julia> p(-2.05, 1.05)
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.0001641003350386593, Y=0.24522974046905413, X=0.7546061591959072.
 ```
 """
 struct BaSTIv1Library{A,B} <: AbstractTrackLibrary
@@ -424,9 +428,9 @@ function (ts::BaSTIv1Library)(mh::Number)
     error("Not yet implemented.")
 end
 # Interpolation to get a Track with mass M and metallicity MH
-function (ts::BaSTIv1Library)(mh::Number, M::Number)
-    error("Not yet implemented.")
-end
+# function (ts::BaSTIv1Library)(mh::Number, M::Number)
+#     error("Not yet implemented.")
+# end
 chemistry(::BaSTIv1Library) = BaSTIv1Chemistry()
 Z(p::BaSTIv1Library) = p.properties.Z # Z.(chemistry(p), p.MH)
 MH(p::BaSTIv1Library) = MH.(chemistry(p), Z(p))

@@ -49,7 +49,8 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 const track_header = SVector{6, String}("logAge", "mass", "logTe", "Mbol", "logg", "C_O")
 const track_header_symbols = Tuple(Symbol.(i) for i in track_header)
 # Which columns to actually keep after reading track file; used in Track and track_table
-const select_columns = SVector(:logAge, :logTe, :Mbol, :logg, :C_O)
+# const select_columns = SVector(:logAge, :logTe, :Mbol, :logg, :C_O)
+const select_columns = (:logAge, :logTe, :Mbol, :logg, :C_O)
 # Matrix columns to keep when reading track in track_matrix
 const keepcols = SVector(1,2,3,4,5,6)
 const track_type = Float64 # Float type to use to represent values
@@ -163,7 +164,7 @@ function PARSECTrack(filename::AbstractString) # Constructor from filename, raw 
     # Load data file into table
     data = CSV.read(filename, Table;
                     skipto = 2, header = Vector(track_header), types = track_type,
-                    select = select_columns)
+                    select = SVector(select_columns))
     # Construct interpolator as a function of proper age
     # itp = interpolate((exp10.(data.logAge),), [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
     itp = CubicSpline([SVector(values(i)[2:end]) for i in data], exp10.(data.logAge))
@@ -181,9 +182,10 @@ function PARSECTrack(zval::Number, mass::Number)
     return PARSECTrack(data, zval, mass) # Method above
 end
 # Make Track callable with logAge to get logTe, Mbol, and logg as a NamedTuple
+Base.keys(::PARSECTrack) = select_columns[2:end]
 function (track::PARSECTrack)(logAge::Number)
     result = track.itp(exp10(logAge))
-    return NamedTuple{Tuple(select_columns)[2:end]}(result)
+    return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::PARSECTrack) = log10.(extrema(t.itp.t))
 mass(t::PARSECTrack) = t.properties.M
@@ -409,8 +411,8 @@ interface for the PARSEC stellar evolution library. If you construct an instance
 `p = PARSECLibrary()`, it is callable as
  - `p(Z::Number)` to interpolate the full library to a new metal mass fraction
    (returning a [`PARSECTrackSet`](@ref)), or
- - `p(Z::Number, M::Number)` to interpolate the tracks to a specific metallicity
-   and initial stellar mass (returning a [`PARSECTrack`](@ref)).
+ - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number))).
@@ -422,6 +424,9 @@ Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid rang
 
 julia> isochrone(p, 10.05, -0.76) isa NamedTuple
 true
+
+julia> p(-2.05, 1.05)
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013856708164357998, Y=0.24874664940532557, X=0.7511147835130308.
 ```
 """
 struct PARSECLibrary{A} <: AbstractTrackLibrary
@@ -429,10 +434,6 @@ struct PARSECLibrary{A} <: AbstractTrackLibrary
 end
 # Interpolation to get a TrackSet with metallicity Z
 function (ts::PARSECLibrary)(Z::Number)
-    error("Not yet implemented.")
-end
-# Interpolation to get a Track with mass M and metallicity Z
-function (ts::PARSECLibrary)(Z::Number, M::Number)
     error("Not yet implemented.")
 end
 chemistry(::PARSECLibrary) = PARSECChemistry()

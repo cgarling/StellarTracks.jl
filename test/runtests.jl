@@ -11,4 +11,5 @@ doctest(StellarTracks)
     @safetestset "MIST Tracks" include("mist_tests.jl")
     @safetestset "BaSTIv1 Tracks" include("basti_v1_tests.jl")
     @safetestset "BaSTIv2 Tracks" include("basti_v2_tests.jl")
+    @safetestset "InterpolatedTrack" include("interpolated_track_tests.jl")
 end
