@@ -86,9 +86,8 @@ function custom_unpack(fname::AbstractString)
     fbasename = splitext(basename(fname))[1]
     @info "Unpacking $fbasename"
     out_dir = joinpath(fpath, fbasename)
-    @info "isdir(out_dir) $(isdir(out_dir))"
+    @info "isdir(out_dir) $(isdir(out_dir)) $out_dir"
     if isdir(out_dir)
-        @info "rm $out_dir"
         rm(out_dir; force=true, recursive=true)
     end
     # unpack_txz is imported from BolometricCorrections.MIST
@@ -98,8 +97,8 @@ function custom_unpack(fname::AbstractString)
     # Now repack the .track.eep files, which are basic CSV, into JLD2
     feh = string(mist_feh(fname))
     save_dir = joinpath(fpath, feh)
+    @info "isdir(save_dir) $(isdir(save_dir)) $save_dir"
     if isdir(save_dir)
-        @info "rm $save_dir"
         Base.Sys.iswindows() && GC.gc() 
         rm(save_dir; force=true, recursive=true)
     end
@@ -121,9 +120,9 @@ function custom_unpack(fname::AbstractString)
 
     Base.Sys.iswindows() && GC.gc()
     # Remove temporary directory where .track.eep files were extracted
-    @info "rm $out_dir"
+    @info "isdir(out_dir) $(isdir(out_dir)) $out_dir"
     rm(out_dir; force=true, recursive=true)
-    @info "rm $fname"
+    @info "isfile(fname) $(isfile(fname)) $fname"
     rm(fname) # Remove original .txz file
 end
 
