@@ -87,9 +87,11 @@ function custom_unpack(fname::AbstractString)
     @info "Unpacking $fbasename"
     out_dir = joinpath(fpath, fbasename)
     @info "isdir(out_dir) $(isdir(out_dir)) $out_dir"
-    if isdir(out_dir)
-        rm(out_dir; force=true, recursive=true)
-    end
+    # if isdir(out_dir)
+    #     rm(out_dir; force=true, recursive=true)
+    # end
+    # If out_dir exists, this will remove it
+    rm(out_dir; force=true, recursive=true)
     # unpack_txz is imported from BolometricCorrections.MIST
     # It extracts the .txz, which is an Xz compressed tarball, into the out_dir
     unpack_txz(fname, out_dir)
@@ -98,11 +100,14 @@ function custom_unpack(fname::AbstractString)
     feh = string(mist_feh(fname))
     save_dir = joinpath(fpath, feh)
     @info "isdir(save_dir) $(isdir(save_dir)) $save_dir"
-    if isdir(save_dir)
-        Base.Sys.iswindows() && GC.gc() 
-        rm(save_dir; force=true, recursive=true)
-    end
-    mkdir(save_dir)
+    # if isdir(save_dir)
+    #     Base.Sys.iswindows() && GC.gc() 
+    #     rm(save_dir; force=true, recursive=true)
+    # end
+    # mkdir(save_dir)
+    # Clear save_dir; force=true does not error if non-existing
+    rm(save_dir; force=true, recursive=true)
+    mkpath(save_dir)
     files = filter(Base.Fix1(occursin, ".eep"), readdir(joinpath(out_dir, fbasename); join=true))
     for track in files
         data = read(track, String)
