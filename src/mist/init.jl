@@ -57,14 +57,14 @@ function read_mist_track(data::AbstractString; select = nothing)
     header = parse_mist_header(data)
     # This works but is kind of slow; ~4--5 ms compared to the 100 μs to do read(filename, String)
     tdata = Table(CSV.File(IOBuffer(data); comment="#", delim=' ', ignorerepeated=true,
-                           header=header.colnames, select = select, ntasks=1))
+                           header=header.colnames, select=select, ntasks=1))
 end
 """
     track_table(filename::AbstractString; select = select_columns))
 Given the path to a MIST ".eep" track, read the file as a `TypedTables.Table`.
 `select` is passed through to `CSV.read` and can be used to select only certain columns.
 """
-function track_table(filename::AbstractString; select = select_columns)
+function track_table(filename::AbstractString; select = SVector(select_columns))
     result = read_mist_track(read(filename, String); select = select)
     if :Mbol in select
         @argcheck :log_L in select
@@ -104,7 +104,7 @@ function custom_unpack(fname::AbstractString)
     for track in files
         data = read(track, String)
         header = parse_mist_header(data)
-        tdata = read_mist_track(data; select = select_columns)
+        tdata = read_mist_track(data; select = SVector(select_columns))
         JLD2.save_object(joinpath(save_dir, splitext(basename(track))[1]) * ".jld2", tdata)
         # This takes up much more space because of multiple objects I guess?
         # JLD2.jldsave(joinpath(save_dir, splitext(basename(track))[1]) * ".jld2";

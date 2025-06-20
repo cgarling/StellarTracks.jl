@@ -49,7 +49,6 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 const track_header = SVector{6, String}("logAge", "mass", "logTe", "Mbol", "logg", "C_O")
 const track_header_symbols = Tuple(Symbol.(i) for i in track_header)
 # Which columns to actually keep after reading track file; used in Track and track_table
-# const select_columns = SVector(:logAge, :logTe, :Mbol, :logg, :C_O)
 const select_columns = (:logAge, :logTe, :Mbol, :logg, :C_O)
 # Matrix columns to keep when reading track in track_matrix
 const keepcols = SVector(1,2,3,4,5,6)

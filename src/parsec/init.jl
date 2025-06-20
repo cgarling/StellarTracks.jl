@@ -27,7 +27,7 @@ track_matrix(filename::AbstractString) = readdlm(filename, ' ', track_type, '\n'
 Given the path to a PARSEC v1.2S ".dat" track, read the file as a `TypedTables.Table`.
 `select` is passed through to `CSV.read` and can be used to select only certain columns.
 """
-function track_table(filename::AbstractString, select = select_columns)
+function track_table(filename::AbstractString, select = SVector(select_columns))
     return CSV.read(filename, Table;
                     skipto = 2, header = Vector(track_header), types = track_type,
                     select = select) # utility
