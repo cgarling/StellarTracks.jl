@@ -86,8 +86,9 @@ function custom_unpack(fname::AbstractString)
     fbasename = splitext(basename(fname))[1]
     @info "Unpacking $fbasename"
     out_dir = joinpath(fpath, fbasename)
-    isdir(out_dir) && @info "rm $out_dir"
+    @info "isdir(out_dir) $(isdir(out_dir))"
     if isdir(out_dir)
+        @info "rm $out_dir"
         rm(out_dir; force=true, recursive=true)
     end
     # unpack_txz is imported from BolometricCorrections.MIST
@@ -118,7 +119,7 @@ function custom_unpack(fname::AbstractString)
         # push!(alldata, tdata)
     end
 
-    Base.Sys.iswindows() && GC.gc() 
+    Base.Sys.iswindows() && GC.gc()
     # Remove temporary directory where .track.eep files were extracted
     @info "rm $out_dir"
     rm(out_dir; force=true, recursive=true)
