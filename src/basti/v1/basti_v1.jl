@@ -182,7 +182,8 @@ end
 function BaSTIv1Track(data::Table, props)
     # Construct interpolator as a function of proper age
     itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
-                      deduplicate_knots!(data.star_age; move_knots=true))
+                      deduplicate_knots!(data.star_age; move_knots=true);
+                      cache_parameters=true)
     return BaSTIv1Track(data, itp, props)
 end
 # Constructor taking Z value, α_fe, canonical, initial stellar mass, loads Table, calls above method

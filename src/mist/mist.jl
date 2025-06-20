@@ -128,7 +128,8 @@ function MISTTrack(data::Table, props)
     # itp = interpolate(deduplicate_knots!(data.star_age; move_knots=true),
     #                   [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
     itp = CubicSpline([SVector(values(i)[2:end]) for i in data],
-                      deduplicate_knots!(data.star_age; move_knots=true))
+                      deduplicate_knots!(data.star_age; move_knots=true);
+                      cache_parameters=true)
     return MISTTrack(data, itp, props)
 end
 # Given feh, mass, vvcrit, load the data table and call to function above

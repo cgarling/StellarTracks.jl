@@ -166,7 +166,8 @@ function PARSECTrack(filename::AbstractString) # Constructor from filename, raw 
                     select = SVector(select_columns))
     # Construct interpolator as a function of proper age
     # itp = interpolate((exp10.(data.logAge),), [SVector(values(i)[2:end]) for i in data], Gridded(Linear()))
-    itp = CubicSpline([SVector(values(i)[2:end]) for i in data], exp10.(data.logAge))
+    itp = CubicSpline([SVector(values(i)[2:end]) for i in data], exp10.(data.logAge);
+                      cache_parameters=true)
     return PARSECTrack(data, itp, (M = props.M, Z = props.Z, HB = props.HB))
 end
 # Constructor taking a subtable from one of the .jld2 reprocessed files
