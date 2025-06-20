@@ -57,7 +57,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           ignore:
-	          - "**/init.jl"
+            - "**/init.jl"
 
   Aqua:
     name: Aqua Tests
