@@ -97,6 +97,7 @@ function custom_unpack(fname::AbstractString)
     feh = string(mist_feh(fname))
     save_dir = joinpath(fpath, feh)
     if isdir(save_dir)
+        println("rm $save_dir")
         rm(save_dir; force=true, recursive=true)
     end
     mkdir(save_dir)
@@ -114,8 +115,12 @@ function custom_unpack(fname::AbstractString)
         # tdata = Table(tdata, m_ini = fill(header.M_ini, length(tdata)))
         # push!(alldata, tdata)
     end
+
+     Base.Sys.iswindows() && GC.gc() 
     # Remove temporary directory where .track.eep files were extracted
+    println("rm $out_dir")
     rm(out_dir; force=true, recursive=true)
+    println("rm $fname")
     rm(fname) # Remove original .txz file
 end
 
