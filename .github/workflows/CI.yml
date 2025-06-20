@@ -56,8 +56,7 @@ jobs:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-          gcov_ignore:
-            - "**/init.jl"
+          gcov_ignore: "**/init.jl"
 
   Aqua:
     name: Aqua Tests
