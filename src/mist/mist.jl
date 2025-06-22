@@ -344,10 +344,8 @@ end
 interface for the MIST stellar evolution library. Instances can be constructed by providing a supported
 `vvcrit` argument for the rotation parameter, which must be equal to either `0` (no rotation) or `0.4`.
 We set `vvcrit=0` by default. If you construct an instance as `p = MISTLibrary(0.0)`, it is callable as
- - `p(mh::Number)` to interpolate the full library to a new metallicity
-   (returning a [`MISTTrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
-    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
+`p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.MIST.MISTLibrary, ::Number, ::Number))).
@@ -368,10 +366,6 @@ struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
     ts::A  # Vector of `TrackSet`s
     MH::B  # Vector of MH for each TrackSet
     vvcrit::C
-end
-# Interpolation to get a TrackSet with metallicity MH
-function (ts::MISTLibrary)(mh::Number)
-    error("Not yet implemented.")
 end
 chemistry(::MISTLibrary) = MISTChemistry()
 MH(p::MISTLibrary) = p.MH # MH.(chemistry(tl), Z(tl))

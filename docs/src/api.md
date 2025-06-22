@@ -4,6 +4,9 @@ CurrentModule = StellarTracks
 
 # [API](@id api)
 
+## [Chemistry](@id chemistry_api)
+We utilize the [chemistry API from BolometricCorrections.jl](@extref BolometricCorrections chemistry_api) to describe the chemistry of the stellar track libraries.
+
 ## Individual Tracks
 An individual stellar track, containing the time evolution of properties for a single star, is represented by our [`AbstractTrack`](@ref StellarTracks.AbstractTrack) type. Different concrete implementations are used for different stellar evolution libraries, but all support the common access API defined below.
 

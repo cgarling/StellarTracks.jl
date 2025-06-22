@@ -80,8 +80,7 @@ param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30
                                     convert(track_type, p.yp))
             
             tracklib = BaSTIv2Library(vp...)
-            @test_throws "Not yet implemented." tracklib(-1.0)
-            @test tracklib(-2.05, 1.05) isa InterpolatedTrack
+            @test tracklib(-2.025, 1.025) isa InterpolatedTrack
             @test chemistry(tracklib) == chem
             # @test Z(tracklib) == BaSTIv1.zgrid
             @test MH(tracklib) ≈ MH.(chemistry(tracklib), Z(tracklib))

@@ -76,12 +76,12 @@ isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number) =
     _apply_bc(isochrone(ts, logAge), bc)
 # This generic fallback will work as long as isochrone(tl, logAge, mh) works
 """
-    isochrone(tl::AbstractTrackLibrary,
+    isochrone(tracklib::AbstractTrackLibrary,
               bc::BolometricCorrections.AbstractBCTable,
               logAge::Number,
               mh::Number)
 Returns an isochrone as a `TypedTables.Table` calculated using the stellar
-evolutionary tracks contained in `tl` with bolometric corrections interpolated
+evolutionary tracks contained in `tracklib` with bolometric corrections interpolated
 from the provided table `bc` at the logarithmic age `logAge` and metallicity
 [M/H] = `mh`. Column names can be retrieved with `TypedTables.columnnames`.
 The result can be converted to a matrix with `Tables.matrix`.
@@ -98,8 +98,8 @@ Table with 36 columns and 1465 rows:
 ...
 ```
 """
-isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
-    _apply_bc(isochrone(tl, logAge, mh), bc)
+isochrone(tracklib::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
+    _apply_bc(isochrone(tracklib, logAge, mh), bc)
 
 # Not sure how to handle the fact that AbstractTrackLibrary and AbstractBCGrid can
 # have different dependent variables (Z, Av, α-abundance, etc.). Going to define

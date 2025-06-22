@@ -408,11 +408,9 @@ end
     PARSECLibrary()
 `PARSECLibrary` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
 interface for the PARSEC stellar evolution library. If you construct an instance as
-`p = PARSECLibrary()`, it is callable as
- - `p(Z::Number)` to interpolate the full library to a new metal mass fraction
-   (returning a [`PARSECTrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
-    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
+`p = PARSECLibrary()`, it is callable as `p(mh::Number, M::Number)` which returns 
+an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.PARSEC.PARSECLibrary, ::Number, ::Number))).
@@ -431,10 +429,6 @@ InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013856708164357998, Y=0.24874
 """
 struct PARSECLibrary{A} <: AbstractTrackLibrary
     ts::A # Vector of `TrackSet`s
-end
-# Interpolation to get a TrackSet with metallicity Z
-function (ts::PARSECLibrary)(Z::Number)
-    error("Not yet implemented.")
 end
 chemistry(::PARSECLibrary) = PARSECChemistry()
 Z(p::PARSECLibrary) = zgrid

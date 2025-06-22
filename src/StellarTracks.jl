@@ -88,8 +88,6 @@ function _generic_trackset_interp(ts::AbstractTrackSet, M::Number)
     m_min, m_max = extrema(mass(ts))
     @argcheck m_min <= M <= m_max "Requested mass $M is outside the valid range $(extrema(mass(ts))) for the track set."
     interps = ts.interps
-    interp_keys = keys(interps)
-    interp_length = length(first(interps))
     results = Vector{Vector{eltype(ts)}}(undef, length(interps)) # +1 for age column
     # Find EEP points where the requested mass is valid
     good_idx = findall(ii -> begin
@@ -168,20 +166,36 @@ track sets, with one track set constructed for each unique
 set of stellar chemical compositions (i.e., [M/H]).
 For more details, see the documentation for
 [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet).
-Subtypes of `AbstractTrackLibrary` are guaranteed to support
-the generic API described in the documentation.
 
-Concrete instances can be called to interpolate tracks
-at other metallicities and initial stellar masses --
-specifics of this behavior depend on the library. """
+Concrete subtypes must implement an isochrone interpolation method.
+A generic method for the call signature
+[`isochrone(tracklib::AbstractTrackLibrary, logAge::Number, mh::Number)`](@ref isochrone(::AbstractTrackLibrary, ::Number, ::Number))
+is provided. This generic method should work as long as the concrete
+subtype follows the [chemistry API](@ref chemistry_api) and has a field `tracklib.ts`
+containing the individual tracksets that make up the library. The tracksets must support
+isochrone interpolation via a method `isochrone(ts::<your_type_here>, logAge::Number)`.
+
+Concrete instances must support interpolation of stellar tracks
+at user-provided metallicities and initial stellar masses. A generic method
+is implemented via the signature
+`(tracklib::AbstractTrackLibrary)(mh::Number, M::Number)`. This method
+interpolates the `tracklib` at logarithmic metallicity [M/H] = `mh` and stellar
+initial mass `M`, returning an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+that can be called to evaluate the track."""
 abstract type AbstractTrackLibrary end
 
 """
     InterpolatedTrack(track0, track1, track1_prefac, track2_prefac) <: AbstractTrack
 
-Type allowing for linear interpolation between two stellar tracks of identical mass but different metallicity (`track0` and `track1`). Simple linear interpolation between the two tracks is applied. The track can be evaluated at a particular logarithmic age by calling `(track::InterpolatedTrack)(logAge::Number)`.
+Type allowing for linear interpolation between two stellar tracks of identical 
+mass but different metallicity (`track0` and `track1`). Simple linear 
+interpolation between the two tracks is applied. The track can be evaluated 
+at a particular logarithmic age by calling `(track::InterpolatedTrack)(logAge::Number)`. 
 
-Tracks of this type are constructed from track libraries by calling them with the signature `(tracklib::AbstractTrackLibrary)(mh::Number, M::Number)` where `mh` is the logarithmic metallicity [M/H] and `M` is the initial stellar mass in solar masses.
+The constructor for this type is considered internal and users should not construct this type directly.
+Rather, tracks of this type are constructed from track libraries by calling them with 
+the signature `(tracklib::AbstractTrackLibrary)(mh::Number, M::Number)` where 
+`mh` is the logarithmic metallicity [M/H] and `M` is the initial stellar mass in solar masses.
 
 ```jldoctest
 julia> using StellarTracks.PARSEC: PARSECLibrary
@@ -229,12 +243,23 @@ end
 #     print(io, "Interpolation between two `$(split(string(A), "{")[1])`s with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
 # end
 
+# Make AbstractTrackLibrary callable to construct interpolated track
 function (tracklib::AbstractTrackLibrary)(mh::Number, M::Number)
     ts = tracklib.ts # vector of tracksets that make up tracklib
-    # Assume that MH(tracklib) is sorted; we should write tests that verify this
     mhvec = MH(tracklib)
+    min_mh, max_mh = extrema(mhvec)
+    if mh < min_mh || mh > max_mh
+        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for the stellar track library of $(extrema(mhvec))."))
+    end
+
+    if !issorted(mhvec)
+        idxs = sortperm(mhvec)
+        ts = view(ts, idxs)
+        mhvec = view(mhvec, idxs)
+    end
+    
     idx = searchsortedfirst(mhvec, mh)
-    if mhvec[idx] == mh # Exact match
+    if mhvec[idx] ≈ mh # Requested mh matched in grid
         return ts[idx](M) # Assume a method (trackset)(M) exists
     else
         # Need to interpolate between two tracks with same mass, different metallicity
@@ -242,7 +267,6 @@ function (tracklib::AbstractTrackLibrary)(mh::Number, M::Number)
         track1 = ts[idx](M)
         mh0 = mhvec[idx-1]
         mh1 = mhvec[idx]
-        # return track1, track2
         return InterpolatedTrack(track0, track1, ((mh1-mh)/(mh1-mh0)), ((mh-mh0)/(mh1-mh0)))
     end
 end
@@ -250,7 +274,7 @@ end
 # This generic method was originally developed for MIST;
 # should work for PARSEC as well after refactoring
 """
-    isochrone(tl::AbstractTrackLibrary, logAge::Number, mh::Number)
+    isochrone(tracklib::AbstractTrackLibrary, logAge::Number, mh::Number)
 Interpolates properties of the stellar tracks in the track library
 at the requested logarithmic age (`logAge = log10(age [yr])`) and
 metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the
@@ -267,18 +291,28 @@ julia> isochrone(p, 10.0, -1.65) isa NamedTuple
 true
 ```
 """
-function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
-    mh_vec = MH(p)
-    idx = findfirst(Base.Fix1(≈, mh), mh_vec) # Will be === nothing if no entry in MH(p) is ≈ mh
-    # If input mh is represented in base grid, no mh interpolation needed
-    if !isnothing(idx) # idx !== nothing
-        return isochrone(p.ts[idx], logAge)
-    end
-    # Check mh is in valid range
-    min_mh, max_mh = extrema(mh_vec)
+function isochrone(tracklib::AbstractTrackLibrary, logAge::Number, mh::Number)
+    ts = tracklib.ts
+    mhvec = MH(tracklib)
+    min_mh, max_mh = extrema(mhvec)
     if mh < min_mh || mh > max_mh
-        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for the stellar track library of $(extrema(mh_vec))."))
+        throw(DomainError(mh, "Requested metallicity [M/H]=$mh is outside the valid range for the stellar track library of $(extrema(mhvec))."))
     end
+
+    if !issorted(mhvec)
+        idxs = sortperm(mhvec)
+        ts = view(ts, idxs)
+        mhvec = view(mhvec, idxs)
+    end
+
+    # searchsortedfirst returns the index of the first value in mhvec greater than or
+    # equivalent to mh. If mh is greater than all values in mhvec, returns lastindex(mhvec) + 1.
+    # We have already checked bounds so we know min_mh < mh < max_mh
+    idx = searchsortedfirst(mhvec, mh)
+    if mhvec[idx] ≈ mh # Requested mh matched in grid
+        return isochrone(ts[idx], logAge)
+    end
+
     # mh is valid, so need to interpolate isochrone as a function of [M/H]
     # According to Marigo2017, the interpolations (at least for BCs) in Z or [M/H]
     # are linear, so the BCs overall are computed by a
@@ -288,19 +322,12 @@ function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
     # Most pre-computed grid seems more uniform in [M/H] than they are in Z, so I think it might
     # be a good idea to do linear interpolation in [M/H].
     
-    # searchsortedfirst returns the index of the first value in mh_vec greater than or
-    # equivalent to mh. If mh is greater than all values in mh_vec, returns lastindex(mh_vec) + 1.
-    # We have already checked bounds so we know min_mh < mh < max_mh
-    idx = searchsortedfirst(mh_vec, mh)
     # Evaluate isochrones on either side of intermediate point
-    y0 = isochrone(p.ts[idx-1], logAge)
-    y1 = isochrone(p.ts[idx], logAge)
+    y0 = isochrone(ts[idx-1], logAge)
+    y1 = isochrone(ts[idx], logAge)
     if length(first(y0)) == 0 || length(first(y1)) == 0
         throw(DomainError(logAge, "No valid EEPs were found for the requested logarithmic age $logAge."))
     end
-    # Get intersection of valid EEPs from each isochrone
-    min_eep = max(first(y0.eep), first(y1.eep))
-    max_eep = min(last(y0.eep), last(y1.eep))
     # Get indices into y0 and y1 that correspond to the overlapping EEP points
     y0_idxs = Vector{Int}(undef, 0)
     y1_idxs = similar(y0_idxs)
@@ -318,11 +345,11 @@ function isochrone(p::AbstractTrackLibrary, logAge::Number, mh::Number)
     # Perform linear interpolation in _interp_kernel to establish a function
     # barrier to improve performance since some of the types of the variables
     # aren't known at runtime
-    result = NamedTuple{goodkeys}(_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, mh, mh_vec))
+    result = NamedTuple{goodkeys}(_interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, mh, mhvec))
     # Concatenate interpolated result with valid EEP points
     return (eep = good_eeps, result...)
 end
-# This does linear interpolation for isochrone
+# This does linear interpolation for isochrone; function barrier for type stability
 _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
     ((y0[key][y0_idxs] .* (xvec[idx] - x) .+ y1[key][y1_idxs] .* (x - xvec[idx-1])) ./ (xvec[idx] - xvec[idx-1]) for key in goodkeys)
 
@@ -366,8 +393,8 @@ julia> isapprox(StellarTracks.radius(5772, 0.0), 1.0; rtol=0.001) # For solar Te
 true
 ```
 """
-radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / Teff^4) * 11810222860206199 // 100000000
-# radius(Teff::T, logl::T) where T = sqrt(exp10(logl) / 4 / π / Teff^4) * 1.1810222860206199e8
+radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / (Teff^2)^2) * 11810222860206199 // 100000000
+# radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / Teff^4) * 1.1810222860206199e8
 # radius(Teff, logl) = sqrt(exp10(logl) * 3.828e26 / 4 / π / 5.6703744191844294e-8 / Teff^4) / 6.957e8
 # radius(Teff, logl) = sqrt(exp10(logl) * UnitfulAstro.Lsun / 4 / π / PhysicalConstants.CODATA2022.StefanBoltzmannConstant / (Teff * UnitfulAstro.K)^4) |> UnitfulAstro.m
 """

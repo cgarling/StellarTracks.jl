@@ -170,7 +170,7 @@ and call it with the masses you want, e.g.,
 julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(1e-4, 1.2, 0.0, true, true, 0.4)
 Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.2651979978981727, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = 0.703673172754993, log_Teff = 3.9489346126913416, log_g = 4.5638088647090145)
+(log_L = 0.703673172754993, log_Teff = 3.9489346126913416, log_g = 4.563808864709015)
 ```
 """
 struct BaSTIv1Track{A,B,C} <: AbstractTrack
@@ -400,10 +400,8 @@ interface for the older BaSTI stellar evolution models presented in
  - `η::Number = 0.4`: Reimers mass loss parameter used to calculate the stellar model.
 
 If you construct an instance as `p = BaSTIv1Library(0.0, true, false, 0.4)`, it is callable as
- - `p(mh::Number)` to interpolate the full library to a new metallicity
-   (returning a [`BaSTIv1TrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
-    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
+`p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.BaSTIv1.BaSTIv1Library, ::Number, ::Number))).
@@ -424,14 +422,6 @@ struct BaSTIv1Library{A,B} <: AbstractTrackLibrary
     ts::A   # Vector of `TrackSet`s
     properties::B
 end
-# Interpolation to get a TrackSet with metallicity MH
-function (ts::BaSTIv1Library)(mh::Number)
-    error("Not yet implemented.")
-end
-# Interpolation to get a Track with mass M and metallicity MH
-# function (ts::BaSTIv1Library)(mh::Number, M::Number)
-#     error("Not yet implemented.")
-# end
 chemistry(::BaSTIv1Library) = BaSTIv1Chemistry()
 Z(p::BaSTIv1Library) = p.properties.Z # Z.(chemistry(p), p.MH)
 MH(p::BaSTIv1Library) = MH.(chemistry(p), Z(p))

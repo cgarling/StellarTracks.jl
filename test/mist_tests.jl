@@ -52,7 +52,6 @@ bcg = MISTBCGrid("JWST")
     @testset "MISTLibrary" begin
         for vvcrit in (0.0, 0.4)
             tracklib = MISTLibrary(vvcrit)
-            @test_throws "Not yet implemented." tracklib(-4)
             @test tracklib(-2.05, 1.05) isa InterpolatedTrack
             @test chemistry(tracklib) == MISTChemistry()
             @test MH(tracklib) == MIST.feh_grid

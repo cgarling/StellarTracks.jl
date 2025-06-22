@@ -529,10 +529,8 @@ interface for the updated BaSTI stellar evolution models presented in
  - `η::Number = 0.3`: Reimers mass loss parameter used to calculate the stellar model.
 
 If you construct an instance as `p = BaSTIv2Library(0.0, false)`, it is callable as
- - `p(mh::Number)` to interpolate the full library to a new metallicity
-   (returning a [`BaSTIv2TrackSet`](@ref)), or
- - `p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
-    that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
+`p(mh::Number, M::Number)` which returns an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
+that interpolates between tracks to a specific metallicity ([M/H]) and initial stellar mass (`M`).
 
 This type also supports isochrone construction
 (see [isochrone](@ref StellarTracks.isochrone(::StellarTracks.BaSTIv2.BaSTIv2Library, ::Number, ::Number))).
@@ -556,10 +554,6 @@ struct BaSTIv2Library{A,B} <: AbstractTrackLibrary
     # canonical::Bool
     # diffusion::Bool
     # yp::D
-end
-# Interpolation to get a TrackSet with metallicity MH
-function (ts::BaSTIv2Library)(mh::Number)
-    error("Not yet implemented.")
 end
 chemistry(p::BaSTIv2Library) = BaSTIv2Chemistry(p.properties.α_fe, p.properties.yp)
 Z(p::BaSTIv2Library) = Z.(chemistry(p), MH(p))
