@@ -46,6 +46,12 @@ function Base.keys(t::AbstractTrack) end
 Returns the initial stellar mass of the modeled star in solar masses. """
 function mass(t::AbstractTrack) end
 """
+    chemistry(t::AbstractTrack)
+Returns an instance of [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
+valid for the provided track `t` that can be used in other methods.
+"""
+function chemistry(t::AbstractTrack) end
+"""
     X(t::AbstractTrack)
 Returns the hydrogen mass fraction of the modeled star. """
 function X(t::AbstractTrack) end
@@ -112,6 +118,12 @@ end
     mass(ts::AbstractTrackSet)
 Returns the initial stellar masses (in solar masses) of the individual tracks contained in the track set. """
 function mass(ts::AbstractTrackSet) end
+"""
+    chemistry(ts::AbstractTrack)
+Returns an instance of [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
+valid for the provided track set `ts` that can be used in other methods.
+"""
+function chemistry(ts::AbstractTrackSet) end
 """
     X(ts::AbstractTrackSet)
 Returns the common hydrogen mass fraction of the tracks contained in the track set. """
@@ -183,6 +195,40 @@ interpolates the `tracklib` at logarithmic metallicity [M/H] = `mh` and stellar
 initial mass `M`, returning an [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
 that can be called to evaluate the track."""
 abstract type AbstractTrackLibrary end
+
+"""
+    chemistry(tl::AbstractTrackLibrary)
+Returns an instance of [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
+valid for the provided track library `tl` that can be used in other methods.
+"""
+function chemistry(tl::AbstractTrackLibrary) end
+"""
+    X(tl::AbstractTrackLibrary)
+Returns the hydrogen mass fractions of the track sets 
+contained in the track library. """
+function X(tl::AbstractTrackLibrary) end
+"""
+    Y(tl::AbstractTrackLibrary)
+Returns the helium mass fractions of the track sets
+contained in the track library. """
+function Y(tl::AbstractTrackLibrary) end
+"""
+    Z(tl::AbstractTrackLibrary)
+Returns the metal mass fractions of the track sets
+contained in the track library. """
+function Z(tl::AbstractTrackLibrary) end
+"""
+    MH(tl::AbstractTrackLibrary)
+Returns the logarithmic metal abundances of the track sets 
+contained in the track library, 
+defined as [M/H] = log(Z/X) - log(Z⊙/X⊙). """
+function MH(tl::AbstractTrackLibrary) end
+"""
+    post_rgb(tl::AbstractTrackLibrary)
+Returns `true` if any of the track sets
+in the track library include post-RGB evolution, 
+`false` otherwise. """
+function post_rgb(tl::AbstractTrackLibrary) end
 
 """
     InterpolatedTrack(track0, track1, track1_prefac, track2_prefac) <: AbstractTrack
