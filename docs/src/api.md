@@ -16,6 +16,7 @@ StellarTracks.AbstractTrack
 Base.extrema(::StellarTracks.AbstractTrack)
 Base.keys(::StellarTracks.AbstractTrack)
 mass(::StellarTracks.AbstractTrack)
+chemistry(::StellarTracks.AbstractTrack)
 X(::StellarTracks.AbstractTrack)
 Y(::StellarTracks.AbstractTrack)
 Z(::StellarTracks.AbstractTrack)
@@ -41,6 +42,7 @@ We define a "track set" to be a set of individual stellar tracks that share comm
 ```@docs
 StellarTracks.AbstractTrackSet
 mass(::StellarTracks.AbstractTrackSet)
+chemistry(::StellarTracks.AbstractTrackSet)
 X(::StellarTracks.AbstractTrackSet)
 Y(::StellarTracks.AbstractTrackSet)
 Z(::StellarTracks.AbstractTrackSet)
@@ -62,6 +64,12 @@ For ease of use, our main entry point is the [`AbstractTrackLibrary`](@ref Stell
 ### API
 ```@docs
 StellarTracks.AbstractTrackLibrary
+chemistry(::StellarTracks.AbstractTrackLibrary)
+X(::StellarTracks.AbstractTrackLibrary)
+Y(::StellarTracks.AbstractTrackLibrary)
+Z(::StellarTracks.AbstractTrackLibrary)
+MH(::StellarTracks.AbstractTrackLibrary)
+post_rgb(::StellarTracks.AbstractTrackLibrary)
 isochrone(::StellarTracks.AbstractTrackLibrary, ::Number, ::Number)
 isochrone(::StellarTracks.AbstractTrackLibrary, ::StellarTracks.AbstractBCTable, ::Number, ::Number)
 ```
