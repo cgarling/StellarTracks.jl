@@ -47,7 +47,8 @@ Returns the initial stellar mass of the modeled star in solar masses. """
 function mass(t::AbstractTrack) end
 """
     chemistry(t::AbstractTrack)
-Returns an instance of [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
+Returns an instance of a subtype of
+[`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
 valid for the provided track `t` that can be used in other methods.
 """
 function chemistry(t::AbstractTrack) end
@@ -120,7 +121,8 @@ Returns the initial stellar masses (in solar masses) of the individual tracks co
 function mass(ts::AbstractTrackSet) end
 """
     chemistry(ts::AbstractTrack)
-Returns an instance of [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
+Returns an instance of a subtype of
+[`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
 valid for the provided track set `ts` that can be used in other methods.
 """
 function chemistry(ts::AbstractTrackSet) end
@@ -198,7 +200,8 @@ abstract type AbstractTrackLibrary end
 
 """
     chemistry(tl::AbstractTrackLibrary)
-Returns an instance of [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
+Returns an instance of a subtype of
+[`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
 valid for the provided track library `tl` that can be used in other methods.
 """
 function chemistry(tl::AbstractTrackLibrary) end
