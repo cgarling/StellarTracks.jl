@@ -380,8 +380,7 @@ function BaSTIv2TrackSet(feh::Number, α_fe::Number=0, canonical::Bool=false, di
     α_fe = _parse_α_fe(α_fe)
     yp = _parse_yp(yp)
     η = _parse_η(η)
-    dd_path = @datadep_str("BaSTIv2")
-    bfile = joinpath(dd_path, "basti_v2.jld2")
+    bfile = @datadep_str(joinpath("BaSTIv2", "basti_v2.jld2"))
     group = ifelse(canonical, "canonical", "noncanonical") * "/" *
             ifelse(diffusion, "diffusion", "nodiffusion") * "/" *
             α_fe * "/" * feh * "/" * yp * "/" * η
