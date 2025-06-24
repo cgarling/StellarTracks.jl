@@ -11,7 +11,7 @@ bcg = MISTBCGrid("JWST")
     @testset "MISTTrack" begin
         for vvcrit in (0.0, 0.4)
             for feh in MIST.feh_grid
-                for M in MIST.mist_massgrid
+                for M in MIST.mass_grid
                     track = MISTTrack(feh, M, vvcrit)
                     @test mass(track) == M
                     @test chemistry(track) == MISTChemistry()
@@ -32,7 +32,7 @@ bcg = MISTBCGrid("JWST")
             for feh in MIST.feh_grid
                 trackset = MISTTrackSet(feh, vvcrit)
                 @test trackset(1.0) isa MISTTrack
-                @test mass(trackset) == MIST.mist_massgrid
+                @test mass(trackset) == MIST.mass_grid
                 @test chemistry(trackset) == MISTChemistry()
                 @test MH(trackset) == feh
                 @test Z(trackset) == Z(chemistry(trackset), MH(trackset))
