@@ -99,6 +99,30 @@ function _parse_vvcrit(vvcrit::Number)
     end
 end
 
+"""
+    _parse_mass(mass::Number)
+Given a MIST stellar initial mass value, determine if it is valid and return a `String` giving the leading part of a track filename specification.
+
+```jldoctest
+julia> using StellarTracks.MIST: _parse_mass
+
+julia> _parse_mass(1.0)
+"00100"
+
+julia> using Test; @test_throws ArgumentError _parse_mass(1.011)
+Test Passed
+      Thrown: ArgumentError
+```
+"""
+function _parse_mass(mass::Number)
+    mass_idx = findfirst(≈(mass), mass_grid)
+    @argcheck !isnothing(mass_idx) ArgumentError("Invalid mass=$mass argument; available track masses are $mass_grid. For track interpolation, use `MISTLibrary`.")
+    # mass = string(Int(mass * 100))
+    mass = string(round(Int, mass_grid[mass_idx] * 100))
+    mass = repeat("0", 5 - length(mass)) * mass # Pad to length 5
+    return mass
+end
+
 ##########################################################################
 
 # Data download, organization, etc.
@@ -137,16 +161,11 @@ function MISTTrack(feh::Number, mass::Number, vvcrit::Number=0)
     props = (M = mass, feh = feh, vvcrit = vvcrit)
     feh_idx = findfirst(≈(feh), feh_grid) # Validate against feh_grid
     @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTTrack` is invalid; available metallicities are $feh_grid. For metallicity interpolation, use `MISTLibrary`.")
-    
     feh = string(feh_grid[feh_idx])
     # Validate vvcrit
     vvcrit = _parse_vvcrit(vvcrit)
     # Validate mass
-    mass_idx = findfirst(≈(mass), mass_grid)
-    @argcheck !isnothing(mass_idx) ArgumentError("Invalid mass=$mass argument; available track masses for [Fe/H]=$feh and vvcrit=$vvcrit are $mass_grid. For track interpolation, use `MISTLibrary`.")
-    # mass = string(Int(mass * 100))
-    mass = string(round(Int, mass_grid[mass_idx] * 100))
-    mass = repeat("0", 5 - length(mass)) * mass # Pad to length 5
+    mass = _parse_mass(mass)
     # Load data file into table
     filename = @datadep_str(joinpath("MISTv1.2_vvcrit"*vvcrit, feh, mass * "M.track.jld2"))
     data = JLD2.load_object(filename)
@@ -202,22 +221,21 @@ end
 # Given a metallicity and rotation, load the correct models and then call below method
 function MISTTrackSet(feh::Number, vvcrit::Number=0) # One table per stellar model
     # Validate feh
-    @argcheck feh in feh_grid
-    feh = string(feh_grid[searchsortedfirst(feh_grid, feh)])
+    feh_idx = findfirst(≈(feh), feh_grid) # Validate against feh_grid
+    @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTTrackSet` is invalid; available metallicities are $feh_grid. For metallicity interpolation, use `MISTLibrary`.")
+    feh = string(feh_grid[feh_idx])
     # Validate vvcrit
     vvcrit = _parse_vvcrit(vvcrit)
-    dd_path = @datadep_str("MISTv1.2_vvcrit"*vvcrit)
     # List stellar track files
-    allfiles = readdir(joinpath(dd_path, feh); join=true)
-    masses = mist_mass.(allfiles)
+    allfiles = [@datadep_str(joinpath("MISTv1.2_vvcrit"*vvcrit, feh, _parse_mass(mass) * "M.track.jld2")) for mass in mass_grid]
     # return [JLD2.load_object(file) for file in allfiles]
     # return MISTTrackSet([JLD2.load_object(file) for file in allfiles],
     #                     masses, parse(track_type, feh))
     data = vcat([begin
                      tmpdata = JLD2.load_object(allfiles[i])
-                     Table(tmpdata, m_ini=fill(masses[i], length(tmpdata)),
+                     Table(tmpdata, m_ini=fill(mass_grid[i], length(tmpdata)),
                            eep = 1:length(tmpdata))
-                 end for i in eachindex(allfiles, masses)]...)
+                 end for i in eachindex(allfiles)]...)
     # return data
     return MISTTrackSet(data, parse(track_type, feh), parse(track_type, vvcrit))
 end
