@@ -53,6 +53,8 @@ const select_columns = (:logAge, :logTe, :Mbol, :logg, :C_O)
 # Matrix columns to keep when reading track in track_matrix
 const keepcols = SVector(1,2,3,4,5,6)
 const track_type = Float64 # Float type to use to represent values
+"""Valid helium mass fractions (Y) for PARSECv1.2S."""
+const ygrid = track_type[0.249, 0.249, 0.249, 0.25, 0.252, 0.256, 0.259, 0.263, 0.267, 0.273, 0.279, 0.284, 0.302, 0.321, 0.356]
 """Valid metal mass fractions (Z) for PARSECv1.2S."""
 const zgrid = track_type[0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
 
@@ -331,14 +333,13 @@ function PARSECTrackSet(data::Table, Z::Number)
                           (Z = Z, masses = unique(data.m_ini)))
 end
 function PARSECTrackSet(zval::Number)
-    set_files = glob("Z*.jld2", datadep"PARSECv1.2S")
-    # zvals = [file_properties(file).Z for file in set_files]
-    zvals = [parse(track_type, split( split(basename(file), "Z")[2], "Y")[1]) for file in set_files]
-    idx = findfirst(Base.Fix1(≈, zval), zvals)
+    idx = findfirst(≈(zval), zgrid) # Validate against zgrid
     if isnothing(idx)
         throw(ArgumentError("Provided `zval` argument $zval to `PARSECTrackSet` is invalid; available metal mass fractions are $zvals. For metallicity interpolation, use `PARSECLibrary`."))
     end
-    table = JLD2.load_object(set_files[idx])
+    fname = "Z" * string(zgrid[idx]) * "Y" * string(ygrid[idx]) * ".jld2"
+    dd = @datadep_str(joinpath("PARSECv1.2S", fname))
+    table = JLD2.load_object(dd)
     return PARSECTrackSet(table, zval)
 end
 (ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M)), Z(ts), M)
