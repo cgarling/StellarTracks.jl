@@ -255,8 +255,9 @@ function BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=true, ag
     zval = _parse_zval(zval)
     α_fe = _parse_α_fe(α_fe)
     η = _parse_η(η)
-    dd_path = @datadep_str("BaSTIv1")
-    bfile = joinpath(dd_path, "basti_v1.jld2")
+    # dd_path = @datadep_str("BaSTIv1")
+    # bfile = joinpath(dd_path, "basti_v1.jld2")
+    bfile = @datadep_str(joinpath("BaSTIv1", "basti_v1.jld2"))
     group = ifelse(canonical, "canonical", "noncanonical") * "/" *
             ifelse(agb, "AGB", "noAGB") * "/" *
             α_fe * "/" * zval * "/" * η
