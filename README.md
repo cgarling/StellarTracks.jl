@@ -57,8 +57,8 @@ julia> using BolometricCorrections
 julia> bcgrid = MISTBCGrid("hst_acs_wfc")
 MIST bolometric correction grid for photometric system MIST_HST_ACS_WFC
 
-# MIST BCs support different reddening (Av)
-# Interpolate isochrone at [M/H] = -2.09, log(age [yr]) = 9, Av = 0.13 mag
+# MIST BCs support reddening (Av) interpolation
+# Interpolate isochrone at log(age [yr]) = 9, [M/H] = -2.09, Av = 0.13 mag
 julia> isochrone(tracklib, bcgrid, 9, -2.09, 0.13)
 Table with 20 columns and 609 rows:
       eep  m_ini     logTe    Mbol     logg     logL      log_surf_cell_z  ACS_WFC_F435W  ACS_WFC_F475W  ACS_WFC_F502N  ACS_WFC_F550M  ⋯
