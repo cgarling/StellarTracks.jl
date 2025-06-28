@@ -10,8 +10,6 @@ import ..StellarTracks: X, Y, Z, MH, chemistry, mass, post_rgb, isochrone # X_ph
 import CSV
 using DataDeps: register, DataDep, @datadep_str, unpack
 using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
-# using DelimitedFiles: readdlm
-using Glob: glob
 # # MIST track with [Fe/H] = -4, M=0.9, vvcrit=0.0 has float error in the star_age that results
 # in non-increasing as a function of EEP. Since it's ~EPS error, we use Interpolations.deduplicate_knots!
 # to correct for this minor error.

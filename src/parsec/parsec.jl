@@ -11,7 +11,6 @@ import CSV
 using CodecZlib: GzipDecompressorStream
 using DataDeps: register, DataDep, @datadep_str, unpack
 using DelimitedFiles: readdlm
-using Glob: glob # file pattern matching
 import JLD2 # for saving files in binary format
 using ProgressMeter: @showprogress
 # import Tables # For Tables.matrix conversion, "1" compat
@@ -431,8 +430,10 @@ InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013856708164357998, Y=0.24874
 struct PARSECLibrary{A} <: AbstractTrackLibrary
     ts::A # Vector of `TrackSet`s
 end
+# PARSECLibrary is just constructed from set of valid PARSECTrackSet
+PARSECLibrary() = PARSECLibrary(PARSECTrackSet.(zgrid))
 chemistry(::PARSECLibrary) = PARSECChemistry()
-Z(p::PARSECLibrary) = zgrid
+Z(::PARSECLibrary) = zgrid
 Y(p::PARSECLibrary) = Y.(chemistry(p), Z(p))
 X(p::PARSECLibrary) = 1 .- Y(p) .- Z(p)
 # MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
@@ -442,22 +443,6 @@ Base.eltype(p::PARSECLibrary) = typeof(first(Z(p)))
 Base.Broadcast.broadcastable(p::PARSECLibrary) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::PARSECLibrary)
     print(io, "Structure of interpolants for PARSEC v1.2S library of stellar tracks. Valid range of metal mass fraction Z is $(extrema(Z(p))).")
-end
-function PARSECLibrary()
-    # Processing into TrackSet structures takes additional time
-    # set_files = glob("Z*.jld2", base_dir)
-    # filestems = [splitext(basename(fi))[1] for fi in set_files]
-    # Z = [parse(Float64, split(split(fi, 'Z')[2], 'Y')[1]) for fi in filestems]
-    # Y = [parse(Float64, split(fi, 'Y')[2]) for fi in filestems]
-    # # Sort according to Z; isochrone(p::PARSEC...) depends on this
-    # idxs = sortperm(Z)
-    # Z .= Z[idxs]
-    # Y .= Y[idxs]
-    # set_files .= set_files[idxs]
-    # # Make vector of tracksets
-    # ts = [PARSECTrackSet(JLD2.load_object(fname), Z[i], Y[i]) for (i, fname) in enumerate(set_files)]
-    # return PARSECLibrary(ts, Z, Y)
-    return PARSECLibrary(PARSECTrackSet.(zgrid))
 end
 """
     isochrone(p::PARSECLibrary, logAge::Number, mh::Number)

@@ -48,7 +48,7 @@ Table with 7 columns and 609 rows:
  ...
 ```
 
-This package integrates with [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to support isochrone interpolation with the addition of bolometric corrections.
+This package integrates with [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to support isochrone interpolation with the addition of bolometric corrections to place the isochrone into an observational photometric system.
 
 ```julia
 julia> using BolometricCorrections
