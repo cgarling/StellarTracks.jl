@@ -14,6 +14,15 @@ This package provides access to and interpolation of pre-computed libraries of s
 
 These tracks contain only quantities from stellar interior modeling (e.g., bolometric luminosities and effective temperatures) and must be combined with bolometric corrections to make predictions for observations in different filters/bandpasses. This package integrates with [BolometricCorrections.jl](https://github.com/cgarling/BolometricCorrections.jl) to support isochrone interpolation with the addition of bolometric corrections. See the examples below for a quick overview and our documentation linked in the badges above for more details.
 
+## Installation
+
+This package is registered to Julia's General registry and can be installed via Pkg from the Julia REPL by executing
+
+```julia
+import Pkg;
+Pkg.add("StellarTracks");
+```
+
 ## Example Usage
 The most common use cases for this package will involve interacting with subtypes of `AbstractTrackLibrary` -- these subtypes (`PARSECLibrary, MISTLibrary, BaSTIv1Library, BaSTIv2Library`) load all relevant stellar tracks for a particular set of model input parameters -- for example, MIST offers both rotating and non-rotating stellar models, and users can choose between these sets when constructing a `MISTLibrary`. These types provide the ability to interpolate tracks to different stellar initial masses and metallicities and interpolate isochrones at different ages and metallicities.
 

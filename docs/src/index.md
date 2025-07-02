@@ -23,6 +23,15 @@ The core function of this package is to provide an interface to libraries of ste
 
 For integrated stellar photometry, this is typically done by applying [bolometric corrections](https://en.wikipedia.org/wiki/Bolometric_correction) that integrate a stellar atmosphere over an observational bandpass to predict the stellar model's magnitude in that bandpass. An interface to these bolometric correction grids is provided by [BolometricCorrections.jl](@extref BolometricCorrections overview). We take advantage of this interface to support the generation of isochrones in observational bandpasses.
 
+## Installation
+
+This package is registered to Julia's General registry and can be installed via Pkg from the Julia REPL by executing
+
+```julia
+import Pkg;
+Pkg.add("StellarTracks");
+```
+
 ## API
 Documentation for our generic API is available [here](@ref api).
 
