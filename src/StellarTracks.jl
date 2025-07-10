@@ -448,7 +448,7 @@ radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / (Teff^2)^2) * 1
 # radius(Teff, logl) = sqrt(exp10(logl) * UnitfulAstro.Lsun / 4 / π / PhysicalConstants.CODATA2022.StefanBoltzmannConstant / (Teff * UnitfulAstro.K)^4) |> UnitfulAstro.m
 """
     surface_gravity(M, R)
-Returns the surface gravity of a star in `cm / s^2`
+Returns the surface gravity of a star in cgs units `cm / s^2`
 given its mass in solar masses and radius in solar radii.
 
 Assumes solar properties following [IAU 2015 Resolution B3](@cite Mamajek2015a).
