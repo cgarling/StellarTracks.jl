@@ -108,11 +108,11 @@ isochrone(tracklib::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, m
 ####################################################################################
 # Code for specific stellar models / BC grid combinations
 
-isochrone(tl::PARSECLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
-    _apply_bc(isochrone(tl, logAge, mh), bc)
+# function isochrone(tl::AbstractTrackLibrary,
+#                    bcg::AbstractBCGrid, logAge::Number, mh::Number, Av::Number)
 function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
-                   bcg::Union{MISTBCGrid, PHOENIXYBCGrid}, logAge::Number, mh::Number, Av::Number)
-    # Take PARSEC mh, convert to Z, then convert to MH for the MISTBCGrid chemistry
+                   bcg::Union{MISTBCGrid, PHOENIXYBCGrid, ATLAS9YBCGrid}, logAge::Number, mh::Number, Av::Number)
+    # Take stellar track mh, convert to Z, then convert to MH for the BC chemistry
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
     return isochrone(tl, bcg(bc_mh, Av), logAge, mh)
 end
@@ -122,7 +122,7 @@ end
 # partial CMD templates, it is better just to sample them one-by-one in the threaded loop
 # rather than trying to pre-generate them all. 
 function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
-                   bcg::Union{MISTBCGrid, PHOENIXYBCGrid}, logAge::AbstractArray{<:Number},
+                   bcg::Union{MISTBCGrid, PHOENIXYBCGrid, ATLAS9YBCGrid}, logAge::AbstractArray{<:Number},
                    mh::AbstractArray{<:Number}, Av::Number)
     result = []
     rlock = ReentrantLock()
