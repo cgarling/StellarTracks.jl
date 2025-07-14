@@ -7,7 +7,7 @@
         return exp10.(iso.logTe)
     elseif :Te in iso_keys
         return iso.Te
-    elseif :T in iso
+    elseif :T in iso_keys
         return iso.T
     else
         throw(ArgumentError("Provided `iso` argument does not contain a recognized effective temperature key, `(:logTe, :Te, :T)`."))
