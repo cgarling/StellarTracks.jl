@@ -1,38 +1,3 @@
-# Isochrones generated from different stellar track libraries may have different keys
-# for the same quantities (though we try to avoid this). These functions parse the
-# isochrones and return the necessary quantities. 
-@inline function _parse_teff(iso)
-    iso_keys = keys(iso)
-    if :logTe in iso_keys
-        return exp10.(iso.logTe)
-    elseif :Te in iso_keys
-        return iso.Te
-    elseif :T in iso_keys
-        return iso.T
-    else
-        throw(ArgumentError("Provided `iso` argument does not contain a recognized effective temperature key, `(:logTe, :Te, :T)`."))
-    end 
-end
-
-@inline function _parse_logg(iso)
-    iso_keys = keys(iso)
-    if :logg in iso_keys
-        return iso.logg
-    elseif :log_g in iso_keys
-        return iso.log_g
-    else
-        throw(ArgumentError("Provided `iso` argument does not contain a recognized surface gravity key, `(:logg, :log_g)`."))
-    end
-end
-
-@inline function _parse_Mbol(iso)
-    iso_keys = keys(iso)
-    if :Mbol in iso_keys
-        return iso.Mbol
-    else
-        throw(ArgumentError("Provided `iso` argument does not contain a recognized bolometric magnitude key, `(:Mbol,)`."))
-    end
-end
 """
     _apply_bc(iso, bc::AbstractBCTable)
 Given a calculated isochrone `iso` and an `AbstractBCTable`, parse the isochrone
@@ -41,10 +6,8 @@ BCs to `Mbol`, returning a joined `TypedTables.Table` with theoretical and
 observational quantities.
 """
 @inline function _apply_bc(iso, bc::AbstractBCTable)
-    iso_teff = _parse_teff(iso)
-    iso_logg = _parse_logg(iso)
     iso_Mbol = _parse_Mbol(iso)
-    BCs = permutedims(bc(iso_teff, iso_logg))
+    BCs = permutedims(bc(iso)) # Parsing of `iso` for correct args happens in BolometricCorrections.jl
     # Concatenate theoretical quantities with magnitudes
     return Table(Table(iso),
                  Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
