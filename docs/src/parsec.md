@@ -82,13 +82,7 @@ plot_cmd(iso) # hide
 ```
 
 ## Chemistry API
-We provide the [`StellarTracks.PARSEC.PARSECChemistry`](@ref) type that follows the chemistry API defined in [BolometricCorrections.jl](@extref BolometricCorrections chemistry_api) to access information on the chemical mixture assumed for the PARSEC models.
-
-```@docs
-StellarTracks.PARSEC.PARSECChemistry
-```
-
-Note that in our conversions between ``Z`` and \[M/H\], remembering that `MH = log10(Z/X) - log10(Z⊙/X⊙)`, we use the *photospheric* solar values for `Z⊙` and `X⊙` (these are `Z_⊙` and `X_⊙ = 1 - Z_⊙ - Y_⊙` in Table 3 of [Bressan2012](@citet)). This reproduces the relation between `Z` and \[M/H\] defined in Table 4 of [Bressan2012](@citet), which is also used in the "CMD" webform provided by the PARSEC team.
+We use the [`BolometricCorrections.YBC.PARSECChemistry`](@extref) type to provide information on the chemical mixture assumed for the PARSEC models.
 
 ## Library API
 ```@docs

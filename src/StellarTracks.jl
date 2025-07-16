@@ -4,7 +4,8 @@ using ArgCheck: @argcheck
 using TypedTables: Table
 
 # For BCs.jl
-using BolometricCorrections: AbstractBCTable, AbstractBCGrid, MISTBCGrid, PHOENIXYBCGrid, ATLAS9YBCGrid, filternames
+using BolometricCorrections: AbstractBCTable, AbstractBCGrid, MISTBCGrid, PHOENIXYBCGrid, ATLAS9YBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol
+using BolometricCorrections.YBC: PARSECChemistry
 import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry
 using DataInterpolations: PCHIPInterpolation
 import Tables
@@ -404,62 +405,11 @@ _interp_kernel(goodkeys, y0, y1, idx, y0_idxs, y1_idxs, x, xvec) =
 
 ###############################################
 # Utilities
+
 """
     uniqueidx(v) = unique(Base.Fix1(getindex, v), eachindex(v))
 Returns the indices of the first occurrences of unique elements in the array `v`. """
 uniqueidx(v) = unique(Base.Fix1(getindex, v), eachindex(v)) # utility
-"""
-    Mbol(logL::Number, solmbol::Number=4.74)
-Returns the bolometric magnitude corresponding to the provided logarithmic
-bolometric luminosity `logL` which is provided in units of solar luminosities
-(e.g., `logL = log10(L / L⊙)`). This is given by `Mbol⊙ - 2.5 * logL`; the zeropoint
-of bolometric magnitude scale is defined by the solar bolometric magnitude, which you
-can specify as the second argument. The default (4.74) was recommended by
-IAU [Resolution B2](@cite Mamajek2015).
-"""
-Mbol(logL::Number, solmbol::Number=474//100) = solmbol - 5 * logL / 2
-"""
-    logL(Mbol::Number, solmbol::Number=4.74)
-Returns the logarithmic bolometric luminosity in units of solar luminosities
-(e.g., `logL = log10(L / L⊙)`) corresponding to the provided bolometric
-magnitude. This is given by `(Mbol⊙ - Mbol) / 2.5`; the zeropoint
-of bolometric magnitude scale is defined by the solar bolometric magnitude, 
-which you can specify as the second argument. The default (4.74) was recommended
-by IAU [Resolution B2](@cite Mamajek2015).
-"""
-logL(Mbol::Number, solmbol::Number=474//100) = (solmbol - Mbol) / 5 * 2
-
-"""
-    radius(Teff::Number, logl::Number)
-Returns the radius of a star in units of solar radii
-given its effective temperature `Teff` in Kelvin
-and the logarithm of its luminosity in units of solar luminosities
-(e.g., `logl = log10(L / L⊙)`).
-
-Assumes solar properties following [IAU 2015 Resolution B3](@cite Mamajek2015a).
-```jldoctest
-julia> isapprox(StellarTracks.radius(5772, 0.0), 1.0; rtol=0.001) # For solar Teff and logL, radius ≈ 1
-true
-```
-"""
-radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / (Teff^2)^2) * 11810222860206199 // 100000000
-# radius(Teff::Number, logl::Number) = sqrt(exp10(logl) / 4 / π / Teff^4) * 1.1810222860206199e8
-# radius(Teff, logl) = sqrt(exp10(logl) * 3.828e26 / 4 / π / 5.6703744191844294e-8 / Teff^4) / 6.957e8
-# radius(Teff, logl) = sqrt(exp10(logl) * UnitfulAstro.Lsun / 4 / π / PhysicalConstants.CODATA2022.StefanBoltzmannConstant / (Teff * UnitfulAstro.K)^4) |> UnitfulAstro.m
-"""
-    surface_gravity(M, R)
-Returns the surface gravity of a star in cgs units `cm / s^2`
-given its mass in solar masses and radius in solar radii.
-
-Assumes solar properties following [IAU 2015 Resolution B3](@cite Mamajek2015a).
-```jldoctest
-julia> isapprox(StellarTracks.surface_gravity(1, 1), 27420; rtol=0.001) # For solar M and R, g ≈ 27430 cm / s^2
-true
-```
-"""
-surface_gravity(M::Number, R::Number) = M / R^2 * 27420011165737313 // 1000000000000
-# surface_gravity(M, R) = 27420.011165737313 * M / R^2
-# surface_gravity(M, R) = PhysicalConstants.CODATA2022.G * M * UnitfulAstro.Msun / (R * UnitfulAstro.Rsun)^2 |> UnitfulAstro.cm / UnitfulAstro.s^2
 
 ###############################################
 # Include files containing submodules for different track libraries
