@@ -64,29 +64,57 @@ Table with 36 columns and 1465 rows:
 isochrone(tracklib::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
     _apply_bc(isochrone(tracklib, logAge, mh), bc)
 
-# Not sure how to handle the fact that AbstractTrackLibrary and AbstractBCGrid can
-# have different dependent variables (Z, Av, α-abundance, etc.). Going to define
-# specific call signatures for each type that will be relatively simple to extend.
+"""
+    isochrone(tracklib::AbstractTrackLibrary,
+              bcg::AbstractBCGrid, 
+              logAge::Number, 
+              mh::Number, 
+              Av::Number)
+Returns an isochrone as a `TypedTables.Table` calculated using the stellar
+evolutionary tracks contained in `tracklib` with bolometric corrections interpolated
+from the provided bolometric correction grid `bcg` at the logarithmic age 
+`logAge` and metallicity [M/H] = `mh`.
+Column names can be retrieved with `TypedTables.columnnames`.
+The result can be converted to a matrix with `Tables.matrix`.
 
-####################################################################################
-# Code for specific stellar models / BC grid combinations
+In general, the stellar evolutionary tracks
+and bolometric correction grid may not share the same solar abundance pattern.
+In this case, it is common to normalize both to a common total metallicity
+quantified by the metal mass fraction `Z` -- for example, this approach is taken
+for normalizing the YBC bolometric grid [Chen2019](@citep). This method specifically treats
+the input `mh` ([M/H]) as the desired logarithmic abundance for the chemical mixture used
+for the stellar evolutionary tracks (`tracklib`), converts this to a metal
+mass fraction, then converts that metal mass fraction into the appropriate
+logarithmic metallicity [M/H] for the chemical mixture used by the bolometric
+correction grid `bcg`. This "corrected" [M/H] value is used when interpolating the
+bolometric grid.
 
-# function isochrone(tl::AbstractTrackLibrary,
-#                    bcg::AbstractBCGrid, logAge::Number, mh::Number, Av::Number)
-function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
-                   bcg::Union{MISTBCGrid, PHOENIXYBCGrid, ATLAS9YBCGrid}, logAge::Number, mh::Number, Av::Number)
+```julia
+using StellarTracks, BolometricCorrections
+p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
+m = MISTBCGrid("JWST") # Load MIST library of BCs
+isochrone(p, m, 10.0, -1.01, 0.0)
+```
+
+```
+Table with 36 columns and 1465 rows:
+...
+```
+"""
+function isochrone(tl::AbstractTrackLibrary,
+                   bcg::AbstractBCGrid, logAge::Number, mh::Number, Av::Number)
     # Take stellar track mh, convert to Z, then convert to MH for the BC chemistry
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
     return isochrone(tl, bcg(bc_mh, Av), logAge, mh)
 end
+
 # This is most useful for constructing large isochrone tables that can then be written out.
 # For large grids (3403 isochrones) selecting out a single isochrone takes longer than
 # running a new one (9.381 ms vs 1.2 ms). When constructing isochrones in order to make
 # partial CMD templates, it is better just to sample them one-by-one in the threaded loop
 # rather than trying to pre-generate them all. 
-function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
-                   bcg::Union{MISTBCGrid, PHOENIXYBCGrid, ATLAS9YBCGrid}, logAge::AbstractArray{<:Number},
-                   mh::AbstractArray{<:Number}, Av::Number)
+function isochrone(tl::AbstractTrackLibrary,
+                   bcg::AbstractBCGrid, logAge::AbstractArray{<:Number}, mh::AbstractArray{<:Number}, Av::Number)
     result = []
     rlock = ReentrantLock()
     # This implementation returns a single Table, with Z and logAge rows 
@@ -125,10 +153,12 @@ function isochrone(tl::Union{PARSECLibrary, BaSTIv1Library, BaSTIv2Library},
     # return result, zvec, lavec
 end
 
+# Not sure how to handle the fact that AbstractTrackLibrary and AbstractBCGrid can
+# have different dependent variables (Z, Av, α-abundance, etc.). Going to define
+# specific call signatures for each type that will be relatively simple to extend.
+# For now we ware not interpolating against α-abundance and all BC grids have Av
+# as an interpolation variable, so the above generic functions are sufficient. 
+# Leaving this here as we may need to revisit this when more BC grids are added.
+
 ####################################################################################
-# Code for MIST stellar models
-
-# use generic isochrone(tl::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number)
-isochrone(tl::MISTLibrary, bcg::Union{MISTBCGrid, PHOENIXYBCGrid}, logAge::Number, mh::Number, Av::Number) =
-    isochrone(tl, bcg(mh, Av), logAge, mh)
-
+# Code for specific stellar models / BC grid combinations
