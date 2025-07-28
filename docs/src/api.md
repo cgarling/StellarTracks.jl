@@ -13,6 +13,7 @@ An individual stellar track, containing the time evolution of properties for a s
 ### API
 ```@docs
 StellarTracks.AbstractTrack
+gridname(::StellarTracks.AbstractTrack)
 Base.extrema(::StellarTracks.AbstractTrack)
 Base.keys(::StellarTracks.AbstractTrack)
 mass(::StellarTracks.AbstractTrack)
@@ -41,6 +42,7 @@ We define a "track set" to be a set of individual stellar tracks that share comm
 ### API
 ```@docs
 StellarTracks.AbstractTrackSet
+gridname(::StellarTracks.AbstractTrackSet)
 mass(::StellarTracks.AbstractTrackSet)
 chemistry(::StellarTracks.AbstractTrackSet)
 X(::StellarTracks.AbstractTrackSet)
@@ -64,6 +66,7 @@ For ease of use, our main entry point is the [`AbstractTrackLibrary`](@ref Stell
 ### API
 ```@docs
 StellarTracks.AbstractTrackLibrary
+gridname(::StellarTracks.AbstractTrackLibrary)
 chemistry(::StellarTracks.AbstractTrackLibrary)
 X(::StellarTracks.AbstractTrackLibrary)
 Y(::StellarTracks.AbstractTrackLibrary)

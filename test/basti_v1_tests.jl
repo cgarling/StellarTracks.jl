@@ -5,6 +5,10 @@ using TypedTables: Table
 
 using Test
 
+@test gridname(BaSTIv1Track) isa String
+@test gridname(BaSTIv1TrackSet) isa String
+@test gridname(BaSTIv1Library) isa String
+
 bcg = MISTBCGrid("JWST")
 
 @testset "BaSTIv1" begin
@@ -26,6 +30,7 @@ bcg = MISTBCGrid("JWST")
                         for z in zg
                             # println(canonical, " ", α_fe, " ", z)
                             trackset = BaSTIv1TrackSet(z, α_fe, canonical, agb, η)
+                            @test gridname(trackset) isa String
                             @test trackset(minimum(mass(trackset))+0.1) isa BaSTIv1Track
                             # @test mass(trackset) == PARSEC.parsec_massgrid
                             @test chemistry(trackset) == BaSTIv1Chemistry()
@@ -44,6 +49,7 @@ bcg = MISTBCGrid("JWST")
                             for M in range(extrema(mass(trackset))...; length=10)
                                 # println(M)
                                 track = trackset(M)
+                                @test gridname(track) isa String
                                 @test mass(track) == M
                                 @test chemistry(track) == BaSTIv1Chemistry()
                                 extr = extrema(track) # Get logAge limits
@@ -75,7 +81,8 @@ bcg = MISTBCGrid("JWST")
                 for canonical in (true, false)
                     for α_fe in BaSTIv1.αFegrid
                         tracklib = BaSTIv1Library(α_fe, canonical, agb, η)
-                        tracklib(-1.05, 1.51) isa InterpolatedTrack
+                        @test gridname(tracklib) isa String
+                        @test tracklib(-1.05, 1.51) isa InterpolatedTrack
                         @test chemistry(tracklib) == BaSTIv1Chemistry()
                         @test Z(tracklib) == zg # BaSTIv1.zgrid
                         @test MH(tracklib) == MH.(chemistry(tracklib), Z(tracklib))

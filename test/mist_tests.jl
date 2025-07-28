@@ -5,6 +5,10 @@ using TypedTables: Table
 
 using Test
 
+@test gridname(MISTTrack) isa String
+@test gridname(MISTTrackSet) isa String
+@test gridname(MISTLibrary) isa String
+
 bcg = MISTBCGrid("JWST")
 
 @testset "MIST" begin
@@ -13,6 +17,7 @@ bcg = MISTBCGrid("JWST")
             for feh in MIST.feh_grid
                 for M in MIST.mass_grid
                     track = MISTTrack(feh, M, vvcrit)
+                    @test gridname(track) isa String
                     @test mass(track) == M
                     @test chemistry(track) == MISTChemistry()
                     extr = extrema(track) # Get logAge limits
@@ -31,6 +36,7 @@ bcg = MISTBCGrid("JWST")
         for vvcrit in (0.0, 0.4)
             for feh in MIST.feh_grid
                 trackset = MISTTrackSet(feh, vvcrit)
+                @test gridname(trackset) isa String
                 @test trackset(1.0) isa MISTTrack
                 @test mass(trackset) == MIST.mass_grid
                 @test chemistry(trackset) == MISTChemistry()
@@ -52,6 +58,7 @@ bcg = MISTBCGrid("JWST")
     @testset "MISTLibrary" begin
         for vvcrit in (0.0, 0.4)
             tracklib = MISTLibrary(vvcrit)
+            @test gridname(tracklib) isa String
             @test tracklib(-2.05, 1.05) isa InterpolatedTrack
             @test chemistry(tracklib) == MISTChemistry()
             @test MH(tracklib) == MIST.feh_grid

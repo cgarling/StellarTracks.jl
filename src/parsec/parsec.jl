@@ -4,7 +4,7 @@ module PARSEC
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
                        uniqueidx, _generic_trackset_interp, PARSECChemistry
-import ..StellarTracks: mass, post_rgb, isochrone
+import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, chemistry # X_phot, Y_phot, Z_phot
 
 import CSV
@@ -114,6 +114,7 @@ function (track::PARSECTrack)(logAge::Number)
     result = track.itp(exp10(logAge))
     return NamedTuple{keys(track)}(result)
 end
+gridname(::Type{<:PARSECTrack}) = "PARSEC"
 Base.extrema(t::PARSECTrack) = log10.(extrema(t.itp.t))
 mass(t::PARSECTrack) = t.properties.M
 chemistry(::PARSECTrack) = PARSECChemistry()
@@ -268,6 +269,7 @@ function PARSECTrackSet(zval::Number)
     return PARSECTrackSet(table, zval)
 end
 (ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M)), Z(ts), M)
+gridname(::Type{<:PARSECTrackSet}) = "PARSEC"
 mass(ts::PARSECTrackSet) = ts.properties.masses
 chemistry(::PARSECTrackSet) = PARSECChemistry()
 Z(ts::PARSECTrackSet) = ts.properties.Z
@@ -358,6 +360,7 @@ struct PARSECLibrary{A} <: AbstractTrackLibrary
 end
 # PARSECLibrary is just constructed from set of valid PARSECTrackSet
 PARSECLibrary() = PARSECLibrary(PARSECTrackSet.(zgrid))
+gridname(::Type{<:PARSECLibrary}) = "PARSEC"
 chemistry(::PARSECLibrary) = PARSECChemistry()
 Z(::PARSECLibrary) = zgrid
 Y(p::PARSECLibrary) = Y.(chemistry(p), Z(p))
@@ -385,7 +388,7 @@ isochrone(p::PARSECLibrary, logAge::Number, mh::Number) # Falls back to generic 
 #################################################################################
 
 export PARSECTrack, PARSECTrackSet, PARSECLibrary, PARSECChemistry # Unique module exports
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
+export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname # Export generic API methods
 
 #################################################################################
 

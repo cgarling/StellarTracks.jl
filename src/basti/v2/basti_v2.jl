@@ -5,7 +5,7 @@ module BaSTIv2
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
                        AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp,
                        radius, surface_gravity
-import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, chemistry, mass, post_rgb, isochrone
+import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, chemistry, mass, post_rgb, isochrone, gridname
 using ..StellarTracks.BaSTIv1: _parse_α_fe
 
 # Imports for data reading / processing
@@ -318,6 +318,7 @@ function (track::BaSTIv2Track)(logAge::Number)
     result = track.itp(exp10(logAge))
     return NamedTuple{keys(track)}(result)
 end
+gridname(::Type{<:BaSTIv2Track}) = "BaSTIv2"
 Base.extrema(t::BaSTIv2Track) = log10.(extrema(t.itp.t))
 mass(t::BaSTIv2Track) = t.properties.M
 chemistry(t::BaSTIv2Track) = BaSTIv2Chemistry(t.properties.α_fe, t.properties.yp)
@@ -454,6 +455,7 @@ function (ts::BaSTIv2TrackSet)(M::Number)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return BaSTIv2Track(table, props)
 end
+gridname(::Type{<:BaSTIv2TrackSet}) = "BaSTIv2"
 mass(ts::BaSTIv2TrackSet) = ts.properties.masses
 chemistry(ts::BaSTIv2TrackSet) = BaSTIv2Chemistry(ts.properties.α_fe, ts.properties.yp)
 Z(ts::BaSTIv2TrackSet) = Z(chemistry(ts), MH(ts)) # ts.properties.Z
@@ -554,6 +556,7 @@ struct BaSTIv2Library{A,B} <: AbstractTrackLibrary
     # diffusion::Bool
     # yp::D
 end
+gridname(::Type{<:BaSTIv2Library}) = "BaSTIv2"
 chemistry(p::BaSTIv2Library) = BaSTIv2Chemistry(p.properties.α_fe, p.properties.yp)
 Z(p::BaSTIv2Library) = Z.(chemistry(p), MH(p))
 MH(p::BaSTIv2Library) = p.properties.feh .+ 3//4 .* p.properties.α_fe # MH.(chemistry(p), Z(p))
@@ -598,7 +601,7 @@ Interpolates properties of the stellar tracks in the library at the requested lo
 isochrone(p::BaSTIv2Library, logAge::Number, mh::Number)
 
 export BaSTIv2Track, BaSTIv2TrackSet, BaSTIv2Library, BaSTIv2Chemistry # Unique module exports
-export mass, chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH, post_rgb, isochrone # Export generic API methods
+export mass, chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH, post_rgb, isochrone, gridname # Export generic API methods
 
 end # module
 

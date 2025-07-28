@@ -7,6 +7,10 @@ using Test
 
 bcg = MISTBCGrid("JWST")
 
+@test gridname(PARSECTrack) isa String
+@test gridname(PARSECTrackSet) isa String
+@test gridname(PARSECLibrary) isa String
+
 @testset "PARSEC" begin
     @testset "PARSECTrack + PARSECTrackSet" begin
         # Test PARSECTrack() constructor; inefficient as currently implemented
@@ -14,6 +18,7 @@ bcg = MISTBCGrid("JWST")
         @test PARSECTrack(0.0001, 1.05) isa PARSECTrack
         for z in PARSEC.zgrid
             trackset = PARSECTrackSet(z)
+            @test gridname(trackset) isa String
             @test trackset(1.0) isa PARSECTrack
             # @test mass(trackset) == PARSEC.parsec_massgrid
             @test chemistry(trackset) == PARSECChemistry()
@@ -31,6 +36,7 @@ bcg = MISTBCGrid("JWST")
             @test isochrone(trackset, bct, 10.0) isa Table
             for M in range(extrema(mass(trackset))...; length=10)
                 track = trackset(M)
+                @test gridname(track) isa String
                 @test mass(track) == M
                 @test chemistry(track) == PARSECChemistry()
                 extr = extrema(track) # Get logAge limits

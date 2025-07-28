@@ -6,7 +6,7 @@ using TypedTables: Table
 # For BCs.jl
 using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol
 using BolometricCorrections.YBC: PARSECChemistry
-import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry
+import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry, gridname
 using DataInterpolations: PCHIPInterpolation
 import Tables
 
@@ -32,6 +32,16 @@ Base.Broadcast.broadcastable(t::AbstractTrack) = Ref(t)
 #     # Conversion to Table is slightly slow ~40ns 
 #     return Table(track(la) for la in logAge)
 # end
+"""
+    gridname(::Type{<:AbstractTrack})
+
+Returns a human-readable `String` identifier of the stellar evolution grid that tracks of the provided type are derived from. This should be provided for all track types.
+
+    gridname(track::AbstractBCTable) = gridname(typeof(track))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractTrack`.
+"""
+gridname(t::AbstractTrack) = gridname(typeof(t))
 """
     Base.extrema(t::AbstractTrack)
 Returns the minimum and maximum logarithmic age (`log10(age [yr])`) of the stellar model.
@@ -117,6 +127,16 @@ function _generic_trackset_interp(ts::AbstractTrackSet, M::Number)
     return NamedTuple{(:logAge, keys(interps)...)}(tuple(ages[sortidx], (r[sortidx] for r in results)...))
 end
 """
+    gridname(::Type{<:AbstractTrackSet})
+
+Returns a human-readable `String` identifier of the stellar evolution grid that track sets of the provided type are derived from. This should be provided for all track set types.
+
+    gridname(trackset::AbstractTrackSet) = gridname(typeof(trackset))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractTrackSet`.
+"""
+gridname(ts::AbstractTrackSet) = gridname(typeof(ts))
+"""
     mass(ts::AbstractTrackSet)
 Returns the initial stellar masses (in solar masses) of the individual tracks contained in the track set. """
 function mass(ts::AbstractTrackSet) end
@@ -200,6 +220,16 @@ that can be called to evaluate the track."""
 abstract type AbstractTrackLibrary end
 
 """
+    gridname(::Type{<:AbstractTrackLibrary})
+
+Returns a human-readable `String` identifier of the stellar evolution grid type provided. This should be provided for all track set types.
+
+    gridname(tracklib::AbstractTrackLibrary) = gridname(typeof(tracklib))
+
+Generic method provided to return the `gridname` for instances of concrete subtypes of `AbstractTrackLibrary`.
+"""
+gridname(tl::AbstractTrackLibrary) = gridname(typeof(tl))
+"""
     chemistry(tl::AbstractTrackLibrary)
 Returns an instance of a subtype of
 [`AbstractChemicalMixture`](@extref BolometricCorrections.AbstractChemicalMixture)
@@ -272,6 +302,8 @@ function (track::InterpolatedTrack)(logAge::Number)
     result = values(result0) .* track.track0_prefac .+ values(result1) .* track.track1_prefac
     return NamedTuple{keys(track.track0)}(result)
 end
+gridname(::Type{<:InterpolatedTrack}) = throw(ArgumentError("InterpolatedTrack can be used with any track library, so a generic `gridname` is not defined. Call `gridname` on an concrete instance."))
+gridname(track::InterpolatedTrack{A}) where {A} = gridname(A)
 function Base.extrema(track::InterpolatedTrack)
     ext0 = extrema(track.track0)
     ext1 = extrema(track.track1)
@@ -429,7 +461,7 @@ using .BaSTIv2
 include("BCs.jl")
 
 # Common API exports
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone
+export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname
 # Submodule exports
 export PARSECLibrary, MISTLibrary, BaSTIv1Library, BaSTIv2Library
 

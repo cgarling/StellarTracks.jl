@@ -3,11 +3,14 @@ using StellarTracks: InterpolatedTrack
 using Test
 mean(x) = sum(x) / length(x)
 
+@test_throws ArgumentError gridname(InterpolatedTrack)
+
 for lib in (PARSECLibrary(), MISTLibrary(), BaSTIv1Library(), BaSTIv2Library())
     mean_mh = mean(MH(lib))
     M = 1.51
     track = lib(mean_mh, M)
     @test track isa StellarTracks.InterpolatedTrack
+    @test gridname(track) == gridname(lib)
     @test mass(track) ≈ M
     @test MH(track) ≈ mean_mh
     @test Z(track) ≈ Z(chemistry(track), MH(track))
