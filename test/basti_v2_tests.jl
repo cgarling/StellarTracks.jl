@@ -6,6 +6,10 @@ using TypedTables: Table
 
 using Test
 
+@test gridname(BaSTIv2Track) isa String
+@test gridname(BaSTIv2TrackSet) isa String
+@test gridname(BaSTIv2Library) isa String
+
 bcg = MISTBCGrid("JWST")
 
 param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30),
@@ -36,6 +40,7 @@ param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30
                                         convert(track_type, p.yp))
                 # println(canonical, " ", α_fe, " ", z)
                 trackset = BaSTIv2TrackSet(feh, vp...)
+                @test gridname(trackset) isa String
                 @test trackset(minimum(mass(trackset))+0.1) isa BaSTIv2Track
                 # @test mass(trackset) == PARSEC.parsec_massgrid
                 @test chemistry(trackset) == chem
@@ -54,6 +59,7 @@ param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30
                 for M in range(extrema(mass(trackset))...; length=10)
                     # println(M)
                     track = trackset(M)
+                    @test gridname(track) isa String
                     @test mass(track) == M
                     @test chemistry(track) == chem
                     extr = extrema(track) # Get logAge limits
@@ -80,6 +86,7 @@ param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30
                                     convert(track_type, p.yp))
             
             tracklib = BaSTIv2Library(vp...)
+            @test gridname(tracklib) isa String
             @test tracklib(-2.025, 1.025) isa InterpolatedTrack
             @test chemistry(tracklib) == chem
             # @test Z(tracklib) == BaSTIv1.zgrid

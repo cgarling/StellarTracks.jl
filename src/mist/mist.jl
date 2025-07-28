@@ -4,7 +4,7 @@ module MIST
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
                        uniqueidx, Mbol, _generic_trackset_interp
-import ..StellarTracks: X, Y, Z, MH, chemistry, mass, post_rgb, isochrone # X_phot, Y_phot, Z_phot,
+import ..StellarTracks: X, Y, Z, MH, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
 # Imports for data reading / processing
 import CSV
@@ -177,6 +177,7 @@ function (track::MISTTrack)(logAge::Number)
     return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::MISTTrack) = log10.(extrema(t.itp.t))
+gridname(::Type{<:MISTTrack}) = "MIST"
 mass(t::MISTTrack) = t.properties.M
 chemistry(::MISTTrack) = MISTChemistry()
 MH(t::MISTTrack) = t.properties.feh # MH(chemistry(t), Z(t))
@@ -290,6 +291,7 @@ function (ts::MISTTrackSet)(M::Number)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return MISTTrack(table, props)
 end
+gridname(::Type{<:MISTTrackSet}) = "MIST"
 mass(ts::MISTTrackSet) = ts.properties.masses
 chemistry(::MISTTrackSet) = MISTChemistry()
 MH(ts::MISTTrackSet) = ts.properties.feh
@@ -382,6 +384,7 @@ struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
     MH::B  # Vector of MH for each TrackSet
     vvcrit::C
 end
+gridname(::Type{<:MISTLibrary}) = "MIST"
 chemistry(::MISTLibrary) = MISTChemistry()
 MH(p::MISTLibrary) = p.MH # MH.(chemistry(tl), Z(tl))
 Z(p::MISTLibrary) = Z.(chemistry(p), p.MH)
@@ -414,6 +417,6 @@ Interpolates properties of the stellar tracks in the library at the requested lo
 isochrone(p::MISTLibrary, logAge::Number, mh::Number)
 
 export MISTTrack, MISTTrackSet, MISTLibrary, MISTChemistry   # Unique module exports
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone # Export generic API methods
+export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname # Export generic API methods
 
 end # module
