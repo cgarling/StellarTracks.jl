@@ -42,7 +42,7 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 const track_type = Float32
 """Valid metal mass fractions (Z) for BaSTIv1."""
 const zgrid = track_type[0.00001, 0.0001, 0.0003, 0.0006, 0.001, 0.002, 0.004, 0.008, 0.01, 0.0198, 0.03, 0.04, 0.05]
-"""Valid helium mass fractions (Z) for BaSTIv1."""
+"""Valid helium mass fractions (Y) for BaSTIv1."""
 const ygrid = track_type[0.245, 0.245, 0.245, 0.246, 0.246, 0.248, 0.251, 0.256, 0.259, 0.2734, 0.288, 0.303, 0.316]
 """Initial stellar masses for the stellar tracks in the BaSTIv1 grid. These are uniform for all metallicities and also for alpha-enhanced grids."""
 const massgrid = track_type[0.5, 0.55, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.45, 2.5, 2.6, 2.8, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]
