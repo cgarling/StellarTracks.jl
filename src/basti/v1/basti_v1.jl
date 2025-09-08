@@ -170,7 +170,7 @@ and call it with the masses you want, e.g.,
 julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(1e-4, 1.2, 0.0, true, true, 0.4)
 Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.2651979978981727, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = 0.703673172754993, log_Teff = 3.9489346126913416, log_g = 4.563808864709015)
+(log_L = 0.7036731727550208, log_Teff = 3.948934612691319, log_g = 4.563808864709117)
 ```
 """
 struct BaSTIv1Track{A,B,C} <: AbstractTrack
