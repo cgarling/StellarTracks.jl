@@ -2,7 +2,10 @@
 
 If you are mainly a Python user and wish to use StellarTracks.jl and/or [BolometricCorrections.jl](@extref BolometricCorrections overview) *from Python*, this guide will describe how to do so. 
 
-Julia can be accessed from Python through the [`juliacall` package](https://juliapy.github.io/PythonCall.jl/stable/juliacall/). You should also install the [`juliapkg` package](https://github.com/JuliaPy/PyJuliaPkg) to manage your Julia dependencies. The use of Python virtual environments and the IPython shell are recommended.
+Julia can be accessed from Python through the [`juliacall` package](https://juliapy.github.io/PythonCall.jl/stable/juliacall/). You should also install the [`juliapkg` package](https://github.com/JuliaPy/PyJuliaPkg) to manage your Julia dependencies. In most configurations these can be easily installed with `pip install juliacall` and `pip install juliapkg`. 
+
+!!! info
+    The use of a Python virtual environment is recommended as the total installed data volume (Julia, packages, stellar track and bolometric correction files) may be large, and virtual environments can be removed easily when you are finished with them. We recommend the IPython shell as an extension will be loaded alongside `juliacall` to better display Julia objects.
 
 To install StellarTracks.jl and BolometricCorrections.jl into your `juliapkg`, environment, execute the following from Python:
 
