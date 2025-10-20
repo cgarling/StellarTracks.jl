@@ -108,14 +108,14 @@ Now, to generate mock photometry in our desired Gaia eDR3 filters, we do
 ```python
 # Interpolate the bolometric correction grid to our desired metallicity, reddening
 >>> bcg_interp = bcg(MH, Av)
->>> phot = bcg_interp(values) # Plug track values into bolometric correction grid to get mock photometry
+>>> phot = bcg_interp(values) # Call bolometric correction grid with track values to get mock photometry
 3-element StaticArraysCore.SVector{3, Float32} with indices SOneTo(3):
  -0.027466586
  -0.27473205
   0.38811892
 ```
 
-The `SVector` type of `phot` is most akin to a tuple, but can also be converted to a NumPy array
+The Julia `SVector` type of `phot` is most akin to a tuple, but can also be converted to a NumPy array
 
 ```python
 >>> tuple(phot)
@@ -127,10 +127,6 @@ array([-0.02746659, -0.27473205,  0.38811892], dtype=float32)
 These are now magnitudes corresponding to the filter names contained in `bcg_interp`:
 
 ```python
->>> jl.filternames(bcg_interp)
-(Julia: :G, Julia: :G_BP, Julia: :G_RP)
-# This can be made into a more convenient Python list of 
-# Python strings:
 >>> [jl.String(s) for s in jl.filternames(bcg_interp)]
 ['G', 'G_BP', 'G_RP']
 ```
