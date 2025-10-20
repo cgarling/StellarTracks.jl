@@ -36,6 +36,7 @@ makedocs(;
         "basti_v2.md",
         "api.md",
         "refs.md",
+        "python.md",
         "doc_index.md"
     ],
     pagesonly=true,
