@@ -7,6 +7,14 @@ Julia can be accessed from Python through the [`juliacall` package](https://juli
 !!! info
     The use of a Python virtual environment is recommended as the total installed data volume (Julia, packages, stellar track and bolometric correction files) may be large, and virtual environments can be removed easily when you are finished with them. We recommend the IPython shell as an extension will be loaded alongside `juliacall` to better display Julia objects.
 
+If you don't already have Julia installed, `juliacall` can install the Julia runtime when its loaded for the first time. You should do this before moving on and installing packages; from Python, run
+
+```python
+from juliacall import Main as jl
+```
+
+and a Julia runtime should be installed if you do not already have Julia installed.
+
 To install StellarTracks.jl and BolometricCorrections.jl into your `juliapkg`, environment, execute the following from Python:
 
 ```python
