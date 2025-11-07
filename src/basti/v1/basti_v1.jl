@@ -162,7 +162,7 @@ and call it with the masses you want, e.g.,
  - `zval::Number`: Metal mass fraction of stellar model.
  - `mass::Number`: Initial stellar mass of stellar model in solar masses.
  - `α_fe::Number`: [α/Fe] of stellar model.
- - `canonical::Bool`: Whether to use models with convective overshooting (`true`) or without (`false`).
+ - `canonical::Bool`: Whether to use models with convective overshooting (`false`) or without (`true`).
  - `agb::Bool`: Whether to use models with the synthetic AGB extension (`true`) or without (`false`).
  - `η::Number`: Reimers mass loss parameter used to calculate the stellar model.
 
@@ -224,7 +224,7 @@ interface for the older BaSTI stellar evolution library
 # Arguments
  - `zval::Number`: Metal mass fraction of stellar model.
  - `α_fe::Number = 0`: [α/Fe] of stellar model.
- - `canonical::Bool = true`: Whether to use models with convective overshooting (`true`) or without (`false`).
+ - `canonical::Bool = true`: Whether to use models with convective overshooting (`false`) or without (`true`).
  - `agb::Bool = false`: Whether to use models with the synthetic AGB extension (`true`) or without (`false`).
  - `η::Number = 0.4`: Reimers mass loss parameter used to calculate the stellar model.
 
@@ -396,7 +396,7 @@ interface for the older BaSTI stellar evolution models presented in
 
 # Optional Arguments
  - `α_fe::Number = 0`: [α/Fe] of stellar model.
- - `canonical::Bool = false`: Whether to use models with convective overshooting (`true`) or without (`false`).
+ - `canonical::Bool = false`: Whether to use models with convective overshooting (`false`) or without (`true`).
  - `agb::Bool = false`: Whether to use models with the synthetic AGB extension (`true`) or without (`false`).
  - `η::Number = 0.4`: Reimers mass loss parameter used to calculate the stellar model.
 

@@ -269,13 +269,13 @@ constructing a [`BaSTIv2TrackSet`](@ref) and is therefore
 not efficient if your aim is to construct multiple tracks with the same properties
 but different masses. In this case, you should construct a [`BaSTIv2TrackSet`](@ref)
 and call it with the masses you want, e.g.,
-`ts = BaSTIv2TrackSet(-2.2, 0.0, true, true, 0.247, 0.3); ts.([0.61, 0.82])`.
+`ts = BaSTIv2TrackSet(-2.2, 0.0, false, true, 0.247, 0.3); ts.([0.61, 0.82])`.
 
 # Arguments
  - `feh::Number`: [Fe/H] of stellar model.
  - `mass::Number`: Initial stellar mass of stellar model in solar masses.
  - `α_fe::Number`: [α/Fe] of stellar model.
- - `canonical::Bool`: Whether to use models with convective overshooting (`true`) or without (`false`).
+ - `canonical::Bool`: Whether to use models with convective overshooting (`false`) or without (`true`).
  - `diffusion::Bool`: Whether to use models with atomic diffusion (`true`) or without (`false`).
  - `yp::Number`: Primordial helium abundance assumed for stellar model.
  - `η::Number`: Reimers mass loss parameter used to calculate the stellar model.
@@ -346,7 +346,7 @@ interface for the updated BaSTI stellar evolution library
 
 # Optional Arguments
  - `α_fe::Number = 0`: [α/Fe] of stellar model.
- - `canonical::Bool = false`: Whether to use models with convective overshooting (`true`) or without (`false`).
+ - `canonical::Bool = false`: Whether to use models with convective overshooting (`false`) or without (`true`).
  - `diffusion::Bool = true`: Whether to use models with atomic diffusion (`true`) or without (`false`).
  - `yp::Number = 0.247`: Primordial helium abundance assumed for stellar model.
  - `η::Number = 0.3`: Reimers mass loss parameter used to calculate the stellar model.
@@ -524,7 +524,7 @@ interface for the updated BaSTI stellar evolution models presented in
 
 # Optional Arguments
  - `α_fe::Number = 0`: [α/Fe] of stellar model.
- - `canonical::Bool = false`: Whether to use models with convective overshooting (`true`) or without (`false`).
+ - `canonical::Bool = false`: Whether to use models with convective overshooting (`false`) or without (`true`).
  - `diffusion::Bool = true`: Whether to use models with atomic diffusion (`true`) or without (`false`).
  - `yp::Number = 0.247`: Primordial helium abundance assumed for stellar model.
  - `η::Number = 0.3`: Reimers mass loss parameter used to calculate the stellar model.
