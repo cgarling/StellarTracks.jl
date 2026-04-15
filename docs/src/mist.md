@@ -16,7 +16,7 @@ using StellarTracks.MIST # load all exported methods
 using StellarTracks.MIST: MISTLibrary, X, Y, Z # load specific methods
 ```
 
-The main papers describing the MIST family of stellar models are [Dotter2016,Choi2016](@citet). The tracks as provided by the MIST team [here](https://waps.cfa.harvard.edu/MIST/model_grids.html) include the equivalent evolutionary points (EEPs) necessary to support robust isochrone creation and interpolation.
+The main papers describing the MIST family of stellar models are [Dotter2016,Choi2016](@citet). The tracks as provided by the MIST team [here](https://mist.science/model_grids.html) include the equivalent evolutionary points (EEPs) necessary to support robust isochrone creation and interpolation.
 
 The MIST library has been widely used as it covers the full range of stellar masses and metallicities relevant for most studies of stellar populations. MIST includes stars with initial stellar masses from 0.1 to 300 solar masses and initial metallicities ``-4 \le [\text{M}/\text{H}] \le 0.5``. MIST includes post-MS and post-RGB evolution (when appropriate). MIST also provides rotating (`vvcrit=0.4`) and non-rotating (`vvcrit=0.0`) models.
 
@@ -26,7 +26,7 @@ This package handles downloading and pre-processing of the MIST stellar tracks. 
 
 ## Table Details
 
-The user guide for the MIST products is available [here](https://waps.cfa.harvard.edu/MIST/README_overview.pdf). The full MIST tracks contain 77 data columns originating from the MESA output. An description of the columns is available [here](https://waps.cfa.harvard.edu/MIST/README_tables.pdf). **Currently, we process the raw tracks and only save the subset of columns given by `StellarTracks.MIST.select_columns` (see below).** These columns are the ones most commonly needed for computing isochrones and applying bolometric corrections to compare against observed stellar populations. This choice is an optimization for storage space, load time, and development simplicity. If you require access to more columns, please submit an issue on the source repository and we can consider options.
+The user guide for the MIST products is available [here](https://mist.science/README_overview.pdf). The full MIST tracks contain 77 data columns originating from the MESA output. An description of the columns is available [here](https://mist.science/README_tables.pdf). **Currently, we process the raw tracks and only save the subset of columns given by `StellarTracks.MIST.select_columns` (see below).** These columns are the ones most commonly needed for computing isochrones and applying bolometric corrections to compare against observed stellar populations. This choice is an optimization for storage space, load time, and development simplicity. If you require access to more columns, please submit an issue on the source repository and we can consider options.
 ```@example
 using StellarTracks.MIST
 MIST.select_columns # These columns are saved from raw tracks
