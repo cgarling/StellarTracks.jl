@@ -121,9 +121,10 @@ end
 
 
 function __init__()
+    v1_prefix = "https://mist.science/data/tarballs_v1.2/MIST_v1.2_feh_"
     norot_feh_tags = ["m4.00", "m3.50", "m3.00", "m2.50", "m2.00", "m1.75", "m1.50",
                       "m1.25", "m1.00", "m0.75", "m0.50", "m0.25", "p0.00", "p0.25", "p0.50"]
-    norot_dl_links = ["https://waps.cfa.harvard.edu/MIST/data/tarballs_v1.2/MIST_v1.2_feh_" * s * "_afe_p0.0_vvcrit0.0_EEPS.txz" for s in norot_feh_tags]
+    norot_dl_links = [v1_prefix * s * "_afe_p0.0_vvcrit0.0_EEPS.txz" for s in norot_feh_tags]
 
     # Register non-rotating models
     register(DataDep("MISTv1.2_vvcrit0.0",
@@ -135,7 +136,7 @@ function __init__()
                      post_fetch_method = custom_unpack))
 
     # Register rotating models
-    rot_dl_links = ["https://waps.cfa.harvard.edu/MIST/data/tarballs_v1.2/MIST_v1.2_feh_" * s * "_afe_p0.0_vvcrit0.4_EEPS.txz" for s in norot_feh_tags]
+    rot_dl_links = [v1_prefix * s * "_afe_p0.0_vvcrit0.4_EEPS.txz" for s in norot_feh_tags]
     register(DataDep("MISTv1.2_vvcrit0.4",
                      """MIST v1.2 stellar evolutionary tracks with rotation \
                      (v/vcrit=0.4). All available evolutionary tracks \

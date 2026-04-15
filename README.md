@@ -8,7 +8,7 @@
 This package provides access to and interpolation of pre-computed libraries of stellar tracks. Secondary operations like isochrone creation are also supported. Currently included libraries are
 
  - [PARSECv1.2S](https://stev.oapd.inaf.it/PARSEC/papers.html)
- - [MIST](https://waps.cfa.harvard.edu/MIST/index.html)
+ - [MIST](https://mist.science)
  - [BaSTIv1](http://basti-iac.oa-abruzzo.inaf.it/basti-old/) (older models, circa 2013)
  - [BaSTIv2](http://basti-iac.oa-abruzzo.inaf.it/index.html) (updated BaSTI tracks)
 
