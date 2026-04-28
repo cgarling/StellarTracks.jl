@@ -38,6 +38,63 @@ function mist_feh(fname::AbstractString)
     return feh
 end
 """
+    mist_feh_v2(fname::AbstractString)
+Returns [Fe/H] from the name of a MIST v2.5 track archive or directory.
+The v2.5 naming convention encodes [Fe/H] as a sign character followed by a
+three-digit integer × 100 (e.g., `m400` → -4.00, `p050` → +0.50).
+```jldoctest
+julia> StellarTracks.MIST.mist_feh_v2("MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS.txz")
+-4.0
+
+julia> StellarTracks.MIST.mist_feh_v2("MIST_v2.5_feh_p050_afe_p0_vvcrit0.0_EEPS.txz")
+0.5
+```
+"""
+function mist_feh_v2(fname::AbstractString)
+    fname = basename(fname)
+    feh = parse(Int, fname[16:18]) / 100
+    if fname[15] == 'm'
+        feh *= -1
+    end
+    return feh
+end
+"""
+    mist_afe_v2(fname::AbstractString)
+Returns [α/Fe] from the name of a MIST v2.5 track archive or directory.
+The v2.5 naming convention encodes [α/Fe] as a sign character followed by a
+single integer digit × 10 (e.g., `m2` → -0.2, `p0` → 0.0, `p6` → +0.6).
+```jldoctest
+julia> StellarTracks.MIST.mist_afe_v2("MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS.txz")
+-0.2
+
+julia> StellarTracks.MIST.mist_afe_v2("MIST_v2.5_feh_p000_afe_p6_vvcrit0.0_EEPS.txz")
+0.6
+```
+"""
+function mist_afe_v2(fname::AbstractString)
+    fname = basename(fname)
+    afe = parse(Int, fname[25:25]) / 10
+    if fname[24] == 'm'
+        afe *= -1
+    end
+    return afe
+end
+
+"""
+    _afe_tag(afe::Number)
+Format an [α/Fe] value as the sign+magnitude string used in MIST v2.5 DataDep names,
+e.g. `-0.2` → `"m0.2"`, `0.0` → `"p0.0"`, `0.4` → `"p0.4"`.
+"""
+_afe_tag(afe::Number) = string(afe < 0 ? 'm' : 'p') * string(abs(afe))
+
+"""
+    _afe_file_tag(afe::Number)
+Format an [α/Fe] value as the single-digit integer tag used in MIST v2.5 archive
+filenames, e.g. `-0.2` → `"m2"`, `0.0` → `"p0"`, `0.6` → `"p6"`.
+"""
+_afe_file_tag(afe::Number) = string(afe < 0 ? 'm' : 'p') * string(round(Int, abs(afe) * 10))
+
+"""
     mist_mass(fname::AbstractString)
 Returns initial stellar mass from the name of a single MIST track.
 ```jldoctest
@@ -120,6 +177,39 @@ function custom_unpack(fname::AbstractString)
 end
 
 
+function custom_unpack_v2(fname::AbstractString)
+    fpath = dirname(fname)
+    fbasename = splitext(basename(fname))[1]  # e.g. "MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS"
+    @info "Unpacking $fbasename"
+    out_dir = joinpath(fpath, fbasename)
+    if isdir(out_dir)
+        rm(out_dir; force=true, recursive=true)
+    end
+    # unpack_txz is imported from BolometricCorrections.MIST
+    unpack_txz(fname, out_dir)
+
+    # In v2.5 the inner archive directory is the fbasename with the "MIST_vX.Y_" prefix
+    # and "_EEPS" suffix stripped (e.g. "feh_m400_afe_m2_vvcrit0.4"), and the .eep files
+    # live in a further "eeps/" subdirectory within it.
+    inner_dir = replace(replace(fbasename, r"^MIST_v\d+\.\d+_" => ""), r"_EEPS$" => "")
+    eep_dir = joinpath(out_dir, inner_dir, "eeps")
+
+    feh = string(mist_feh_v2(fname))
+    save_dir = joinpath(fpath, feh)
+    if isdir(save_dir)
+        rm(save_dir; force=true, recursive=true)
+    end
+    mkdir(save_dir)
+    files = filter(Base.Fix1(occursin, ".eep"), readdir(eep_dir; join=true))
+    for track in files
+        data = read(track, String)
+        tdata = read_mist_track(data; select = SVector(select_columns))
+        JLD2.save_object(joinpath(save_dir, splitext(basename(track))[1]) * ".jld2", tdata)
+    end
+    rm(out_dir; force=true, recursive=true)
+    rm(fname)
+end
+
 function __init__()
     v1_prefix = "https://mist.science/data/tarballs_v1.2/MIST_v1.2_feh_"
     norot_feh_tags = ["m4.00", "m3.50", "m3.00", "m2.50", "m2.00", "m1.75", "m1.50",
@@ -144,4 +234,38 @@ function __init__()
                      rot_dl_links,
                      "94a657226ecb08026df7a205551878559962e191c97740bba045eea3eddd960b";
                      post_fetch_method = custom_unpack))
+
+    # Register MIST v2.5 tracks — one DataDep per (vvcrit, [α/Fe]) combination.
+    # Each DataDep downloads all 17 [Fe/H] archives for that combination.
+    v2_prefix = "https://mist.science/data/tarballs_v2.5/eeps/MIST_v2.5_feh_"
+    v2_feh_tags = ["m400", "m350", "m300", "m275", "m250", "m225", "m200", "m175", "m150",
+                   "m125", "m100", "m075", "m050", "m025", "p000", "p025", "p050"]
+    # Dict of hashes for the datadeps, keyed by vvcrit and [α/Fe] values as strings (e.g. "0.0", "-0.2", "0.4")
+    v2_hashes = Dict("0.0" =>
+        Dict("0.0" => "d703498e3c2d544a0dad9ff5663fca0a723ce99f21989061e0ad7b80e8b93bf9",),
+        )
+    for vvcrit_str in ("0.0", "0.4")
+        for afe in afe_grid_v2
+            afe_ft  = _afe_file_tag(afe)   # e.g. "m2", "p0", "p2"
+            afe_nt  = _afe_tag(afe)        # e.g. "m0.2", "p0.0", "p0.2"
+            dl_links = [v2_prefix * feh_tag * "_afe_$(afe_ft)_vvcrit$(vvcrit_str)_EEPS.txz"
+                        for feh_tag in v2_feh_tags]
+            hash = if vvcrit_str in keys(v2_hashes)
+                if string(afe) in keys(v2_hashes[vvcrit_str])
+                    v2_hashes[vvcrit_str][string(afe)]
+                else
+                    "" # No hash available for this combination of vvcrit and [α/Fe] yet
+                end
+            else
+                ""
+            end
+            println(hash)
+            register(DataDep("MISTv2.5_vvcrit$(vvcrit_str)_afe_$(afe_nt)",
+                             """MIST v2.5 stellar evolutionary tracks with v/vcrit=$(vvcrit_str) \
+                             and [α/Fe]=$(afe). All 17 available [Fe/H] values \
+                             (-4 ≤ [Fe/H] ≤ +0.5 dex) will be downloaded.""",
+                             dl_links, hash;
+                             post_fetch_method = custom_unpack_v2))
+        end
+    end
 end

@@ -463,6 +463,6 @@ include("BCs.jl")
 # Common API exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname
 # Submodule exports
-export PARSECLibrary, MISTv1Library, MISTLibrary, BaSTIv1Library, BaSTIv2Library
+export PARSECLibrary, MISTv1Library, MISTLibrary, MISTv2Library, BaSTIv1Library, BaSTIv2Library
 
 end
