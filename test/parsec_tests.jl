@@ -1,11 +1,11 @@
 using StellarTracks.PARSEC
 using StellarTracks: InterpolatedTrack
-using BolometricCorrections.MIST: MISTBCGridv1
+using BolometricCorrections.MIST: MISTv1BCGrid
 using TypedTables: Table
 
 using Test
 
-bcg = MISTBCGridv1("JWST")
+bcg = MISTv1BCGrid("JWST")
 
 @test gridname(PARSECTrack) isa String
 @test gridname(PARSECTrackSet) isa String
@@ -31,7 +31,7 @@ bcg = MISTBCGridv1("JWST")
 
             # Test isochrone, with and without BCs
             @test isochrone(trackset, 10.0) isa NamedTuple
-            # Interpolate MISTBCGridv1 to appropriate feh, no reddening
+            # Interpolate MISTv1BCGrid to appropriate feh, no reddening
             bct = bcg(MH(trackset), 0.0)
             @test isochrone(trackset, bct, 10.0) isa Table
             for M in range(extrema(mass(trackset))...; length=10)

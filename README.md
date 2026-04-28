@@ -63,7 +63,7 @@ This package integrates with [BolometricCorrections.jl](https://github.com/cgarl
 julia> using BolometricCorrections
 
 # Load MIST BCs for HST ACS/WFC
-julia> bcgrid = MISTBCGridv1("hst_acs_wfc")
+julia> bcgrid = MISTv1BCGrid("hst_acs_wfc")
 MIST bolometric correction grid for photometric system MIST_HST_ACS_WFC
 
 # MIST BCs support reddening (Av) interpolation
