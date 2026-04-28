@@ -18,8 +18,8 @@ import JLD2 # for saving files in binary format
 using ProgressMeter: @showprogress
 using TypedTables: Table
 
-# We will simply reuse the MISTChemistry defined in BolometricCorrections
-using BolometricCorrections.MIST: MISTChemistry, unpack_txz
+# We will simply reuse the MISTv1Chemistry defined in BolometricCorrections
+using BolometricCorrections.MIST: MISTv1Chemistry, unpack_txz
 
 # Imports for core module code
 using ArgCheck: @argcheck
@@ -179,7 +179,7 @@ end
 Base.extrema(t::MISTTrack) = log10.(extrema(t.itp.t))
 gridname(::Type{<:MISTTrack}) = "MIST"
 mass(t::MISTTrack) = t.properties.M
-chemistry(::MISTTrack) = MISTChemistry()
+chemistry(::MISTTrack) = MISTv1Chemistry()
 MH(t::MISTTrack) = t.properties.feh # MH(chemistry(t), Z(t))
 Z(t::MISTTrack) = Z(chemistry(t), MH(t)) # t.properties.Z
 Y(t::MISTTrack) = Y(chemistry(t), Z(t))  # t.properties.Y
@@ -293,7 +293,7 @@ function (ts::MISTTrackSet)(M::Number)
 end
 gridname(::Type{<:MISTTrackSet}) = "MIST"
 mass(ts::MISTTrackSet) = ts.properties.masses
-chemistry(::MISTTrackSet) = MISTChemistry()
+chemistry(::MISTTrackSet) = MISTv1Chemistry()
 MH(ts::MISTTrackSet) = ts.properties.feh
 Z(ts::MISTTrackSet) = Z(chemistry(ts), MH(ts))
 Y(ts::MISTTrackSet) = Y(chemistry(ts), Z(ts))
@@ -385,7 +385,7 @@ struct MISTLibrary{A,B,C} <: AbstractTrackLibrary
     vvcrit::C
 end
 gridname(::Type{<:MISTLibrary}) = "MIST"
-chemistry(::MISTLibrary) = MISTChemistry()
+chemistry(::MISTLibrary) = MISTv1Chemistry()
 MH(p::MISTLibrary) = p.MH # MH.(chemistry(tl), Z(tl))
 Z(p::MISTLibrary) = Z.(chemistry(p), p.MH)
 Y(p::MISTLibrary) = Y.(chemistry(p), Z(p))
@@ -416,7 +416,7 @@ Interpolates properties of the stellar tracks in the library at the requested lo
 """
 isochrone(p::MISTLibrary, logAge::Number, mh::Number)
 
-export MISTTrack, MISTTrackSet, MISTLibrary, MISTChemistry   # Unique module exports
+export MISTTrack, MISTTrackSet, MISTLibrary, MISTv1Chemistry   # Unique module exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname # Export generic API methods
 
 end # module

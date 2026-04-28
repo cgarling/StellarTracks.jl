@@ -26,7 +26,7 @@ to a matrix with `Tables.matrix`.
 ```julia
 using StellarTracks, BolometricCorrections
 p = PARSECLibrary()    # Load PARSEC library of stellar models
-m = MISTBCGridv1("JWST") # Load MIST library of BCs
+m = MISTv1BCGrid("JWST") # Load MIST library of BCs
 isochrone(p.ts[1], m(MH(p.ts[1]), 0.0), 10.0)
 ```
 
@@ -52,7 +52,7 @@ The result can be converted to a matrix with `Tables.matrix`.
 ```julia
 using StellarTracks, BolometricCorrections
 p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
-m = MISTBCGridv1("JWST") # Load MIST library of BCs
+m = MISTv1BCGrid("JWST") # Load MIST library of BCs
 isochrone(p, m(-1.01, 0.0), 10.0, -1.01)
 ```
 
@@ -92,7 +92,7 @@ bolometric grid.
 ```julia
 using StellarTracks, BolometricCorrections
 p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
-m = MISTBCGridv1("JWST") # Load MIST library of BCs
+m = MISTv1BCGrid("JWST") # Load MIST library of BCs
 isochrone(p, m, 10.0, -1.01, 0.0)
 ```
 
@@ -138,7 +138,7 @@ function isochrone(tl::AbstractTrackLibrary,
     # lavec = []
     # lalock = ReentrantLock()
     # Threads.@threads for Zval in Z
-    #     mh = BC.MIST.MH(BC.MIST.MISTChemistryv1(), Zval)
+    #     mh = BC.MIST.MH(BC.MIST.MISTv1Chemistry(), Zval)
     #     bc = bcg(mh, Av)
     #     Threads.@threads for la in logAge
     #         iso = isochrone(tl, bc, la, Zval)
@@ -164,13 +164,13 @@ end
 # isochrone overloads for BC grids that require α-abundance as an argument
 
 """
-    isochrone(tl::AbstractTrackLibrary, bcg::MISTBCGridv2,
+    isochrone(tl::AbstractTrackLibrary, bcg::MISTv2BCGrid,
               logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
-Like the generic `isochrone` method, but for `MISTBCGridv2` which requires an
+Like the generic `isochrone` method, but for `MISTv2BCGrid` which requires an
 additional `afe` (\\[α/Fe\\]) argument when interpolating the bolometric correction grid.
 """
 function isochrone(tl::AbstractTrackLibrary,
-                   bcg::MISTBCGridv2, logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
+                   bcg::MISTv2BCGrid, logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
     return isochrone(tl, bcg(bc_mh, afe, Av), logAge, mh)
 end

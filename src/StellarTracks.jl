@@ -4,7 +4,7 @@ using ArgCheck: @argcheck
 using TypedTables: Table
 
 # For BCs.jl
-using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol, MISTBCGridv2
+using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol, MISTv2BCGrid
 using BolometricCorrections.YBC: PARSECChemistry
 import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry, gridname
 using DataInterpolations: PCHIPInterpolation

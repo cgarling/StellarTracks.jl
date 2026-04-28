@@ -63,8 +63,8 @@ plot_hr(iso) # hide
 We can load a grid of bolometric corrections from [BolometricCorrections.jl](@extref BolometricCorrections overview) to add observational magnitudes to the theoretical isochrone. BolometricCorrections.jl provides two versions of the MIST BC grid: v1.2 (metallicity and reddening only) and v2.5 (adds \[α/Fe\]). Here we use the **MIST v1.2** grid to evaluate an isochrone with `log10(age [yr]) = 10.05`, ``[\text{M}/\text{H}] = -1.234``, and ``A_v=0.02`` mag.
 
 ```@example
-using BolometricCorrections.MIST: MISTBCGridv1
-m1 = MISTBCGridv1("JWST")
+using BolometricCorrections.MIST: MISTv1BCGrid
+m1 = MISTv1BCGrid("JWST")
 iso_v1 = isochrone(p, m1, 10.05, -1.234, 0.02)
 ```
 
@@ -75,11 +75,11 @@ using TypedTables: columnnames
 columnnames(iso_v1)
 ```
 
-We can also use the **MIST v2.5** grid, which additionally requires specifying \[α/Fe\]. The `isochrone` method accepts a `MISTBCGridv2` and converts metallicities between the chemical abundance scales of the stellar tracks and bolometric corrections automatically.
+We can also use the **MIST v2.5** grid, which additionally requires specifying \[α/Fe\]. The `isochrone` method accepts a `MISTv2BCGrid` and converts metallicities between the chemical abundance scales of the stellar tracks and bolometric corrections automatically.
 
 ```@example
-using BolometricCorrections.MIST: MISTBCGridv2
-m2 = MISTBCGridv2("JWST")
+using BolometricCorrections.MIST: MISTv2BCGrid
+m2 = MISTv2BCGrid("JWST")
 iso_v2 = isochrone(p, m2, 10.05, -1.234, 0.0, 0.02) # feh, afe, Av
 ```
 

@@ -1,6 +1,6 @@
 using StellarTracks.MIST
 using StellarTracks: InterpolatedTrack
-using BolometricCorrections.MIST: MISTBCGridv1, MISTBCGridv2
+using BolometricCorrections.MIST: MISTv1BCGrid, MISTv2BCGrid
 using TypedTables: Table
 
 using Test
@@ -9,8 +9,8 @@ using Test
 @test gridname(MISTTrackSet) isa String
 @test gridname(MISTLibrary) isa String
 
-bcgv1 = MISTBCGridv1("JWST")
-bcgv2 = MISTBCGridv2("JWST")
+bcgv1 = MISTv1BCGrid("JWST")
+bcgv2 = MISTv2BCGrid("JWST")
 
 @testset "MIST" begin
     @testset "MISTTrack" begin
@@ -20,7 +20,7 @@ bcgv2 = MISTBCGridv2("JWST")
                     track = MISTTrack(feh, M, vvcrit)
                     @test gridname(track) isa String
                     @test mass(track) == M
-                    @test chemistry(track) == MISTChemistryv1()
+                    @test chemistry(track) == MISTv1Chemistry()
                     extr = extrema(track) # Get logAge limits
                     @test track(extr[1] + (extr[2] - extr[1])/2) isa NamedTuple
                     @test MH(track) == feh
@@ -40,7 +40,7 @@ bcgv2 = MISTBCGridv2("JWST")
                 @test gridname(trackset) isa String
                 @test trackset(1.0) isa MISTTrack
                 @test mass(trackset) == MIST.mass_grid
-                @test chemistry(trackset) == MISTChemistryv1()
+                @test chemistry(trackset) == MISTv1Chemistry()
                 @test MH(trackset) == feh
                 @test Z(trackset) == Z(chemistry(trackset), MH(trackset))
                 @test Y(trackset) == Y(chemistry(trackset), Z(trackset))
@@ -50,11 +50,11 @@ bcgv2 = MISTBCGridv2("JWST")
 
                 # Test isochrone, with and without BCs
                 @test isochrone(trackset, 10.0) isa NamedTuple
-                # Interpolate MISTBCGridv1 to appropriate feh, no reddening
+                # Interpolate MISTv1BCGrid to appropriate feh, no reddening
                 bctv1 = bcgv1(feh, 0.0)
                 @test isochrone(trackset, bctv1, 10.0) isa Table
                 if extrema(bcgv2).feh[1] <= feh <= extrema(bcgv2).feh[2]
-                    # Interpolate MISTBCGridv2 to appropriate feh, no reddening, solar α-abundance
+                    # Interpolate MISTv2BCGrid to appropriate feh, no reddening, solar α-abundance
                     bctv2 = bcgv2(feh, 0.0, 0.0)
                     @test isochrone(trackset, bctv2, 10.0) isa Table
                 end
@@ -66,7 +66,7 @@ bcgv2 = MISTBCGridv2("JWST")
             tracklib = MISTLibrary(vvcrit)
             @test gridname(tracklib) isa String
             @test tracklib(-2.05, 1.05) isa InterpolatedTrack
-            @test chemistry(tracklib) == MISTChemistryv1()
+            @test chemistry(tracklib) == MISTv1Chemistry()
             @test MH(tracklib) == MIST.feh_grid
             @test Z(tracklib) == Z.(chemistry(tracklib), MH(tracklib))
             @test Y(tracklib) == Y.(chemistry(tracklib), Z(tracklib))
