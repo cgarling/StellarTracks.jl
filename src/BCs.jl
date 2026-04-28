@@ -26,7 +26,7 @@ to a matrix with `Tables.matrix`.
 ```julia
 using StellarTracks, BolometricCorrections
 p = PARSECLibrary()    # Load PARSEC library of stellar models
-m = MISTBCGrid("JWST") # Load MIST library of BCs
+m = MISTBCGridv1("JWST") # Load MIST library of BCs
 isochrone(p.ts[1], m(MH(p.ts[1]), 0.0), 10.0)
 ```
 
@@ -52,7 +52,7 @@ The result can be converted to a matrix with `Tables.matrix`.
 ```julia
 using StellarTracks, BolometricCorrections
 p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
-m = MISTBCGrid("JWST") # Load MIST library of BCs
+m = MISTBCGridv1("JWST") # Load MIST library of BCs
 isochrone(p, m(-1.01, 0.0), 10.0, -1.01)
 ```
 
@@ -92,7 +92,7 @@ bolometric grid.
 ```julia
 using StellarTracks, BolometricCorrections
 p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
-m = MISTBCGrid("JWST") # Load MIST library of BCs
+m = MISTBCGridv1("JWST") # Load MIST library of BCs
 isochrone(p, m, 10.0, -1.01, 0.0)
 ```
 
@@ -138,7 +138,7 @@ function isochrone(tl::AbstractTrackLibrary,
     # lavec = []
     # lalock = ReentrantLock()
     # Threads.@threads for Zval in Z
-    #     mh = BC.MIST.MH(BC.MIST.MISTChemistry(), Zval)
+    #     mh = BC.MIST.MH(BC.MIST.MISTChemistryv1(), Zval)
     #     bc = bcg(mh, Av)
     #     Threads.@threads for la in logAge
     #         iso = isochrone(tl, bc, la, Zval)
@@ -156,9 +156,24 @@ end
 # Not sure how to handle the fact that AbstractTrackLibrary and AbstractBCGrid can
 # have different dependent variables (Z, Av, α-abundance, etc.). Going to define
 # specific call signatures for each type that will be relatively simple to extend.
-# For now we ware not interpolating against α-abundance and all BC grids have Av
+# For now we are not interpolating against α-abundance and all BC grids have Av
 # as an interpolation variable, so the above generic functions are sufficient. 
 # Leaving this here as we may need to revisit this when more BC grids are added.
+
+####################################################################################
+# isochrone overloads for BC grids that require α-abundance as an argument
+
+"""
+    isochrone(tl::AbstractTrackLibrary, bcg::MISTBCGridv2,
+              logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
+Like the generic `isochrone` method, but for `MISTBCGridv2` which requires an
+additional `afe` (\\[α/Fe\\]) argument when interpolating the bolometric correction grid.
+"""
+function isochrone(tl::AbstractTrackLibrary,
+                   bcg::MISTBCGridv2, logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
+    bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
+    return isochrone(tl, bcg(bc_mh, afe, Av), logAge, mh)
+end
 
 ####################################################################################
 # Code for specific stellar models / BC grid combinations

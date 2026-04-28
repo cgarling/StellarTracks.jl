@@ -1,6 +1,6 @@
 using StellarTracks.BaSTIv1
 using StellarTracks: InterpolatedTrack
-using BolometricCorrections.MIST: MISTBCGrid
+using BolometricCorrections.MIST: MISTBCGridv1
 using TypedTables: Table
 
 using Test
@@ -9,7 +9,7 @@ using Test
 @test gridname(BaSTIv1TrackSet) isa String
 @test gridname(BaSTIv1Library) isa String
 
-bcg = MISTBCGrid("JWST")
+bcg = MISTBCGridv1("JWST")
 
 @testset "BaSTIv1" begin
     @testset "BaSTIv1Track + BaSTIv1TrackSet" begin
@@ -43,7 +43,7 @@ bcg = MISTBCGrid("JWST")
 
                             # Test isochrone, with and without BCs
                             @test isochrone(trackset, 9.0) isa NamedTuple
-                            # Interpolate MISTBCGrid to appropriate feh, no reddening
+                            # Interpolate MISTBCGridv1 to appropriate feh, no reddening
                             bct = bcg(MH(trackset), 0.0)
                             @test isochrone(trackset, bct, 9.0) isa Table
                             for M in range(extrema(mass(trackset))...; length=10)
