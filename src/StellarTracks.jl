@@ -179,7 +179,7 @@ initial stellar masses are `result.m_ini`.
 ```jldoctest
 julia> using StellarTracks.MIST
 
-julia> ts = MISTTrackSet(-1, 0); # Load set of MIST tracks with [M/H] = -1, vvcrit=0
+julia> ts = MISTv1TrackSet(-1, 0); # Load set of MIST tracks with [M/H] = -1, vvcrit=0
 
 julia> isochrone(ts, 10.0) isa NamedTuple
 true
@@ -367,7 +367,7 @@ If `result = isochrone(...)`, EEP points are generally available as
 ```jldoctest
 julia> using StellarTracks.MIST
 
-julia> p = MISTLibrary(0.0); # Load the library of MIST tracks with vvcrit=0
+julia> p = MISTv1Library(0.0); # Load the library of MIST tracks with vvcrit=0
 
 julia> isochrone(p, 10.0, -1.65) isa NamedTuple
 true
@@ -463,6 +463,6 @@ include("BCs.jl")
 # Common API exports
 export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname
 # Submodule exports
-export PARSECLibrary, MISTLibrary, BaSTIv1Library, BaSTIv2Library
+export PARSECLibrary, MISTv1Library, MISTLibrary, BaSTIv1Library, BaSTIv2Library
 
 end

@@ -51,7 +51,7 @@ The result can be converted to a matrix with `Tables.matrix`.
 
 ```julia
 using StellarTracks, BolometricCorrections
-p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
+p = MISTv1Library(0.0)   # Load MIST library of non-rotating stellar models
 m = MISTv1BCGrid("JWST") # Load MIST library of BCs
 isochrone(p, m(-1.01, 0.0), 10.0, -1.01)
 ```
@@ -91,7 +91,7 @@ bolometric grid.
 
 ```julia
 using StellarTracks, BolometricCorrections
-p = MISTLibrary(0.0)   # Load MIST library of non-rotating stellar models
+p = MISTv1Library(0.0)   # Load MIST library of non-rotating stellar models
 m = MISTv1BCGrid("JWST") # Load MIST library of BCs
 isochrone(p, m, 10.0, -1.01, 0.0)
 ```

@@ -5,19 +5,19 @@ using TypedTables: Table
 
 using Test
 
-@test gridname(MISTTrack) isa String
-@test gridname(MISTTrackSet) isa String
-@test gridname(MISTLibrary) isa String
+@test gridname(MISTv1Track) isa String
+@test gridname(MISTv1TrackSet) isa String
+@test gridname(MISTv1Library) isa String
 
 bcgv1 = MISTv1BCGrid("JWST")
 bcgv2 = MISTv2BCGrid("JWST")
 
 @testset "MIST" begin
-    @testset "MISTTrack" begin
+    @testset "MISTv1Track" begin
         for vvcrit in (0.0, 0.4)
             for feh in MIST.feh_grid
                 for M in MIST.mass_grid
-                    track = MISTTrack(feh, M, vvcrit)
+                    track = MISTv1Track(feh, M, vvcrit)
                     @test gridname(track) isa String
                     @test mass(track) == M
                     @test chemistry(track) == MISTv1Chemistry()
@@ -33,12 +33,12 @@ bcgv2 = MISTv2BCGrid("JWST")
             end
         end
     end
-    @testset "MISTTrackSet" begin
+    @testset "MISTv1TrackSet" begin
         for vvcrit in (0.0, 0.4)
             for feh in MIST.feh_grid
-                trackset = MISTTrackSet(feh, vvcrit)
+                trackset = MISTv1TrackSet(feh, vvcrit)
                 @test gridname(trackset) isa String
-                @test trackset(1.0) isa MISTTrack
+                @test trackset(1.0) isa MISTv1Track
                 @test mass(trackset) == MIST.mass_grid
                 @test chemistry(trackset) == MISTv1Chemistry()
                 @test MH(trackset) == feh
@@ -61,9 +61,9 @@ bcgv2 = MISTv2BCGrid("JWST")
             end
         end
     end
-    @testset "MISTLibrary" begin
+    @testset "MISTv1Library" begin
         for vvcrit in (0.0, 0.4)
-            tracklib = MISTLibrary(vvcrit)
+            tracklib = MISTv1Library(vvcrit)
             @test gridname(tracklib) isa String
             @test tracklib(-2.05, 1.05) isa InterpolatedTrack
             @test chemistry(tracklib) == MISTv1Chemistry()

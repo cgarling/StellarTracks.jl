@@ -13,7 +13,7 @@ Here we describe the interface we provide to the MIST v1.2 library of stellar ev
 
 ```julia
 using StellarTracks.MIST # load all exported methods
-using StellarTracks.MIST: MISTLibrary, X, Y, Z # load specific methods
+using StellarTracks.MIST: MISTv1Library, X, Y, Z # load specific methods
 ```
 
 The main papers describing the MIST family of stellar models are [Dotter2016,Choi2016](@citet). The tracks as provided by the MIST team [here](https://mist.science/model_grids.html) include the equivalent evolutionary points (EEPs) necessary to support robust isochrone creation and interpolation.
@@ -22,7 +22,7 @@ The MIST library has been widely used as it covers the full range of stellar mas
 
 ## Data Acquisition
 
-This package handles downloading and pre-processing of the MIST stellar tracks. The main access point we provide is [`MISTLibrary`](@ref StellarTracks.MIST.MISTLibrary), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume that will be downloaded is about 1.3 GB and will total 158 MB after processing. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"MISTv1.2_vvcrit0.0"; recursive=true); rm(datadep"MISTv1.2_vvcrit0.4"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the MIST parameter space.
+This package handles downloading and pre-processing of the MIST stellar tracks. The main access point we provide is [`MISTv1Library`](@ref StellarTracks.MIST.MISTv1Library), which will load and make available the full library of stellar tracks. The first time you call this method, you will be prompted to download the required data files. The total data volume that will be downloaded is about 1.3 GB and will total 158 MB after processing. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"MISTv1.2_vvcrit0.0"; recursive=true); rm(datadep"MISTv1.2_vvcrit0.4"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the MIST parameter space.
 
 ## Table Details
 
@@ -34,14 +34,14 @@ MIST.select_columns # These columns are saved from raw tracks
 ```
 
 ## Examples
-Load the full MIST library of non-rotating models `vvcrit=0`, which is downloaded via DataDeps.jl if not already available. MIST also provides rotating models with `vvcrit=0.4` which can be loaded with `MISTLibrary(0.4)`.
+Load the full MIST library of non-rotating models `vvcrit=0`, which is downloaded via DataDeps.jl if not already available. MIST also provides rotating models with `vvcrit=0.4` which can be loaded with `MISTv1Library(0.4)`.
 
 ```@example
 using StellarTracks.MIST
-p = MISTLibrary(0.0)
+p = MISTv1Library(0.0)
 ```
 
-Use the [`MIST.MISTLibrary`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metallicity ``[\text{M}/\text{H}] = -1.234``. The isochrone is returned as a `NamedTuple`.
+Use the [`MIST.MISTv1Library`](@ref) to interpolate an isochrone at `log10(age [yr]) = 10.05` and metallicity ``[\text{M}/\text{H}] = -1.234``. The isochrone is returned as a `NamedTuple`.
 
 ```@example
 iso = isochrone(p, 10.05, -1.234)
@@ -103,23 +103,23 @@ fig # hide
 ```
 
 ## Chemistry API
-We re-export the [`BolometricCorrections.MIST.MISTChemistry`](@extref) type defined in BolometricCorrections.jl that can be used to access information on the chemical mixture assumed for the MIST models. All models have scaled-solar chemical compositions.
+We re-export the [`BolometricCorrections.MIST.MISTv1Chemistry`](@extref) type defined in BolometricCorrections.jl that can be used to access information on the chemical mixture assumed for the MIST v1.2 models. All models have scaled-solar chemical compositions.
 
 ## Library API
 
 ```@docs
-StellarTracks.MIST.MISTLibrary
-isochrone(::StellarTracks.MIST.MISTLibrary, ::Number, ::Number)
+StellarTracks.MIST.MISTv1Library
+isochrone(::StellarTracks.MIST.MISTv1Library, ::Number, ::Number)
 ```
 
 ## Track Set API
 ```@docs
-StellarTracks.MIST.MISTTrackSet
+StellarTracks.MIST.MISTv1TrackSet
 ```
  
 ## Individual Tracks API
 ```@docs
-StellarTracks.MIST.MISTTrack
+StellarTracks.MIST.MISTv1Track
 ```
 
 ## MIST References

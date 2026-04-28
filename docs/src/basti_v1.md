@@ -72,8 +72,8 @@ Because the solar metallicity calibrations of BaSTIv1 and MIST are not exactly t
 This method returns a `TypedTables.Table` that contains the information from both sources. Here we evaluate an isochrone with `log10(age [yr]) = 10.05`, \[M/H\]=-1.234, and ``A_v=0.02`` mag. 
 
 ```@example
-using BolometricCorrections.MIST: MISTBCGrid
-m = MISTBCGrid("JWST")
+using BolometricCorrections.MIST: MISTv1BCGrid
+m = MISTv1BCGrid("JWST")
 iso = isochrone(p, m, 10.05, -1.234, 0.02)
 ```
 
