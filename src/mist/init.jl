@@ -37,62 +37,6 @@ function mist_feh(fname::AbstractString)
     end
     return feh
 end
-"""
-    mist_feh_v2(fname::AbstractString)
-Returns [Fe/H] from the name of a MIST v2.5 track archive or directory.
-The v2.5 naming convention encodes [Fe/H] as a sign character followed by a
-three-digit integer × 100 (e.g., `m400` → -4.00, `p050` → +0.50).
-```jldoctest
-julia> StellarTracks.MIST.mist_feh_v2("MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS.txz")
--4.0
-
-julia> StellarTracks.MIST.mist_feh_v2("MIST_v2.5_feh_p050_afe_p0_vvcrit0.0_EEPS.txz")
-0.5
-```
-"""
-function mist_feh_v2(fname::AbstractString)
-    fname = basename(fname)
-    feh = parse(Int, fname[16:18]) / 100
-    if fname[15] == 'm'
-        feh *= -1
-    end
-    return feh
-end
-"""
-    mist_afe_v2(fname::AbstractString)
-Returns [α/Fe] from the name of a MIST v2.5 track archive or directory.
-The v2.5 naming convention encodes [α/Fe] as a sign character followed by a
-single integer digit × 10 (e.g., `m2` → -0.2, `p0` → 0.0, `p6` → +0.6).
-```jldoctest
-julia> StellarTracks.MIST.mist_afe_v2("MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS.txz")
--0.2
-
-julia> StellarTracks.MIST.mist_afe_v2("MIST_v2.5_feh_p000_afe_p6_vvcrit0.0_EEPS.txz")
-0.6
-```
-"""
-function mist_afe_v2(fname::AbstractString)
-    fname = basename(fname)
-    afe = parse(Int, fname[25:25]) / 10
-    if fname[24] == 'm'
-        afe *= -1
-    end
-    return afe
-end
-
-"""
-    _afe_tag(afe::Number)
-Format an [α/Fe] value as the sign+magnitude string used in MIST v2.5 DataDep names,
-e.g. `-0.2` → `"m0.2"`, `0.0` → `"p0.0"`, `0.4` → `"p0.4"`.
-"""
-_afe_tag(afe::Number) = string(afe < 0 ? 'm' : 'p') * string(abs(afe))
-
-"""
-    _afe_file_tag(afe::Number)
-Format an [α/Fe] value as the single-digit integer tag used in MIST v2.5 archive
-filenames, e.g. `-0.2` → `"m2"`, `0.0` → `"p0"`, `0.6` → `"p6"`.
-"""
-_afe_file_tag(afe::Number) = string(afe < 0 ? 'm' : 'p') * string(round(Int, abs(afe) * 10))
 
 """
     mist_mass(fname::AbstractString)
@@ -116,6 +60,7 @@ function read_mist_track(data::AbstractString; select = nothing)
     tdata = Table(CSV.File(IOBuffer(data); comment="#", delim=' ', ignorerepeated=true,
                            header=header.colnames, select=select, ntasks=1))
 end
+
 """
     track_table(filename::AbstractString; select = select_columns))
 Given the path to a MIST ".eep" track, read the file as a `TypedTables.Table`.
@@ -176,6 +121,62 @@ function custom_unpack(fname::AbstractString)
     rm(fname) # Remove original .txz file
 end
 
+"""
+    mist_feh_v2(fname::AbstractString)
+Returns [Fe/H] from the name of a MIST v2.5 track archive or directory.
+The v2.5 naming convention encodes [Fe/H] as a sign character followed by a
+three-digit integer × 100 (e.g., `m400` → -4.00, `p050` → +0.50).
+```jldoctest
+julia> StellarTracks.MIST.mist_feh_v2("MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS.txz")
+-4.0
+
+julia> StellarTracks.MIST.mist_feh_v2("MIST_v2.5_feh_p050_afe_p0_vvcrit0.0_EEPS.txz")
+0.5
+```
+"""
+function mist_feh_v2(fname::AbstractString)
+    fname = basename(fname)
+    feh = parse(Int, fname[16:18]) / 100
+    if fname[15] == 'm'
+        feh *= -1
+    end
+    return feh
+end
+"""
+    mist_afe_v2(fname::AbstractString)
+Returns [α/Fe] from the name of a MIST v2.5 track archive or directory.
+The v2.5 naming convention encodes [α/Fe] as a sign character followed by a
+single integer digit × 10 (e.g., `m2` → -0.2, `p0` → 0.0, `p6` → +0.6).
+```jldoctest
+julia> StellarTracks.MIST.mist_afe_v2("MIST_v2.5_feh_m400_afe_m2_vvcrit0.4_EEPS.txz")
+-0.2
+
+julia> StellarTracks.MIST.mist_afe_v2("MIST_v2.5_feh_p000_afe_p6_vvcrit0.0_EEPS.txz")
+0.6
+```
+"""
+function mist_afe_v2(fname::AbstractString)
+    fname = basename(fname)
+    afe = parse(Int, fname[25:25]) / 10
+    if fname[24] == 'm'
+        afe *= -1
+    end
+    return afe
+end
+
+"""
+    _afe_tag(afe::Number)
+Format an [α/Fe] value as the sign+magnitude string used in MIST v2.5 DataDep names,
+e.g. `-0.2` → `"m0.2"`, `0.0` → `"p0.0"`, `0.4` → `"p0.4"`.
+"""
+_afe_tag(afe::Number) = string(afe < 0 ? 'm' : 'p') * string(abs(afe))
+
+"""
+    _afe_file_tag(afe::Number)
+Format an [α/Fe] value as the single-digit integer tag used in MIST v2.5 archive
+filenames, e.g. `-0.2` → `"m2"`, `0.0` → `"p0"`, `0.6` → `"p6"`.
+"""
+_afe_file_tag(afe::Number) = string(afe < 0 ? 'm' : 'p') * string(round(Int, abs(afe) * 10))
 
 function custom_unpack_v2(fname::AbstractString)
     fpath = dirname(fname)
@@ -211,6 +212,7 @@ function custom_unpack_v2(fname::AbstractString)
 end
 
 function __init__()
+    # Register MIST v1.2 tracks — one DataDep per vvcrit value, each downloading all [Fe/H] archives for that vvcrit
     v1_prefix = "https://mist.science/data/tarballs_v1.2/MIST_v1.2_feh_"
     norot_feh_tags = ["m4.00", "m3.50", "m3.00", "m2.50", "m2.00", "m1.75", "m1.50",
                       "m1.25", "m1.00", "m0.75", "m0.50", "m0.25", "p0.00", "p0.25", "p0.50"]
@@ -235,21 +237,34 @@ function __init__()
                      "94a657226ecb08026df7a205551878559962e191c97740bba045eea3eddd960b";
                      post_fetch_method = custom_unpack))
 
+    ###########################################################################
     # Register MIST v2.5 tracks — one DataDep per (vvcrit, [α/Fe]) combination.
-    # Each DataDep downloads all 17 [Fe/H] archives for that combination.
+    # Each DataDep downloads all [Fe/H] archives for that combination.
     v2_prefix = "https://mist.science/data/tarballs_v2.5/eeps/MIST_v2.5_feh_"
     v2_feh_tags = ["m400", "m350", "m300", "m275", "m250", "m225", "m200", "m175", "m150",
                    "m125", "m100", "m075", "m050", "m025", "p000", "p025", "p050"]
     # Dict of hashes for the datadeps, keyed by vvcrit and [α/Fe] values as strings (e.g. "0.0", "-0.2", "0.4")
     v2_hashes = Dict("0.0" =>
-        Dict("0.0" => "d703498e3c2d544a0dad9ff5663fca0a723ce99f21989061e0ad7b80e8b93bf9",),
+        Dict("-0.2" => "7b874707cf2e89c6a50be0649be07285e1429c52c77da727fd0ea7a4aee7a274",
+             "0.0"  => "d703498e3c2d544a0dad9ff5663fca0a723ce99f21989061e0ad7b80e8b93bf9",
+             "0.2"  => "486eef2bc4600b707e12198ac03b0e8fe1cfa43ecdd81ab6c777baebf64125e2",
+             "0.4"  => "611e70f4c3cd022ba9da7ac25db0f9fc6774d90d0462702288e5862fafd3ce13",
+             "0.6"  => "7002d914c3b7f9012d76b40ab7f6c35103f0cc621724f3cc10bad3d48c5a0f77",),
+        "0.4" =>
+        Dict("-0.2" => "bf0c84de49957c32e415489a22f3aa9df5f3235e034bc6b15ac0ab57348a38fb",
+             "0.0"  => "4499a6d88ef39b5a94893551bfb7856c5aac5f3d38efbcc18a9c99a519d4f50f",
+             "0.2"  => "5bf2c2e1f8d2d1668bf5fac3ac8338810ff378a458a58c04bf57a5ce516a2a17",
+             "0.4"  => "7d7c8f0e4f1adefc561efad9e59bf13a1c61aae58c506ef4dfb73c03bf8bf782",
+             "0.6"  => "2eeb17778f1fa059d65256949887a15f986d5714040d2a0094c3c9963f4c85eb",),
         )
     for vvcrit_str in ("0.0", "0.4")
         for afe in afe_grid_v2
             afe_ft  = _afe_file_tag(afe)   # e.g. "m2", "p0", "p2"
             afe_nt  = _afe_tag(afe)        # e.g. "m0.2", "p0.0", "p0.2"
+            # [Fe/H] = +0.5 files are not available on the server for [α/Fe] = +0.6
+            feh_tags  = afe ≈ 0.6 ? v2_feh_tags[begin:end-1] : v2_feh_tags
             dl_links = [v2_prefix * feh_tag * "_afe_$(afe_ft)_vvcrit$(vvcrit_str)_EEPS.txz"
-                        for feh_tag in v2_feh_tags]
+                        for feh_tag in feh_tags]
             hash = if vvcrit_str in keys(v2_hashes)
                 if string(afe) in keys(v2_hashes[vvcrit_str])
                     v2_hashes[vvcrit_str][string(afe)]
@@ -259,11 +274,12 @@ function __init__()
             else
                 ""
             end
-            println(hash)
+            n_feh = length(feh_tags)
+            feh_range = afe ≈ 0.6 ? "-4 ≤ [Fe/H] ≤ +0.25 dex" : "-4 ≤ [Fe/H] ≤ +0.5 dex"
             register(DataDep("MISTv2.5_vvcrit$(vvcrit_str)_afe_$(afe_nt)",
                              """MIST v2.5 stellar evolutionary tracks with v/vcrit=$(vvcrit_str) \
-                             and [α/Fe]=$(afe). All 17 available [Fe/H] values \
-                             (-4 ≤ [Fe/H] ≤ +0.5 dex) will be downloaded.""",
+                             and [α/Fe]=$(afe). All $n_feh available [Fe/H] values \
+                             ($feh_range) will be downloaded.""",
                              dl_links, hash;
                              post_fetch_method = custom_unpack_v2))
         end

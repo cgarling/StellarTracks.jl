@@ -78,6 +78,20 @@ const afe_grid_v2 = track_type[-0.2, 0.0, 0.2, 0.4, 0.6]
 const vvcrit_grid_v2 = track_type[0.0, 0.4]
 
 """
+    feh_grid_v2_for(afe) -> Vector
+Return the subset of `feh_grid_v2` that is available for the given `[α/Fe]` value.
+For `[α/Fe] = +0.6` the `[Fe/H] = +0.5` grid point is not available on the MIST server,
+so it is excluded. All other `[α/Fe]` values have the full 17-point `feh_grid_v2`.
+"""
+function feh_grid_v2_for(afe::Number)
+    afe_val = track_type(afe)
+    if afe_val ≈ track_type(0.6)
+        return filter(!≈(track_type(0.5)), feh_grid_v2)
+    end
+    return feh_grid_v2
+end
+
+"""
     _parse_vvcrit(vvcrit::Number)
 Given a MIST vvcrit value, determine if it is valid and return a `String`
 corresponding to the proper value.
@@ -208,7 +222,7 @@ function (track::MISTv1Track)(logAge::Number)
     return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::MISTv1Track) = log10.(extrema(t.itp.t))
-gridname(::Type{<:MISTv1Track}) = "MIST"
+gridname(::Type{<:MISTv1Track}) = "MISTv1"
 mass(t::MISTv1Track) = t.properties.M
 chemistry(::MISTv1Track) = MISTv1Chemistry()
 MH(t::MISTv1Track) = t.properties.feh # MH(chemistry(t), Z(t))
@@ -322,7 +336,7 @@ function (ts::MISTv1TrackSet)(M::Number)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return MISTv1Track(table, props)
 end
-gridname(::Type{<:MISTv1TrackSet}) = "MIST"
+gridname(::Type{<:MISTv1TrackSet}) = "MISTv1"
 mass(ts::MISTv1TrackSet) = ts.properties.masses
 chemistry(::MISTv1TrackSet) = MISTv1Chemistry()
 MH(ts::MISTv1TrackSet) = ts.properties.feh
@@ -415,7 +429,7 @@ struct MISTv1Library{A,B,C} <: AbstractTrackLibrary
     MH::B  # Vector of MH for each TrackSet
     vvcrit::C
 end
-gridname(::Type{<:MISTv1Library}) = "MIST"
+gridname(::Type{<:MISTv1Library}) = "MISTv1"
 chemistry(::MISTv1Library) = MISTv1Chemistry()
 MH(p::MISTv1Library) = p.MH # MH.(chemistry(tl), Z(tl))
 Z(p::MISTv1Library) = Z.(chemistry(p), p.MH)
@@ -473,9 +487,10 @@ function MISTv2Track(data::Table, props)
 end
 function MISTv2Track(feh::Number, mass::Number, vvcrit::Number=0, afe::Number=0)
     props = (M = mass, feh = feh, vvcrit = vvcrit, afe = afe)
-    feh_idx = findfirst(≈(feh), feh_grid_v2)
-    @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv2Track` is invalid; available metallicities are $feh_grid_v2. For metallicity interpolation, use `MISTv2Library`.")
-    feh_str    = string(feh_grid_v2[feh_idx])
+    valid_feh  = feh_grid_v2_for(afe)
+    feh_idx = findfirst(≈(feh), valid_feh)
+    @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv2Track` is invalid for [α/Fe]=$afe; available metallicities are $valid_feh. For metallicity interpolation, use `MISTv2Library`.")
+    feh_str    = string(valid_feh[feh_idx])
     vvcrit_str = _parse_vvcrit(vvcrit)
     afe_val    = _parse_afe_v2(afe)
     afe_str    = _afe_tag(afe_val)
@@ -491,7 +506,7 @@ function (track::MISTv2Track)(logAge::Number)
     return NamedTuple{keys(track)}(result)
 end
 Base.extrema(t::MISTv2Track) = log10.(extrema(t.itp.t))
-gridname(::Type{<:MISTv2Track}) = "MIST"
+gridname(::Type{<:MISTv2Track}) = "MISTv2"
 mass(t::MISTv2Track) = t.properties.M
 chemistry(::MISTv2Track) = MISTv2Chemistry()
 MH(t::MISTv2Track) = t.properties.feh
@@ -525,21 +540,26 @@ struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
     properties::D
 end
 function MISTv2TrackSet(feh::Number, vvcrit::Number=0, afe::Number=0)
-    feh_idx = findfirst(≈(feh), feh_grid_v2)
-    @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv2TrackSet` is invalid; available metallicities are $feh_grid_v2. For metallicity interpolation, use `MISTv2Library`.")
-    feh_str    = string(feh_grid_v2[feh_idx])
+    valid_feh  = feh_grid_v2_for(afe)
+    feh_idx = findfirst(≈(feh), valid_feh)
+    @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv2TrackSet` is invalid for [α/Fe]=$afe; available metallicities are $valid_feh. For metallicity interpolation, use `MISTv2Library`.")
+    feh_str    = string(valid_feh[feh_idx])
     vvcrit_str = _parse_vvcrit(vvcrit)
     afe_val    = _parse_afe_v2(afe)
     afe_str    = _afe_tag(afe_val)
-    allfiles = [@datadep_str(joinpath("MISTv2.5_vvcrit$(vvcrit_str)_afe_$(afe_str)",
-                                      feh_str, _parse_mass_v2(m) * "M.track.jld2"))
-                for m in mass_grid_v2]
+    datadep_dir = @datadep_str("MISTv2.5_vvcrit$(vvcrit_str)_afe_$(afe_str)")
+    allfiles_masses = [(path = joinpath(datadep_dir, feh_str, _parse_mass_v2(m) * "M.track.jld2"),
+                        mass = m)
+                       for m in mass_grid_v2]
+    # Some (feh, vvcrit, afe) combinations are missing individual mass tracks in the MIST v2.5 grid.
+    # Skip files that are not present on disk rather than erroring.
+    allfiles_masses = filter(fm -> isfile(fm.path), allfiles_masses)
     data = vcat([begin
-                     tmpdata = JLD2.load_object(allfiles[i])
-                     Table(tmpdata, m_ini=fill(mass_grid_v2[i], length(tmpdata)),
+                     tmpdata = JLD2.load_object(fm.path)
+                     Table(tmpdata, m_ini=fill(fm.mass, length(tmpdata)),
                            eep = 1:length(tmpdata))
-                 end for i in eachindex(allfiles)]...)
-    return MISTv2TrackSet(data, feh_grid_v2[feh_idx],
+                 end for fm in allfiles_masses]...)
+    return MISTv2TrackSet(data, valid_feh[feh_idx],
                           parse(track_type, vvcrit_str), afe_val)
 end
 function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
@@ -585,7 +605,7 @@ function (ts::MISTv2TrackSet)(M::Number)
                   tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return MISTv2Track(table, props)
 end
-gridname(::Type{<:MISTv2TrackSet}) = "MIST"
+gridname(::Type{<:MISTv2TrackSet}) = "MISTv2"
 mass(ts::MISTv2TrackSet) = ts.properties.masses
 chemistry(::MISTv2TrackSet) = MISTv2Chemistry()
 MH(ts::MISTv2TrackSet) = ts.properties.feh
@@ -667,7 +687,7 @@ struct MISTv2Library{A, B, C, D} <: AbstractTrackLibrary
     vvcrit::C
     afe::D
 end
-gridname(::Type{<:MISTv2Library}) = "MIST"
+gridname(::Type{<:MISTv2Library}) = "MISTv2"
 chemistry(::MISTv2Library) = MISTv2Chemistry()
 MH(p::MISTv2Library) = p.feh
 Z(p::MISTv2Library) = Z.(chemistry(p), p.feh)
@@ -678,7 +698,7 @@ Base.eltype(p::MISTv2Library) = eltype(p.feh)
 Base.Broadcast.broadcastable(p::MISTv2Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::MISTv2Library)
     print(io, "MISTv2Library with vvcrit=$(p.vvcrit), afe=$(p.afe). ",
-          "Valid [M/H] range: $(extrema(p.feh)).")
+          "Valid [M/H] range: $(extrema(MH(p))).")
 end
 
 function MISTv2Library(vvcrit::Number=0.0, afe::Number=0.0)
@@ -686,8 +706,9 @@ function MISTv2Library(vvcrit::Number=0.0, afe::Number=0.0)
     afe_val    = track_type(afe)
     @argcheck any(≈(vvcrit_val), vvcrit_grid_v2) ArgumentError("Invalid vvcrit=$vvcrit; valid options are $vvcrit_grid_v2.")
     @argcheck any(≈(afe_val),    afe_grid_v2)    ArgumentError("Invalid afe=$afe; valid options are $afe_grid_v2.")
-    ts = @showprogress "Loading MISTv2.5 track sets..." [MISTv2TrackSet(feh, vvcrit_val, afe_val) for feh in feh_grid_v2]
-    return MISTv2Library(ts, feh_grid_v2, vvcrit_val, afe_val)
+    valid_feh = feh_grid_v2_for(afe_val)
+    ts = @showprogress "Loading MISTv2.5 track sets..." [MISTv2TrackSet(feh, vvcrit_val, afe_val) for feh in valid_feh]
+    return MISTv2Library(ts, valid_feh, vvcrit_val, afe_val)
 end
 
 # Below is a stub for documentation,
