@@ -1,7 +1,7 @@
 using StellarTracks.BaSTIv2
 using StellarTracks.BaSTIv2: track_type, _validate_params # number type that the data is represented as
 using StellarTracks: InterpolatedTrack
-using BolometricCorrections.MIST: MISTBCGrid
+using BolometricCorrections.MIST: MISTBCGridv1
 using TypedTables: Table
 
 using Test
@@ -10,7 +10,7 @@ using Test
 @test gridname(BaSTIv2TrackSet) isa String
 @test gridname(BaSTIv2Library) isa String
 
-bcg = MISTBCGrid("JWST")
+bcg = MISTBCGridv1("JWST")
 
 param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30),
               (α=0.4, canonical = false, diffusion = true, yp = 0.3, η = 0.3),
@@ -53,7 +53,7 @@ param_sets = ((α=0.4, canonical = false, diffusion = true, yp = 0.32, η = 0.30
 
                 # Test isochrone, with and without BCs
                 @test isochrone(trackset, 9.0) isa NamedTuple
-                # Interpolate MISTBCGrid to appropriate feh, no reddening
+                # Interpolate MISTBCGridv1 to appropriate feh, no reddening
                 bct = bcg(MH(trackset), 0.0)
                 @test isochrone(trackset, bct, 9.0) isa Table
                 for M in range(extrema(mass(trackset))...; length=10)
