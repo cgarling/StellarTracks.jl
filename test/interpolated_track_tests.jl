@@ -5,7 +5,7 @@ mean(x) = sum(x) / length(x)
 
 @test_throws ArgumentError gridname(InterpolatedTrack)
 
-for lib in (PARSECLibrary(), MISTLibrary(), BaSTIv1Library(), BaSTIv2Library())
+for lib in (PARSECLibrary(), MISTv1Library(), BaSTIv1Library(), BaSTIv2Library())
     mean_mh = mean(MH(lib))
     M = 1.51
     track = lib(mean_mh, M)

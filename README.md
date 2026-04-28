@@ -24,13 +24,13 @@ Pkg.add("StellarTracks");
 ```
 
 ## Example Usage
-The most common use cases for this package will involve interacting with subtypes of `AbstractTrackLibrary` -- these subtypes (`PARSECLibrary, MISTLibrary, BaSTIv1Library, BaSTIv2Library`) load all relevant stellar tracks for a particular set of model input parameters -- for example, MIST offers both rotating and non-rotating stellar models, and users can choose between these sets when constructing a `MISTLibrary`. These types provide the ability to interpolate tracks to different stellar initial masses and metallicities and interpolate isochrones at different ages and metallicities.
+The most common use cases for this package will involve interacting with subtypes of `AbstractTrackLibrary` -- these subtypes (`PARSECLibrary, MISTv1Library, BaSTIv1Library, BaSTIv2Library`) load all relevant stellar tracks for a particular set of model input parameters -- for example, MIST offers both rotating and non-rotating stellar models, and users can choose between these sets when constructing a `MISTv1Library`. These types provide the ability to interpolate tracks to different stellar initial masses and metallicities and interpolate isochrones at different ages and metallicities.
 
 ```julia
 julia> using StellarTracks
 
 # Load non-rotating models (vvcrit=0)
-julia> tracklib = MISTLibrary(0)
+julia> tracklib = MISTv1Library(0)
 
 # Interpolate a new track at [M/H] = -2.09, M_ini = 1.09 M⊙
 julia> newtrack = tracklib(-2.09, 1.09)

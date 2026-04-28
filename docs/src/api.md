@@ -27,7 +27,7 @@ post_rgb(::StellarTracks.AbstractTrack)
 
 ### Concrete Implementations
  - [`PARSEC.PARSECTrack`](@ref)
- - [`MIST.MISTTrack`](@ref)
+ - [`MIST.MISTv1Track`](@ref)
  - [`BaSTIv1.BaSTIv1Track`](@ref)
  - [`BaSTIv2.BaSTIv2Track`](@ref)
  - [`StellarTracks.InterpolatedTrack`](@ref)
@@ -56,7 +56,7 @@ isochrone(::StellarTracks.AbstractTrackSet, ::StellarTracks.AbstractBCTable, ::N
 
 ### Concrete Implementations
  - [`PARSEC.PARSECTrackSet`](@ref)
- - [`MIST.MISTTrackSet`](@ref)
+ - [`MIST.MISTv1TrackSet`](@ref)
  - [`BaSTIv1.BaSTIv1TrackSet`](@ref)
  - [`BaSTIv2.BaSTIv2TrackSet`](@ref)
 
@@ -79,6 +79,6 @@ isochrone(::StellarTracks.AbstractTrackLibrary, ::StellarTracks.AbstractBCTable,
 
 ### Concrete Implementations
  - [`PARSEC.PARSECLibrary`](@ref)
- - [`MIST.MISTLibrary`](@ref)
+ - [`MIST.MISTv1Library`](@ref)
  - [`BaSTIv1.BaSTIv1Library`](@ref)
  - [`BaSTIv2.BaSTIv2Library`](@ref)
