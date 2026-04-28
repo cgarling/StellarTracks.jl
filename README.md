@@ -8,7 +8,8 @@
 This package provides access to and interpolation of pre-computed libraries of stellar tracks. Secondary operations like isochrone creation are also supported. Currently included libraries are
 
  - [PARSECv1.2S](https://stev.oapd.inaf.it/PARSEC/papers.html)
- - [MIST](https://mist.science)
+ - [MIST v1.2](https://mist.science) (solar-scaled chemical compositions)
+ - [MIST v2.5](https://mist.science) (adds \[α/Fe\] as a free parameter, various model updates)
  - [BaSTIv1](http://basti-iac.oa-abruzzo.inaf.it/basti-old/) (older models, circa 2013)
  - [BaSTIv2](http://basti-iac.oa-abruzzo.inaf.it/index.html) (updated BaSTI tracks)
 
@@ -24,7 +25,7 @@ Pkg.add("StellarTracks");
 ```
 
 ## Example Usage
-The most common use cases for this package will involve interacting with subtypes of `AbstractTrackLibrary` -- these subtypes (`PARSECLibrary, MISTv1Library, BaSTIv1Library, BaSTIv2Library`) load all relevant stellar tracks for a particular set of model input parameters -- for example, MIST offers both rotating and non-rotating stellar models, and users can choose between these sets when constructing a `MISTv1Library`. These types provide the ability to interpolate tracks to different stellar initial masses and metallicities and interpolate isochrones at different ages and metallicities.
+The most common use cases for this package will involve interacting with subtypes of `AbstractTrackLibrary` -- these subtypes (`PARSECLibrary, MISTv1Library, MISTv2Library, BaSTIv1Library, BaSTIv2Library`) load all relevant stellar tracks for a particular set of model input parameters. For example, MIST offers both rotating and non-rotating stellar models, and users can choose between these sets when constructing a library. `MISTv1Library` loads the original MIST v1.2 grid (solar-scaled compositions), while `MISTv2Library` loads the MIST v2.5 grid which additionally accepts an `afe` \[α/Fe\] parameter. These types provide the ability to interpolate tracks to different stellar initial masses and metallicities and interpolate isochrones at different ages and metallicities.
 
 ```julia
 julia> using StellarTracks
@@ -75,4 +76,19 @@ Table with 20 columns and 609 rows:
  1  │ 200  0.100631  3.54677  11.6724  5.35538  -2.77296  -3.9351          14.7118        14.0111        14.0181        12.7635        ⋯
  2  │ 201  0.101926  3.54824  11.6322  5.35036  -2.7569   -3.9351          14.6536        13.9571        13.9586        12.7166        ⋯
  3  │ 202  0.103545  3.55008  11.5823  5.34418  -2.73691  -3.9351          14.5806        13.8895        13.8844        12.6579        ⋯
+```
+
+MIST v2.5 adds `[α/Fe]` as a free parameter and can be accessed via `MISTv2Library(vvcrit, afe)`:
+
+```julia
+# Load α-enhanced non-rotating MIST v2.5 models
+julia> tracklib_v2 = MISTv2Library(0.0, 0.4)
+
+# Interpolate isochrone at [Fe/H] = -1.5, [α/Fe] = +0.4, log(age [yr]) = 10
+julia> iso_v2 = isochrone(tracklib_v2, 10.0, -1.5);
+
+# Use the MIST v2.5 BC grid (consistent chemistry with the track grid)
+julia> using BolometricCorrections
+julia> bcgrid_v2 = MISTv2BCGrid("JWST")
+julia> isochrone(tracklib_v2, bcgrid_v2, 10.0, -1.5, 0.4, 0.05)  # logAge, feh, afe, Av
 ```
