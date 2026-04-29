@@ -4,7 +4,7 @@ module MIST
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
                        uniqueidx, Mbol, _generic_trackset_interp
-import ..StellarTracks: X, Y, Z, MH, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
+import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
 # Imports for data reading / processing
 import CSV
@@ -225,10 +225,9 @@ Base.extrema(t::MISTv1Track) = log10.(extrema(t.itp.t))
 gridname(::Type{<:MISTv1Track}) = "MISTv1"
 mass(t::MISTv1Track) = t.properties.M
 chemistry(::MISTv1Track) = MISTv1Chemistry()
-MH(t::MISTv1Track) = t.properties.feh # MH(chemistry(t), Z(t))
-Z(t::MISTv1Track) = Z(chemistry(t), MH(t)) # t.properties.Z
-Y(t::MISTv1Track) = Y(chemistry(t), Z(t))  # t.properties.Y
-X(t::MISTv1Track) = 1 - Y(t) - Z(t)
+MH(t::MISTv1Track) = t.properties.feh
+FeH(t::MISTv1Track) = t.properties.feh
+alphaFe(t::MISTv1Track) = zero(t.properties.feh)
 # Whether there is post-rgb evolution or not is dependent on how many EEPs in track
 post_rgb(t::MISTv1Track) = length(t.itp.u) > eep_idxs.RG_TIP
 Base.eltype(t::MISTv1Track) = typeof(t.properties.feh)
@@ -340,9 +339,8 @@ gridname(::Type{<:MISTv1TrackSet}) = "MISTv1"
 mass(ts::MISTv1TrackSet) = ts.properties.masses
 chemistry(::MISTv1TrackSet) = MISTv1Chemistry()
 MH(ts::MISTv1TrackSet) = ts.properties.feh
-Z(ts::MISTv1TrackSet) = Z(chemistry(ts), MH(ts))
-Y(ts::MISTv1TrackSet) = Y(chemistry(ts), Z(ts))
-X(ts::MISTv1TrackSet) = 1 - Y(ts) - Z(ts)
+FeH(ts::MISTv1TrackSet) = ts.properties.feh
+alphaFe(ts::MISTv1TrackSet) = zero(ts.properties.feh)
 post_rgb(t::MISTv1TrackSet) = true
 Base.eltype(ts::MISTv1TrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv1TrackSet)
@@ -432,9 +430,8 @@ end
 gridname(::Type{<:MISTv1Library}) = "MISTv1"
 chemistry(::MISTv1Library) = MISTv1Chemistry()
 MH(p::MISTv1Library) = p.MH # MH.(chemistry(tl), Z(tl))
-Z(p::MISTv1Library) = Z.(chemistry(p), p.MH)
-Y(p::MISTv1Library) = Y.(chemistry(p), Z(p))
-X(p::MISTv1Library) = 1 .- Y(p) .- Z(p)
+FeH(p::MISTv1Library) = p.MH
+alphaFe(p::MISTv1Library) = zero(eltype(p.MH))
 post_rgb(::MISTv1Library) = true
 Base.eltype(p::MISTv1Library) = typeof(first(p.MH))
 Base.Broadcast.broadcastable(p::MISTv1Library) = Ref(p)
@@ -471,7 +468,7 @@ isochrone(p::MISTv1Library, logAge::Number, mh::Number)
 interface for the MIST v2.5 stellar evolution library.
 ```jldoctest
 julia> track = StellarTracks.MIST.MISTv2Track(-2, 0.15, 0.0, 0.0)
-MISTv2Track with M_ini=0.15, MH=-2.0, afe=0.0, vvcrit=0.0, Z=0.00015818264069699282, Y=0.27516985041432367, X=0.7246702869449794.
+MISTv2Track with M_ini=0.15, MH=-2.0, afe=0.0, vvcrit=0.0, Z=0.00019611676524144942, Y=0.24925972220261705, X=0.7505441610321415.
 ```
 """
 struct MISTv2Track{A,B,C} <: AbstractTrack
@@ -509,10 +506,8 @@ Base.extrema(t::MISTv2Track) = log10.(extrema(t.itp.t))
 gridname(::Type{<:MISTv2Track}) = "MISTv2"
 mass(t::MISTv2Track) = t.properties.M
 chemistry(::MISTv2Track) = MISTv2Chemistry()
-MH(t::MISTv2Track) = t.properties.feh
-Z(t::MISTv2Track) = Z(chemistry(t), MH(t))
-Y(t::MISTv2Track) = Y(chemistry(t), Z(t))
-X(t::MISTv2Track) = 1 - Y(t) - Z(t)
+FeH(t::MISTv2Track) = t.properties.feh
+alphaFe(t::MISTv2Track) = t.properties.afe
 post_rgb(t::MISTv2Track) = length(t.itp.u) > eep_idxs.RG_TIP
 Base.eltype(t::MISTv2Track) = typeof(t.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", t::MISTv2Track)
@@ -527,7 +522,7 @@ end
 interface for the MIST v2.5 stellar evolution library.
 ```jldoctest
 julia> ts = StellarTracks.MIST.MISTv2TrackSet(0.0, 0.0, 0.0)
-MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.016645000000000002, Y=0.27727777777777776, 1710 EEPs and 155 initial stellar mass points.
+MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.018500000000000003, Y=0.2735, 1721 EEPs and 155 initial stellar mass points.
 ```
 """
 struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
@@ -599,7 +594,7 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
                          (feh = feh, vvcrit = vvcrit, afe = afe, masses = unique(data.m_ini)))
 end
 function (ts::MISTv2TrackSet)(M::Number)
-    props = (M = M, feh = MH(ts), vvcrit = ts.properties.vvcrit, afe = ts.properties.afe)
+    props = (M = M, feh = FeH(ts), vvcrit = ts.properties.vvcrit, afe = ts.properties.afe)
     nt = _generic_trackset_interp(ts, M)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(
                   tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
@@ -608,10 +603,8 @@ end
 gridname(::Type{<:MISTv2TrackSet}) = "MISTv2"
 mass(ts::MISTv2TrackSet) = ts.properties.masses
 chemistry(::MISTv2TrackSet) = MISTv2Chemistry()
-MH(ts::MISTv2TrackSet) = ts.properties.feh
-Z(ts::MISTv2TrackSet) = Z(chemistry(ts), MH(ts))
-Y(ts::MISTv2TrackSet) = Y(chemistry(ts), Z(ts))
-X(ts::MISTv2TrackSet) = 1 - Y(ts) - Z(ts)
+FeH(ts::MISTv2TrackSet) = ts.properties.feh
+alphaFe(ts::MISTv2TrackSet) = ts.properties.afe
 post_rgb(::MISTv2TrackSet) = true
 Base.eltype(ts::MISTv2TrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv2TrackSet)
@@ -678,7 +671,7 @@ julia> isochrone(p, 10.05, -2) isa NamedTuple
 true
 
 julia> p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00015845073529028378, Y=0.27519564564228124, X=0.7246589036174285.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00017480078926782595, Y=0.24923149293713848, X=0.7505937062735938.
 ```
 """
 struct MISTv2Library{A, B, C, D} <: AbstractTrackLibrary
@@ -689,10 +682,8 @@ struct MISTv2Library{A, B, C, D} <: AbstractTrackLibrary
 end
 gridname(::Type{<:MISTv2Library}) = "MISTv2"
 chemistry(::MISTv2Library) = MISTv2Chemistry()
-MH(p::MISTv2Library) = p.feh
-Z(p::MISTv2Library) = Z.(chemistry(p), p.feh)
-Y(p::MISTv2Library) = Y.(chemistry(p), Z(p))
-X(p::MISTv2Library) = 1 .- Y(p) .- Z(p)
+FeH(p::MISTv2Library) = p.feh
+alphaFe(p::MISTv2Library) = p.afe
 post_rgb(::MISTv2Library) = true
 Base.eltype(p::MISTv2Library) = eltype(p.feh)
 Base.Broadcast.broadcastable(p::MISTv2Library) = Ref(p)
@@ -707,7 +698,7 @@ function MISTv2Library(vvcrit::Number=0.0, afe::Number=0.0)
     @argcheck any(≈(vvcrit_val), vvcrit_grid_v2) ArgumentError("Invalid vvcrit=$vvcrit; valid options are $vvcrit_grid_v2.")
     @argcheck any(≈(afe_val),    afe_grid_v2)    ArgumentError("Invalid afe=$afe; valid options are $afe_grid_v2.")
     valid_feh = feh_grid_v2_for(afe_val)
-    ts = @showprogress "Loading MISTv2.5 track sets..." [MISTv2TrackSet(feh, vvcrit_val, afe_val) for feh in valid_feh]
+    ts = [MISTv2TrackSet(feh, vvcrit_val, afe_val) for feh in valid_feh]
     return MISTv2Library(ts, valid_feh, vvcrit_val, afe_val)
 end
 
@@ -727,7 +718,7 @@ isochrone(p::MISTv2Library, logAge::Number, mh::Number)
 
 export MISTv1Track, MISTv1TrackSet, MISTv1Library, MISTv1Chemistry   # Unique module exports
 export MISTv2Track, MISTv2TrackSet, MISTv2Library, MISTv2Chemistry
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname # Export generic API methods
+export mass, chemistry, X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, post_rgb, isochrone, gridname # Export generic API methods
 
 # Deprecated aliases — forward to v1 types
 @deprecate MISTTrack(args...) MISTv1Track(args...)

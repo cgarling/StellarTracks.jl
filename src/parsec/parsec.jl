@@ -5,7 +5,7 @@ module PARSEC
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
                        uniqueidx, _generic_trackset_interp, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
-import ..StellarTracks: X, Y, Z, MH, chemistry # X_phot, Y_phot, Z_phot
+import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
 
 import CSV
 using CodecZlib: GzipDecompressorStream
@@ -118,10 +118,10 @@ gridname(::Type{<:PARSECTrack}) = "PARSEC"
 Base.extrema(t::PARSECTrack) = log10.(extrema(t.itp.t))
 mass(t::PARSECTrack) = t.properties.M
 chemistry(::PARSECTrack) = PARSECChemistry()
-MH(t::PARSECTrack) = MH(chemistry(t), Z(t))
 Z(t::PARSECTrack) = t.properties.Z
-Y(t::PARSECTrack) = Y(chemistry(t), Z(t))
-X(t::PARSECTrack) = 1 - Y(t) - Z(t)
+MH(t::PARSECTrack) = MH(chemistry(t), Z(t))
+FeH(t::PARSECTrack) = MH(t)
+alphaFe(t::PARSECTrack) = zero(eltype(t))
 post_rgb(t::PARSECTrack) = t.properties.HB #hashb()
 Base.eltype(t::PARSECTrack) = typeof(t.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", t::PARSECTrack)
@@ -273,9 +273,9 @@ gridname(::Type{<:PARSECTrackSet}) = "PARSEC"
 mass(ts::PARSECTrackSet) = ts.properties.masses
 chemistry(::PARSECTrackSet) = PARSECChemistry()
 Z(ts::PARSECTrackSet) = ts.properties.Z
-Y(ts::PARSECTrackSet) = Y(chemistry(ts), Z(ts))
-X(ts::PARSECTrackSet) = 1 - Y(ts) - Z(ts)
 MH(ts::PARSECTrackSet) = MH(chemistry(ts), Z(ts))
+FeH(ts::PARSECTrackSet) = MH(ts)
+alphaFe(ts::PARSECTrackSet) = zero(eltype(ts))
 post_rgb(ts::PARSECTrackSet) = ts.eeps[end] > eep_idxs.RG_TIP
 Base.eltype(ts::PARSECTrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
@@ -363,10 +363,9 @@ PARSECLibrary() = PARSECLibrary(PARSECTrackSet.(zgrid))
 gridname(::Type{<:PARSECLibrary}) = "PARSEC"
 chemistry(::PARSECLibrary) = PARSECChemistry()
 Z(::PARSECLibrary) = zgrid
-Y(p::PARSECLibrary) = Y.(chemistry(p), Z(p))
-X(p::PARSECLibrary) = 1 .- Y(p) .- Z(p)
-# MH(p::PARSECLibrary) = PARSEC_MH.(Z(p)) # MH.(Z(p), Y(p))
-MH(tl::PARSECLibrary) = MH.(chemistry(tl), Z(tl))
+MH(tl::PARSECLibrary) = MH.(Ref(chemistry(tl)), Z(tl))
+FeH(tl::PARSECLibrary) = MH(tl)
+alphaFe(tl::PARSECLibrary) = zero(eltype(tl))
 post_rgb(t::PARSECLibrary) = true
 Base.eltype(p::PARSECLibrary) = typeof(first(Z(p)))
 Base.Broadcast.broadcastable(p::PARSECLibrary) = Ref(p)
@@ -388,7 +387,7 @@ isochrone(p::PARSECLibrary, logAge::Number, mh::Number) # Falls back to generic 
 #################################################################################
 
 export PARSECTrack, PARSECTrackSet, PARSECLibrary, PARSECChemistry # Unique module exports
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname # Export generic API methods
+export mass, chemistry, X, Y, Z, MH, FeH, alphaFe, post_rgb, isochrone, gridname # Export generic API methods
 
 #################################################################################
 
