@@ -5,7 +5,7 @@ module BaSTIv1
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
                        AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp,
                        radius, surface_gravity
-import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, chemistry, mass, post_rgb, isochrone, gridname
+import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 
 # Imports for data reading / processing
 using DataDeps: register, DataDep, @datadep_str
@@ -131,6 +131,9 @@ Z_phot(::BaSTIv1Chemistry) = 0.018007 # Calculated from Y_phot = 0.244, (Z/X)_ph
 Y(mix::BaSTIv1Chemistry, Zval) = Y_p(mix) +  14//10 * Zval # Second paragraph, section 5.1, Pietrinferni2004
 # X generic
 MH(mix::BaSTIv1Chemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z_phot(mix) / X_phot(mix))
+# Alpha-element mass fraction for GN93 (Grevesse & Noels 1993),
+# alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
+alpha_mass_fraction(::BaSTIv1Chemistry) = 0.6635
 function Z(mix::BaSTIv1Chemistry, MHval)
     # Derivation in parsec code
     zoverx = exp10(MHval + log10(Z_phot(mix) / X_phot(mix)))
@@ -204,9 +207,8 @@ Base.extrema(t::BaSTIv1Track) = log10.(extrema(t.itp.t))
 mass(t::BaSTIv1Track) = t.properties.M
 chemistry(::BaSTIv1Track) = BaSTIv1Chemistry()
 MH(t::BaSTIv1Track) = MH(chemistry(t), Z(t))
+alphaFe(t::BaSTIv1Track) = t.properties.α_fe
 Z(t::BaSTIv1Track) = t.properties.Z
-Y(t::BaSTIv1Track) = Y(chemistry(t), Z(t))
-X(t::BaSTIv1Track) = 1 - Y(t) - Z(t)
 post_rgb(t::BaSTIv1Track) = length(t.data) > eep_idxs.HE_BEG
 Base.eltype(t::BaSTIv1Track) = typeof(t.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", t::BaSTIv1Track)
@@ -332,8 +334,7 @@ mass(ts::BaSTIv1TrackSet) = ts.properties.masses
 chemistry(::BaSTIv1TrackSet) = BaSTIv1Chemistry()
 Z(ts::BaSTIv1TrackSet) = ts.properties.Z
 MH(ts::BaSTIv1TrackSet) = MH(chemistry(ts), Z(ts))
-Y(ts::BaSTIv1TrackSet) = Y(chemistry(ts), Z(ts))
-X(ts::BaSTIv1TrackSet) = 1 - Y(ts) - Z(ts)
+alphaFe(ts::BaSTIv1TrackSet) = ts.properties.α_fe
 post_rgb(t::BaSTIv1TrackSet) = true
 Base.eltype(ts::BaSTIv1TrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::BaSTIv1TrackSet)
@@ -427,8 +428,7 @@ gridname(::Type{<:BaSTIv1Library}) = "BaSTIv1"
 chemistry(::BaSTIv1Library) = BaSTIv1Chemistry()
 Z(p::BaSTIv1Library) = p.properties.Z # Z.(chemistry(p), p.MH)
 MH(p::BaSTIv1Library) = MH.(chemistry(p), Z(p))
-Y(p::BaSTIv1Library) = Y.(chemistry(p), Z(p))
-X(p::BaSTIv1Library) = 1 .- Y(p) .- Z(p)
+alphaFe(p::BaSTIv1Library) = p.properties.α_fe
 post_rgb(::BaSTIv1Library) = true
 Base.eltype(p::BaSTIv1Library) = typeof(first(Z(p)))
 Base.Broadcast.broadcastable(p::BaSTIv1Library) = Ref(p)
@@ -461,7 +461,7 @@ Interpolates properties of the stellar tracks in the library at the requested lo
 isochrone(p::BaSTIv1Library, logAge::Number, mh::Number)
 
 export BaSTIv1Track, BaSTIv1TrackSet, BaSTIv1Library, BaSTIv1Chemistry # Unique module exports
-export mass, chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH, post_rgb, isochrone, gridname # Export generic API methods
+export mass, chemistry, X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, post_rgb, isochrone, gridname # Export generic API methods
 
 end # module
 

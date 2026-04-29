@@ -6,7 +6,7 @@ using TypedTables: Table
 # For BCs.jl
 using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol, MISTv2BCGrid
 using BolometricCorrections.YBC: PARSECChemistry
-import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, chemistry, gridname
+import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname
 using DataInterpolations: PCHIPInterpolation
 import Tables
 
@@ -66,19 +66,39 @@ function chemistry(t::AbstractTrack) end
 """
     X(t::AbstractTrack)
 Returns the hydrogen mass fraction of the modeled star. """
-function X(t::AbstractTrack) end
+X(t::AbstractTrack) = X(chemistry(t), Z(t))
 """
     Y(t::AbstractTrack)
 Returns the helium mass fraction of the modeled star. """
-function Y(t::AbstractTrack) end
+Y(t::AbstractTrack) = Y(chemistry(t), Z(t))
 """
     Z(t::AbstractTrack)
 Returns the metal mass fraction of the modeled star. """
-function Z(t::AbstractTrack) end
+Z(t::AbstractTrack) = Z(chemistry(t), MH(t))
 """
     MH(t::AbstractTrack)
-Returns the logarithmic metal abundance of the modeled star, defined as [M/H] = log(Z/X) - log(Z⊙/X⊙). """
-function MH(t::AbstractTrack) end
+Returns the logarithmic metal abundance of the modeled star, defined as [M/H] = log(Z/X) - log(Z⊙/X⊙).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\]
+from [`FeH`](@ref) and [`alphaFe`](@ref). """
+function MH(t::AbstractTrack)
+    afe = alphaFe(t)
+    f_α = alpha_mass_fraction(chemistry(t))
+    return FeH(t) + log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    FeH(t::AbstractTrack)
+Returns the iron abundance [Fe/H] of the modeled star. For scaled-solar models, this equals [`MH`](@ref).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[Fe/H\\]
+from [`MH`](@ref) and [`alphaFe`](@ref)."""
+function FeH(t::AbstractTrack)
+    afe = alphaFe(t)
+    f_α = alpha_mass_fraction(chemistry(t))
+    return MH(t) - log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    alphaFe(t::AbstractTrack)
+Returns the α-element enhancement [α/Fe] of the modeled star. For scaled-solar models, this is zero. """
+function alphaFe(t::AbstractTrack) end
 """
     post_rgb(t::AbstractTrack)
 Returns `true` if the track includes post-RGB evolution, `false` otherwise. """
@@ -150,19 +170,41 @@ function chemistry(ts::AbstractTrackSet) end
 """
     X(ts::AbstractTrackSet)
 Returns the common hydrogen mass fraction of the tracks contained in the track set. """
-function X(ts::AbstractTrackSet) end
+X(ts::AbstractTrackSet) = X.(Ref(chemistry(ts)), Z(ts))
 """
     Y(ts::AbstractTrackSet)
 Returns the common helium mass fraction of the tracks contained in the track set. """
-function Y(ts::AbstractTrackSet) end
+Y(ts::AbstractTrackSet) = Y.(Ref(chemistry(ts)), Z(ts))
 """
     Z(ts::AbstractTrackSet)
 Returns the common metal mass fraction of the tracks contained in the track set. """
-function Z(ts::AbstractTrackSet) end
+Z(ts::AbstractTrackSet) = Z.(Ref(chemistry(ts)), MH(ts))
 """
     MH(ts::AbstractTrackSet)
-Returns the common logarithmic metal abundance of the tracks contained in the track set, defined as [M/H] = log(Z/X) - log(Z⊙/X⊙). """
-function MH(ts::AbstractTrackSet) end
+Returns the common logarithmic metal abundance of the tracks contained in the track set,
+defined as [M/H] = log(Z/X) - log(Z⊙/X⊙).
+Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\]
+from [`FeH`](@ref) and [`alphaFe`](@ref). """
+function MH(ts::AbstractTrackSet)
+    afe = alphaFe(ts)
+    f_α = alpha_mass_fraction(chemistry(ts))
+    return FeH(ts) + log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    FeH(ts::AbstractTrackSet)
+Returns the common iron abundance [Fe/H] of the tracks contained in the track set.
+For scaled-solar models, this equals [`MH`](@ref). Generic method uses the
+[Salaris1993](@citet) equation to compute \\[Fe/H\\] from [`MH`](@ref) and
+[`alphaFe`](@ref)."""
+function FeH(ts::AbstractTrackSet)
+    afe = alphaFe(ts)
+    f_α = alpha_mass_fraction(chemistry(ts))
+    return MH(ts) - log10(f_α * exp10(afe) + (1 - f_α))
+end
+"""
+    alphaFe(ts::AbstractTrackSet)
+Returns the common α-element enhancement [α/Fe] of the tracks contained in the track set. For scaled-solar models, this is zero. """
+function alphaFe(ts::AbstractTrackSet) end
 """
     post_rgb(ts::AbstractTrackSet)
 Returns `true` if the tracks in the track set include post-RGB evolution, `false` otherwise. """
@@ -240,23 +282,42 @@ function chemistry(tl::AbstractTrackLibrary) end
     X(tl::AbstractTrackLibrary)
 Returns the hydrogen mass fractions of the track sets 
 contained in the track library. """
-function X(tl::AbstractTrackLibrary) end
+X(tl::AbstractTrackLibrary) = X.(Ref(chemistry(tl)), Z(tl))
 """
     Y(tl::AbstractTrackLibrary)
 Returns the helium mass fractions of the track sets
 contained in the track library. """
-function Y(tl::AbstractTrackLibrary) end
-"""
-    Z(tl::AbstractTrackLibrary)
-Returns the metal mass fractions of the track sets
-contained in the track library. """
-function Z(tl::AbstractTrackLibrary) end
+Y(tl::AbstractTrackLibrary) = Y.(Ref(chemistry(tl)), Z(tl))
 """
     MH(tl::AbstractTrackLibrary)
-Returns the logarithmic metal abundances of the track sets 
-contained in the track library, 
-defined as [M/H] = log(Z/X) - log(Z⊙/X⊙). """
-function MH(tl::AbstractTrackLibrary) end
+Returns the metal mass fractions of the track sets
+contained in the track library. """
+Z(tl::AbstractTrackLibrary) = Z.(Ref(chemistry(tl)), MH(tl))
+"""
+    MH(tl::AbstractTrackLibrary)
+Returns the logarithmic metal abundances of the track sets contained in the track library, 
+defined as [M/H] = log(Z/X) - log(Z⊙/X⊙). Generic method uses the [Salaris1993](@citet) 
+equation to compute \\[M/H\\] from [`FeH`](@ref) and [`alphaFe`](@ref). """
+function MH(tl::AbstractTrackLibrary)
+    afe = alphaFe(tl)
+    f_α = alpha_mass_fraction(chemistry(tl))
+    return FeH(tl) .+ log10.(f_α * exp10.(afe) .+ (1 .- f_α))
+end
+"""
+    FeH(tl::AbstractTrackLibrary)
+Returns the iron abundances [Fe/H] of the track sets contained in the track library.
+For scaled-solar models, this equals [`MH`](@ref). Generic method uses the
+[Salaris1993](@citet)  equation to compute \\[Fe/H\\] from [`MH`](@ref) and
+[`alphaFe`](@ref)."""
+function FeH(tl::AbstractTrackLibrary)
+    afe = alphaFe(tl)
+    f_α = alpha_mass_fraction(chemistry(tl))
+    return MH(tl) .- log10.(f_α * exp10.(afe) .+ (1 .- f_α))
+end
+"""
+    alphaFe(tl::AbstractTrackLibrary)
+Returns the α-element enhancement [α/Fe] of the track sets in the track library. For scaled-solar models, this is zero. """
+function alphaFe(tl::AbstractTrackLibrary) end
 """
     post_rgb(tl::AbstractTrackLibrary)
 Returns `true` if any of the track sets
@@ -314,9 +375,7 @@ Base.eltype(track::InterpolatedTrack) = promote_type(eltype(track.track0), eltyp
 mass(track::InterpolatedTrack) = mass(track.track0) == mass(track.track1) ? mass(track.track0) : mass(track.track0) * track.track0_prefac + mass(track.track1) * track.track1_prefac
 chemistry(track::InterpolatedTrack) = chemistry(track.track0)
 MH(track::InterpolatedTrack) = MH(track.track0) * track.track0_prefac + MH(track.track1) * track.track1_prefac
-Z(track::InterpolatedTrack) = Z(chemistry(track), MH(track))
-Y(track::InterpolatedTrack) = Y(chemistry(track), Z(track))
-X(track::InterpolatedTrack) = X(chemistry(track), Z(track))
+alphaFe(track::InterpolatedTrack) = alphaFe(track.track0) * track.track0_prefac + alphaFe(track.track1) * track.track1_prefac
 post_rgb(track::InterpolatedTrack) = all(post_rgb, (track.track0, track.track1)) ? true : false
 function Base.show(io::IO, mime::MIME"text/plain", t::InterpolatedTrack{A}) where A
     print(io, "InterpolatedTrack with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
@@ -461,7 +520,7 @@ using .BaSTIv2
 include("BCs.jl")
 
 # Common API exports
-export mass, chemistry, X, Y, Z, MH, post_rgb, isochrone, gridname
+export mass, chemistry, X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, post_rgb, isochrone, gridname
 # Submodule exports
 export PARSECLibrary, MISTv1Library, MISTLibrary, MISTv2Library, BaSTIv1Library, BaSTIv2Library
 
