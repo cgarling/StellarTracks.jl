@@ -6,6 +6,8 @@ using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
                        uniqueidx, Mbol, _generic_trackset_interp
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
+# Round floating-point values to 6 significant figures for display
+
 # Imports for data reading / processing
 import CSV
 using DataDeps: register, DataDep, @datadep_str, unpack
@@ -179,7 +181,7 @@ include("init.jl")
 interface for the MIST stellar evolution library.
 ```jldoctest
 julia> track = StellarTracks.MIST.MISTv1Track(-2, 0.15, 0.0)
-MISTv1Track with M_ini=0.15, MH=-2, vvcrit=0.0, Z=0.00014899227095992976, Y=0.24922374966753474, X=0.7506272580615054.
+MISTv1Track with M_ini=0.15, MH=-2.0, vvcrit=0.0, Z=0.000148992, Y=0.249224, X=0.750627.
 
 julia> track(7.0) # interpolate track at log10(age [yr]) = 7
 (log_L = -1.5293719450743, log_Teff = 3.587337261741102, log_g = 4.447603584617846, log_surf_cell_z = -3.8450984758441953)
@@ -232,7 +234,7 @@ alphaFe(t::MISTv1Track) = zero(t.properties.feh)
 post_rgb(t::MISTv1Track) = length(t.itp.u) > eep_idxs.RG_TIP
 Base.eltype(t::MISTv1Track) = typeof(t.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", t::MISTv1Track)
-    print(io, "MISTv1Track with M_ini=$(mass(t)), MH=$(MH(t)), vvcrit=$(t.properties.vvcrit), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+    print(io, "MISTv1Track with M_ini=$(mass(t)), MH=$(round(MH(t); sigdigits=6)), vvcrit=$(t.properties.vvcrit), Z=$(round(Z(t); sigdigits=6)), Y=$(round(Y(t); sigdigits=6)), X=$(round(X(t); sigdigits=6)).")
 end
 
 ##########################################################################
@@ -243,10 +245,10 @@ end
 interface for the MIST stellar evolution library.
 ```jldoctest
 julia> ts = StellarTracks.MIST.MISTv1TrackSet(0.0, 0.0)
-MISTv1TrackSet with MH=0.0, vvcrit=0.0, Z=0.0142014201420142, Y=0.2703270327032703, 1710 EEPs and 196 initial stellar mass points.
+MISTv1TrackSet with MH=0.0, vvcrit=0.0, Z=0.0142014, Y=0.270327, 1710 EEPs and 196 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-MISTv1Track with M_ini=1.01, MH=0.0, vvcrit=0.0, Z=0.0142014201420142, Y=0.2703270327032703, X=0.7154715471547155.
+MISTv1Track with M_ini=1.01, MH=0.0, vvcrit=0.0, Z=0.0142014, Y=0.270327, X=0.715472.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -344,7 +346,7 @@ alphaFe(ts::MISTv1TrackSet) = zero(ts.properties.feh)
 post_rgb(t::MISTv1TrackSet) = true
 Base.eltype(ts::MISTv1TrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv1TrackSet)
-    print(io, "MISTv1TrackSet with MH=$(MH(ts)), vvcrit=$(ts.properties.vvcrit), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
+    print(io, "MISTv1TrackSet with MH=$(round(MH(ts); sigdigits=6)), vvcrit=$(ts.properties.vvcrit), Z=$(round(Z(ts); sigdigits=6)), Y=$(round(Y(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 
 function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
@@ -419,7 +421,7 @@ julia> isochrone(p, 10.05, -2) isa NamedTuple
 true
 
 julia> p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.0001327966689875739, Y=0.249199427865246, X=0.7506677754657665.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.000132797, Y=0.249199, X=0.750668.
 ```
 """
 struct MISTv1Library{A,B,C} <: AbstractTrackLibrary
@@ -468,7 +470,7 @@ isochrone(p::MISTv1Library, logAge::Number, mh::Number)
 interface for the MIST v2.5 stellar evolution library.
 ```jldoctest
 julia> track = StellarTracks.MIST.MISTv2Track(-2, 0.15, 0.0, 0.0)
-MISTv2Track with M_ini=0.15, MH=-2.0, afe=0.0, vvcrit=0.0, Z=0.00019611676524144942, Y=0.24925972220261705, X=0.7505441610321415.
+MISTv2Track with M_ini=0.15, MH=-2.0, afe=0.0, vvcrit=0.0, Z=0.000196117, Y=0.24926, X=0.750544.
 ```
 """
 struct MISTv2Track{A,B,C} <: AbstractTrack
@@ -511,7 +513,7 @@ alphaFe(t::MISTv2Track) = t.properties.afe
 post_rgb(t::MISTv2Track) = length(t.itp.u) > eep_idxs.RG_TIP
 Base.eltype(t::MISTv2Track) = typeof(t.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", t::MISTv2Track)
-    print(io, "MISTv2Track with M_ini=$(mass(t)), MH=$(MH(t)), afe=$(t.properties.afe), vvcrit=$(t.properties.vvcrit), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+    print(io, "MISTv2Track with M_ini=$(mass(t)), MH=$(round(MH(t); sigdigits=6)), afe=$(t.properties.afe), vvcrit=$(t.properties.vvcrit), Z=$(round(Z(t); sigdigits=6)), Y=$(round(Y(t); sigdigits=6)), X=$(round(X(t); sigdigits=6)).")
 end
 
 ##########################################################################
@@ -522,7 +524,7 @@ end
 interface for the MIST v2.5 stellar evolution library.
 ```jldoctest
 julia> ts = StellarTracks.MIST.MISTv2TrackSet(0.0, 0.0, 0.0)
-MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.018500000000000003, Y=0.2735, 1721 EEPs and 155 initial stellar mass points.
+MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.0185, Y=0.2735, 1721 EEPs and 155 initial stellar mass points.
 ```
 """
 struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
@@ -608,7 +610,7 @@ alphaFe(ts::MISTv2TrackSet) = ts.properties.afe
 post_rgb(::MISTv2TrackSet) = true
 Base.eltype(ts::MISTv2TrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv2TrackSet)
-    print(io, "MISTv2TrackSet with MH=$(MH(ts)), afe=$(ts.properties.afe), vvcrit=$(ts.properties.vvcrit), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
+    print(io, "MISTv2TrackSet with MH=$(round(MH(ts); sigdigits=6)), afe=$(ts.properties.afe), vvcrit=$(ts.properties.vvcrit), Z=$(round(Z(ts); sigdigits=6)), Y=$(round(Y(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 
 function isochrone(ts::MISTv2TrackSet, logAge::Number)
@@ -671,7 +673,7 @@ julia> isochrone(p, 10.05, -2) isa NamedTuple
 true
 
 julia> p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00017480078926782595, Y=0.24923149293713848, X=0.7505937062735938.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.000174801, Y=0.249231, X=0.750594.
 ```
 """
 struct MISTv2Library{A, B, C, D} <: AbstractTrackLibrary

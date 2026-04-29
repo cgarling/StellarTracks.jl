@@ -72,7 +72,7 @@ case, you should construct a [`PARSECTrackSet`](@ref) and call it with the masse
 `ts = PARSECTrackSet(0.0001); ts.([0.12, 0.15])`. 
 ```jldoctest
 julia> track = StellarTracks.PARSEC.PARSECTrack(0.0001, 0.15)
-PARSECTrack with M_ini=0.15, MH=-2.191722058538173, Z=0.0001, Y=0.248678, X=0.7512220000000001.
+PARSECTrack with M_ini=0.15, MH=-2.19172, Z=0.0001, Y=0.248678, X=0.751222.
 
 julia> track(7.0) # interpolate track at log10(age [yr]) = 7
 (logTe = 3.6015066653099757, Mbol = 8.518315848633081, logg = 4.464972304683626, C_O = 0.0)
@@ -125,7 +125,7 @@ alphaFe(t::PARSECTrack) = zero(eltype(t))
 post_rgb(t::PARSECTrack) = t.properties.HB #hashb()
 Base.eltype(t::PARSECTrack) = typeof(t.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", t::PARSECTrack)
-    print(io, "PARSECTrack with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+    print(io, "PARSECTrack with M_ini=$(mass(t)), MH=$(round(MH(t); sigdigits=6)), Z=$(round(Z(t); sigdigits=6)), Y=$(round(Y(t); sigdigits=6)), X=$(round(X(t); sigdigits=6)).")
 end
 
 ##########################################################################
@@ -139,7 +139,7 @@ julia> ts = StellarTracks.PARSEC.PARSECTrackSet(0.0001)
 TrackSet with Y=0.248678, Z=0.0001, 1930 EEPs and 104 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-PARSECTrack with M_ini=1.01, MH=-2.191722058538173, Z=0.0001, Y=0.248678, X=0.7512220000000001.
+PARSECTrack with M_ini=1.01, MH=-2.19172, Z=0.0001, Y=0.248678, X=0.751222.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -279,7 +279,7 @@ alphaFe(ts::PARSECTrackSet) = zero(eltype(ts))
 post_rgb(ts::PARSECTrackSet) = ts.eeps[end] > eep_idxs.RG_TIP
 Base.eltype(ts::PARSECTrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
-    print(io, "TrackSet with Y=$(Y(ts)), Z=$(Z(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
+    print(io, "TrackSet with Y=$(round(Y(ts); sigdigits=6)), Z=$(round(Z(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
     eeps = Vector{Int}(undef, 0)
@@ -352,7 +352,7 @@ julia> isochrone(p, 10.05, -0.76) isa NamedTuple
 true
 
 julia> p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013856708164357998, Y=0.24874664940532557, X=0.7511147835130308.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.000138567, Y=0.248747, X=0.751115.
 ```
 """
 struct PARSECLibrary{A} <: AbstractTrackLibrary

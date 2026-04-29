@@ -344,7 +344,7 @@ julia> using StellarTracks.PARSEC: PARSECLibrary
 julia> p = PARSECLibrary();
 
 julia> track = p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013856708164357998, Y=0.24874664940532557, X=0.7511147835130308.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.000138567, Y=0.248747, X=0.751115.
 
 julia> track(9.0)
 (logTe = 3.8820487347062302, Mbol = 3.7411721770340987, logg = 4.521853108813156, C_O = 0.0)
@@ -378,7 +378,7 @@ MH(track::InterpolatedTrack) = MH(track.track0) * track.track0_prefac + MH(track
 alphaFe(track::InterpolatedTrack) = alphaFe(track.track0) * track.track0_prefac + alphaFe(track.track1) * track.track1_prefac
 post_rgb(track::InterpolatedTrack) = all(post_rgb, (track.track0, track.track1)) ? true : false
 function Base.show(io::IO, mime::MIME"text/plain", t::InterpolatedTrack{A}) where A
-    print(io, "InterpolatedTrack with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
+    print(io, "InterpolatedTrack with M_ini=$(mass(t)), MH=$(round(MH(t); sigdigits=6)), Z=$(round(Z(t); sigdigits=6)), Y=$(round(Y(t); sigdigits=6)), X=$(round(X(t); sigdigits=6)).")
 end
 # function Base.show(io::IO, mime::MIME"text/plain", t::InterpolatedTrack{A}) where A
 #     print(io, "Interpolation between two `$(split(string(A), "{")[1])`s with M_ini=$(mass(t)), MH=$(MH(t)), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).")
