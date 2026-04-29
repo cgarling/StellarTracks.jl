@@ -103,7 +103,7 @@ function PARSECTrack(data::Table, zval::Number, mass::Number)
                        (M = mass, Z = zval, HB = length(data) > eep_idxs.RG_TIP))
 end
 # Constructor taking Z value, initial stellar mass, loads Table, calls above method
-function PARSECTrack(zval::Number, mass::Number)
+function PARSECTrack(@nospecialize(zval::Number), @nospecialize(mass::Number))
     # For PARSEC, individual tracks are not saved, so we need to load a trackset
     data = PARSECTrackSet(zval)(mass).data
     return PARSECTrack(data, zval, mass) # Method above
@@ -258,7 +258,7 @@ function PARSECTrackSet(data::Table, Z::Number)
     return PARSECTrackSet(eeps, amrs, (logTe = logte, Mbol = mbol, logg = logg, C_O = c_o),
                           (Z = Z, masses = unique(data.m_ini)))
 end
-function PARSECTrackSet(zval::Number)
+function PARSECTrackSet(@nospecialize(zval::Number))
     idx = findfirst(≈(zval), zgrid) # Validate against zgrid
     if isnothing(idx)
         throw(ArgumentError("Provided `zval` argument $zval to `PARSECTrackSet` is invalid; available metal mass fractions are $zvals. For metallicity interpolation, use `PARSECLibrary`."))
