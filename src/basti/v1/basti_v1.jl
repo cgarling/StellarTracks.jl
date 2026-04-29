@@ -251,7 +251,7 @@ struct BaSTIv1TrackSet{A <: AbstractVector{<:Integer},
     properties::D
 end
 # Given a set of properties, load the correct models and then call below method
-function BaSTIv1TrackSet(zval::Number, α_fe::Number=0, canonical::Bool=true, agb::Bool=false, η::Number=0.4)
+function BaSTIv1TrackSet(@nospecialize(zval::Number), @nospecialize(α_fe::Number)=0, canonical::Bool=true, agb::Bool=false, @nospecialize(η::Number)=0.4)
     # Validate arguments
     _validate_params(zval, α_fe, canonical, agb, η)
     # Convert to strings
@@ -435,7 +435,7 @@ Base.Broadcast.broadcastable(p::BaSTIv1Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv1Library)
     print(io, """Structure of interpolants for the older BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.agb, "with AGB extension", "without AGB extension")), [α/Fe]=$(p.properties.α_fe), η=$(p.properties.η). Valid range of metallicities is $(round.(extrema(MH(p)); sigdigits=6)).""")
 end
-function BaSTIv1Library(α_fe::Number=0, canonical::Bool=true, agb::Bool=false, η::Number=0.4)
+function BaSTIv1Library(@nospecialize(α_fe::Number)=0, canonical::Bool=true, agb::Bool=false, @nospecialize(η::Number)=0.4)
     # Only η=0.4 models with no AGB extension were run for first and last value of zgrid
     if η ≈ 0.4 && ~agb
         zg = zgrid

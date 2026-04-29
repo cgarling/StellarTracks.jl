@@ -373,8 +373,8 @@ struct BaSTIv2TrackSet{A <: AbstractVector{<:Integer},
     properties::D
 end
 # Given a metallicity, α-enhancement, and canonical status, load the correct models and then call below method
-function BaSTIv2TrackSet(feh::Number, α_fe::Number=0, canonical::Bool=false, diffusion::Bool=true,
-                         yp::Number=0.247, η::Number=0.3)
+function BaSTIv2TrackSet(@nospecialize(feh::Number), @nospecialize(α_fe::Number)=0, canonical::Bool=false, diffusion::Bool=true,
+                         @nospecialize(yp::Number)=0.247, @nospecialize(η::Number)=0.3)
     # Validate arguments
     _validate_params(feh, α_fe, canonical, diffusion, yp, η)
     # Convert to strings
@@ -567,8 +567,8 @@ Base.Broadcast.broadcastable(p::BaSTIv2Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv2Library)
     print(io, """Structure of interpolants for the updated BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.diffusion, "with diffusion", "without diffusion")), [α/Fe]=$(p.properties.α_fe), Y_p=$(p.properties.yp), η=$(p.properties.η). Valid range of metallicities is [Fe/H] = $(round.(Float64.(extrema(p.properties.feh)); sigdigits=6)), [M/H] = $(round.(Float64.(extrema(MH(p))); sigdigits=6)).""")
 end
-function BaSTIv2Library(α_fe::Number=0, canonical::Bool=false, diffusion::Bool=true,
-                        yp::Number=0.247, η::Number=0.3)
+function BaSTIv2Library(@nospecialize(α_fe::Number)=0, canonical::Bool=false, diffusion::Bool=true,
+                        @nospecialize(yp::Number)=0.247, @nospecialize(η::Number)=0.3)
     # Not all values in feh_grid are supported for every combination of parameters
     # Need try/catch to gracefully handle unsupported feh values
     ts = [begin
