@@ -165,14 +165,16 @@ end
 
 """
     isochrone(tl::AbstractTrackLibrary, bcg::MISTv2BCGrid,
-              logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
+              logAge::Number, mh::Number, Av::Number)
 Like the generic `isochrone` method, but for `MISTv2BCGrid` which requires an
 additional `afe` (\\[α/Fe\\]) argument when interpolating the bolometric correction grid.
+`afe` (\\[α/Fe\\]) is inferred from `tl` via [`alphaFe`](@ref) forwarded to the bolometric correction grid.
+`mh` is the desired \\[M/H\\] in the stellar track library's chemical mixture.
 """
 function isochrone(tl::AbstractTrackLibrary,
-                   bcg::MISTv2BCGrid, logAge::Number, mh::Number, Av::Number, afe::Number=0.0)
+                   bcg::MISTv2BCGrid, logAge::Number, mh::Number, Av::Number)
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
-    return isochrone(tl, bcg(bc_mh, afe, Av), logAge, mh)
+    return isochrone(tl, bcg(bc_mh, alphaFe(tl), Av), logAge, mh)
 end
 
 ####################################################################################

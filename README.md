@@ -84,11 +84,11 @@ MIST v2.5 adds `[α/Fe]` as a free parameter and can be accessed via `MISTv2Libr
 # Load α-enhanced non-rotating MIST v2.5 models
 julia> tracklib_v2 = MISTv2Library(0.0, 0.4)
 
-# Interpolate isochrone at [Fe/H] = -1.5, [α/Fe] = +0.4, log(age [yr]) = 10
+# Interpolate isochrone at [M/H] = -1.5, [α/Fe] = +0.4, log(age [yr]) = 10
 julia> iso_v2 = isochrone(tracklib_v2, 10.0, -1.5);
 
-# Use the MIST v2.5 BC grid (consistent chemistry with the track grid)
+# Use the MIST v2.5 BC grid (consistent chemistry with the track grid; [α/Fe] inferred from library)
 julia> using BolometricCorrections
 julia> bcgrid_v2 = MISTv2BCGrid("JWST")
-julia> isochrone(tracklib_v2, bcgrid_v2, 10.0, -1.5, 0.4, 0.05)  # logAge, feh, afe, Av
+julia> isochrone(tracklib_v2, bcgrid_v2, 10.0, -1.5, 0.05)  # logAge, [M/H], Av
 ```

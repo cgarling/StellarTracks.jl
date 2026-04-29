@@ -70,12 +70,12 @@ using TypedTables: columnnames
 columnnames(iso_v1)
 ```
 
-We can also use the **MIST v2.5** BC grid, which additionally requires specifying \[α/Fe\]. The `isochrone` method accepts a `MISTv2BCGrid` and converts metallicities between the chemical abundance scales of the stellar tracks and bolometric corrections automatically.
+We can also use the **MIST v2.5** BC grid. The `isochrone` method accepts a `MISTv2BCGrid` and converts metallicities between the chemical abundance scales of the stellar tracks and bolometric corrections automatically. The \[α/Fe\] value is inferred from the track library automatically.
 
 ```@example
 using BolometricCorrections.MIST: MISTv2BCGrid
 m2 = MISTv2BCGrid("JWST")
-iso_v2 = isochrone(p, m2, 10.05, -1.234, 0.0, 0.02) # feh, afe, Av
+iso_v2 = isochrone(p, m2, 10.05, -1.234, 0.02) # [M/H], Av
 ```
 
 A color-magnitude diagram comparing the two BC grids applied to an isochrone made from MIST v1.2 tracks is plotted below. The isochrone made with the v1.2 BCs is shown as a solid line and the isochrone made with the v2.5 BCs is shown as a dashed line.
