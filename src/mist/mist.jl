@@ -64,6 +64,11 @@ const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[b
 const select_columns = (:star_age, :log_L, :log_Teff, :log_g, :log_surf_cell_z) # :star_mass,
 """Data type to parse the MIST tracks as."""
 const track_type = Float64 # MIST track files have Float64 precision
+"""Concrete type of the `Table` loaded from a MIST v1/v2 `.jld2` track file.
+Used as a type assertion after `JLD2.load_object` to restore type stability."""
+const _MISTRawTable = typeof(Table(star_age=track_type[], log_L=track_type[],
+                                   log_Teff=track_type[], log_g=track_type[],
+                                   log_surf_cell_z=track_type[]))
 """Available [Fe/H] values in the MIST stellar track grid."""
 const feh_grid = track_type[-4.0, -3.5, -3.0, -2.5, -2.0, -1.75, -1.5, -1.25, -1.0,
                             -0.75, -0.5, -0.25, 0.0, 0.25, 0.5]
@@ -264,7 +269,7 @@ struct MISTv1TrackSet{A <: AbstractVector{<:Integer},
     properties::D
 end
 # Given a metallicity and rotation, load the correct models and then call below method
-function MISTv1TrackSet(feh::Number, vvcrit::Number=0) # One table per stellar model
+function MISTv1TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number=0)) # One table per stellar model
     # Validate feh
     feh_idx = findfirst(≈(feh), feh_grid) # Validate against feh_grid
     @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv1TrackSet` is invalid; available metallicities are $feh_grid. For metallicity interpolation, use `MISTv1Library`.")
@@ -273,15 +278,12 @@ function MISTv1TrackSet(feh::Number, vvcrit::Number=0) # One table per stellar m
     vvcrit = _parse_vvcrit(vvcrit)
     # List stellar track files
     allfiles = [@datadep_str(joinpath("MISTv1.2_vvcrit"*vvcrit, feh, _parse_mass(mass) * "M.track.jld2")) for mass in mass_grid]
-    # return [JLD2.load_object(file) for file in allfiles]
-    # return MISTv1TrackSet([JLD2.load_object(file) for file in allfiles],
-    #                     masses, parse(track_type, feh))
-    data = vcat([begin
-                     tmpdata = JLD2.load_object(allfiles[i])
-                     Table(tmpdata, m_ini=fill(mass_grid[i], length(tmpdata)),
-                           eep = 1:length(tmpdata))
-                 end for i in eachindex(allfiles)]...)
-    # return data
+    tables = [begin
+                  tmpdata = JLD2.load_object(allfiles[i])::_MISTRawTable
+                  Table(tmpdata, m_ini=fill(mass_grid[i], length(tmpdata)),
+                        eep = 1:length(tmpdata))
+              end for i in eachindex(allfiles)]
+    data = reduce(vcat, tables)
     return MISTv1TrackSet(data, parse(track_type, feh), parse(track_type, vvcrit))
 end
 function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
@@ -440,7 +442,7 @@ Base.Broadcast.broadcastable(p::MISTv1Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::MISTv1Library)
     print(io, "Structure of interpolants for the MIST library of stellar tracks with vvcrit=$(p.vvcrit). Valid range of metallicities is $(extrema(MH(p))).")
 end
-function MISTv1Library(vvcrit::Number=0)
+function MISTv1Library(@nospecialize(vvcrit::Number=0))
     # Make vector of tracksets
     ts = [MISTv1TrackSet(feh, vvcrit) for feh in feh_grid]
     return MISTv1Library(ts, feh_grid, vvcrit)
@@ -536,7 +538,7 @@ struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
     interps::C
     properties::D
 end
-function MISTv2TrackSet(feh::Number, vvcrit::Number=0, afe::Number=0)
+function MISTv2TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number=0), @nospecialize(afe::Number=0))
     valid_feh  = feh_grid_v2_for(afe)
     feh_idx = findfirst(≈(feh), valid_feh)
     @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv2TrackSet` is invalid for [α/Fe]=$afe; available metallicities are $valid_feh. For metallicity interpolation, use `MISTv2Library`.")
@@ -551,11 +553,12 @@ function MISTv2TrackSet(feh::Number, vvcrit::Number=0, afe::Number=0)
     # Some (feh, vvcrit, afe) combinations are missing individual mass tracks in the MIST v2.5 grid.
     # Skip files that are not present on disk rather than erroring.
     allfiles_masses = filter(fm -> isfile(fm.path), allfiles_masses)
-    data = vcat([begin
-                     tmpdata = JLD2.load_object(fm.path)
-                     Table(tmpdata, m_ini=fill(fm.mass, length(tmpdata)),
-                           eep = 1:length(tmpdata))
-                 end for fm in allfiles_masses]...)
+    tables = [begin
+                  tmpdata = JLD2.load_object(fm.path)::_MISTRawTable
+                  Table(tmpdata, m_ini=fill(fm.mass, length(tmpdata)),
+                        eep = 1:length(tmpdata))
+              end for fm in allfiles_masses]
+    data = reduce(vcat, tables)
     return MISTv2TrackSet(data, valid_feh[feh_idx],
                           parse(track_type, vvcrit_str), afe_val)
 end
@@ -694,7 +697,7 @@ function Base.show(io::IO, mime::MIME"text/plain", p::MISTv2Library)
           "Valid [M/H] range: $(extrema(MH(p))).")
 end
 
-function MISTv2Library(vvcrit::Number=0.0, afe::Number=0.0)
+function MISTv2Library(@nospecialize(vvcrit::Number=0.0), @nospecialize(afe::Number=0.0))
     vvcrit_val = track_type(vvcrit)
     afe_val    = track_type(afe)
     @argcheck any(≈(vvcrit_val), vvcrit_grid_v2) ArgumentError("Invalid vvcrit=$vvcrit; valid options are $vvcrit_grid_v2.")
