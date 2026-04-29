@@ -86,7 +86,7 @@ bcgv2 = MISTv2BCGrid("JWST")
 
             iso1_v2 = isochrone(tracklib, bcgv2(-2.15, 0.0, 0.0), 10.0, -2.15)
             @test iso1_v2 isa Table
-            iso2_v2 = isochrone(tracklib, bcgv2, 10.0, -2.15, 0.0, 0.0)
+            iso2_v2 = isochrone(tracklib, bcgv2, 10.0, -2.15, 0.0)
             @test iso2_v2 isa Table
             # These will not be the same because the iso_v2 call will convert the tracklib's feh to Z and then back to feh for the BC interpolation,
             # which will not be exactly the same as the original feh due to differences in the solar abundance pattern between the tracklib and BC grid.
@@ -98,7 +98,7 @@ bcgv2 = MISTv2BCGrid("JWST")
                 @test_nowarn isochrone(tracklib, bcgv1, 10.0, feh, 0.0)
                 feh_v2 = MH(chemistry(bcgv2), Z(chemistry(tracklib), feh))
                 if extrema(bcgv2).feh[1] <= feh_v2 <= extrema(bcgv2).feh[2]
-                    @test_nowarn isochrone(tracklib, bcgv2, 10.0, feh, 0.0, 0.0)
+                    @test_nowarn isochrone(tracklib, bcgv2, 10.0, feh, 0.0)
                 end
             end
             # Make sure error is thrown for out of MH range

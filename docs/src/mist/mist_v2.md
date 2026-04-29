@@ -56,7 +56,7 @@ using StellarTracks.MIST
 lib = MISTv2Library(0.0, 0.0)
 ```
 
-Interpolate an isochrone at `log10(age [yr]) = 10.05` and ``[\text{Fe}/\text{H}] = -1.234``. The isochrone is returned as a `NamedTuple`.
+Interpolate an isochrone at `log10(age [yr]) = 10.05` and ``[\text{M}/\text{H}] = -1.234``. The isochrone is returned as a `NamedTuple`.
 
 ```@example mistv2
 iso = isochrone(lib, 10.05, -1.234)
@@ -80,7 +80,7 @@ Load a bolometric correction grid from [BolometricCorrections.jl](@extref Bolome
 ```@example mistv2
 using BolometricCorrections.MIST: MISTv2BCGrid
 bc = MISTv2BCGrid("JWST")
-iso_phot = isochrone(lib, bc, 10.05, -1.234, 0.0, 0.02)  # logAge, feh, afe, Av
+iso_phot = isochrone(lib, bc, 10.05, -1.234, 0.02)  # logAge, [M/H], Av
 ```
 
 ```@example mistv2
@@ -88,7 +88,7 @@ using TypedTables: columnnames
 columnnames(iso_phot)
 ```
 
-To take advantage of the \[α/Fe\] degree of freedom, load a library with a non-zero `afe` value. Here we compare solar-scaled and α-enhanced isochrones at the same age and \[Fe/H\]:
+To take advantage of the \[α/Fe\] degree of freedom, load a library with a non-zero `afe` value. Here we compare solar-scaled and α-enhanced isochrones at the same age and \[M/H\]. Note that both `isochrone` calls receive the same value of \[M/H\], not \[Fe/H\]; at the same \[M/H\] the α-enhanced population has a lower \[Fe/H\] but the same total metal mass fraction `Z`.
 
 ```@example mistv2
 lib_afe = MISTv2Library(0.0, 0.4)
@@ -105,7 +105,7 @@ fig # hide
 
 ## Chemistry API
 
-We re-export the [`BolometricCorrections.MIST.MISTv2Chemistry`](@extref) type defined in BolometricCorrections.jl that encodes the solar chemical mixture assumed for the MIST v2.5 models ([Grevesse1998](@citet)). Because \[α/Fe\] is a free parameter in v2.5, the metallicity coordinate is \[Fe/H\] rather than \[M/H\]; the `MISTv2Chemistry` type handles the conversion between these scales.
+We re-export the [`BolometricCorrections.MIST.MISTv2Chemistry`](@extref) type defined in BolometricCorrections.jl that encodes the solar chemical mixture assumed for the MIST v2.5 models ([Grevesse1998](@citet)). Because \[α/Fe\] is a free parameter in v2.5, the data grid is indexed by \[Fe/H\] rather than \[M/H\]. However, the `isochrone` interface always accepts \[M/H\] (the total logarithmic metal abundance), and `MISTv2Chemistry` handles the conversion between \[M/H\] and \[Fe/H\] via the [Salaris1993](@citet) relation. When a `MISTv2Library` is used with a `MISTv2BCGrid`, the `afe` value is inferred from the track library automatically so the correct bolometric corrections are selected.
 
 ## Library API
 
