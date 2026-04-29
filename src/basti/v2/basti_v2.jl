@@ -287,7 +287,7 @@ Note that this function takes the input metallicity as [Fe/H], which is not equa
 when considering models with [α/Fe] != 0 `α_fe != 0`.
 ```jldoctest
 julia> track = StellarTracks.BaSTIv2.BaSTIv2Track(-2.2, 0.81, 0.0, false, true, 0.247, 0.3)
-Non-canonical BaSTIv2Track with diffusion, M_ini=0.81, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.870952533235687e-5, Y=0.24712930947818537, X=0.7527719809964823, Y_p=0.247, η=0.3.
+Non-canonical BaSTIv2Track with diffusion, M_ini=0.81, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.87095e-5, Y=0.247129, X=0.752772, Y_p=0.247, η=0.3.
 
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
 (log_L = -0.1362482951194913, log_Teff = 3.8011768472932603, log_g = 4.642115349406555)
@@ -330,7 +330,7 @@ alphaFe(t::BaSTIv2Track) = t.properties.α_fe
 post_rgb(t::BaSTIv2Track) = length(t.data) > eep_idxs.HE_BEG
 Base.eltype(t::BaSTIv2Track) = typeof(t.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", t::BaSTIv2Track)
-    print(io, """$(ifelse(t.properties.canonical, "Canonical", "Non-canonical")) BaSTIv2Track $(ifelse(t.properties.diffusion, "with diffusion", "without diffusion")), M_ini=$(mass(t)), [M/H]=$(MH(t)), [Fe/H]=$(t.properties.feh), [α/Fe]=$(t.properties.α_fe), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)), Y_p=$(Y_p(chemistry(t))), η=$(t.properties.η).""")
+    print(io, """$(ifelse(t.properties.canonical, "Canonical", "Non-canonical")) BaSTIv2Track $(ifelse(t.properties.diffusion, "with diffusion", "without diffusion")), M_ini=$(mass(t)), [M/H]=$(round(MH(t); sigdigits=6)), [Fe/H]=$(t.properties.feh), [α/Fe]=$(t.properties.α_fe), Z=$(round(Z(t); sigdigits=6)), Y=$(round(Y(t); sigdigits=6)), X=$(round(X(t); sigdigits=6)), Y_p=$(Y_p(chemistry(t))), η=$(t.properties.η).""")
 end
 
 ##########################################################################
@@ -354,10 +354,10 @@ interface for the updated BaSTI stellar evolution library
 
 ```jldoctest
 julia> ts = StellarTracks.BaSTIv2.BaSTIv2TrackSet(-2.2, 0.0, false, true, 0.247, 0.3)
-Non-canonical BaSTIv2TrackSet with diffusion, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.870951724808943e-5, Y=0.24712930338792122, Y_p=0.247, η=0.3, 2099 EEPs and 56 initial stellar mass points.
+Non-canonical BaSTIv2TrackSet with diffusion, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.87095e-5, Y=0.247129, Y_p=0.247, η=0.3, 2099 EEPs and 56 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-Non-canonical BaSTIv2Track with diffusion, M_ini=1.01, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.870951724808943e-5, Y=0.24712930338792122, X=0.7527719870948307, Y_p=0.247, η=0.3.
+Non-canonical BaSTIv2Track with diffusion, M_ini=1.01, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.87095e-5, Y=0.247129, X=0.752772, Y_p=0.247, η=0.3.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -465,7 +465,7 @@ alphaFe(ts::BaSTIv2TrackSet) = ts.properties.α_fe
 post_rgb(t::BaSTIv2TrackSet) = true
 Base.eltype(ts::BaSTIv2TrackSet) = typeof(ts.properties.feh)
 function Base.show(io::IO, mime::MIME"text/plain", ts::BaSTIv2TrackSet)
-    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv2TrackSet $(ifelse(ts.properties.diffusion, "with diffusion", "without diffusion")), [M/H]=$(MH(ts)), [Fe/H]=$(ts.properties.feh), [α/Fe]=$(ts.properties.α_fe), Z=$(Z(ts)), Y=$(Y(ts)), Y_p=$(Y_p(chemistry(ts))), η=$(ts.properties.η), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.""")
+    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv2TrackSet $(ifelse(ts.properties.diffusion, "with diffusion", "without diffusion")), [M/H]=$(round(MH(ts); sigdigits=6)), [Fe/H]=$(ts.properties.feh), [α/Fe]=$(ts.properties.α_fe), Z=$(round(Z(ts); sigdigits=6)), Y=$(round(Y(ts); sigdigits=6)), Y_p=$(Y_p(chemistry(ts))), η=$(ts.properties.η), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.""")
 end
 
 function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
@@ -538,13 +538,13 @@ This type also supports isochrone construction
 
 ```jldoctest
 julia> p = BaSTIv2Library(0.0, false, true, 0.247, 0.3)
-Structure of interpolants for the updated BaSTI library of non-canonical stellar tracks with diffusion, [α/Fe]=0.0, Y_p=0.247, η=0.3. Valid range of metallicities is [Fe/H] = $(extrema(feh_grid[begin:end-1])), [M/H] = $(extrema(feh_grid[begin:end-1])).
+Structure of interpolants for the updated BaSTI library of non-canonical stellar tracks with diffusion, [α/Fe]=0.0, Y_p=0.247, η=0.3. Valid range of metallicities is [Fe/H] = $(round.(Float64.(extrema(feh_grid[begin:end-1])); sigdigits=6)), [M/H] = $(round.(Float64.(extrema(feh_grid[begin:end-1])); sigdigits=6)).
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
 
 julia> p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.00013941349859095735, Y=0.2471826256034804, X=0.7526779608979287.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.000139413, Y=0.247183, X=0.752678.
 ```
 """
 struct BaSTIv2Library{A,B} <: AbstractTrackLibrary
@@ -562,10 +562,10 @@ Z(p::BaSTIv2Library) = Z.(chemistry(p), MH(p))
 FeH(p::BaSTIv2Library) = p.properties.feh
 alphaFe(p::BaSTIv2Library) = p.properties.α_fe
 post_rgb(::BaSTIv2Library) = true
-Base.eltype(p::BaSTIv2Library) = typeof(first(MH(p)))
+Base.eltype(p::BaSTIv2Library) = typeof(first(FeH(p)))
 Base.Broadcast.broadcastable(p::BaSTIv2Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv2Library)
-    print(io, """Structure of interpolants for the updated BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.diffusion, "with diffusion", "without diffusion")), [α/Fe]=$(p.properties.α_fe), Y_p=$(p.properties.yp), η=$(p.properties.η). Valid range of metallicities is [Fe/H] = $(extrema(p.properties.feh)), [M/H] = $(extrema(MH(p))).""")
+    print(io, """Structure of interpolants for the updated BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.diffusion, "with diffusion", "without diffusion")), [α/Fe]=$(p.properties.α_fe), Y_p=$(p.properties.yp), η=$(p.properties.η). Valid range of metallicities is [Fe/H] = $(round.(Float64.(extrema(p.properties.feh)); sigdigits=6)), [M/H] = $(round.(Float64.(extrema(MH(p))); sigdigits=6)).""")
 end
 function BaSTIv2Library(α_fe::Number=0, canonical::Bool=false, diffusion::Bool=true,
                         yp::Number=0.247, η::Number=0.3)

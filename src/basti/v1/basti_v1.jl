@@ -171,7 +171,7 @@ and call it with the masses you want, e.g.,
 
 ```jldoctest
 julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(1e-4, 1.2, 0.0, true, true, 0.4)
-Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.2651979978981727, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
+Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.2652, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
 (log_L = 0.7036731727550208, log_Teff = 3.948934612691319, log_g = 4.563808864709117)
 ```
@@ -212,7 +212,7 @@ Z(t::BaSTIv1Track) = t.properties.Z
 post_rgb(t::BaSTIv1Track) = length(t.data) > eep_idxs.HE_BEG
 Base.eltype(t::BaSTIv1Track) = typeof(t.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", t::BaSTIv1Track)
-    print(io, """$(ifelse(t.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1Track $(ifelse(t.properties.agb, "with AGB extension", "without AGB extension")), M_ini=$(mass(t)), MH=$(MH(t)), [α/Fe]=$(t.properties.α_fe), η=$(t.properties.η), Z=$(Z(t)), Y=$(Y(t)), X=$(X(t)).""")
+    print(io, """$(ifelse(t.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1Track $(ifelse(t.properties.agb, "with AGB extension", "without AGB extension")), M_ini=$(mass(t)), MH=$(round(MH(t); sigdigits=6)), [α/Fe]=$(t.properties.α_fe), η=$(t.properties.η), Z=$(round(Z(t); sigdigits=6)), Y=$(round(Y(t); sigdigits=6)), X=$(round(X(t); sigdigits=6)).""")
 end
 
 ##########################################################################
@@ -232,10 +232,10 @@ interface for the older BaSTI stellar evolution library
 
 ```jldoctest
 julia> ts = StellarTracks.BaSTIv1.BaSTIv1TrackSet(1e-3, 0.0, true, false, 0.4)
-Canonical BaSTIv1TrackSet without AGB extension, MH=-1.263953315381199, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.24640000006649643, 1999 EEPs and 40 initial stellar mass points.
+Canonical BaSTIv1TrackSet without AGB extension, MH=-1.26395, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.2464, 1999 EEPs and 40 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
-Canonical BaSTIv1Track without AGB extension, M_ini=1.01, MH=-1.263953315381199, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.24640000006649643, X=0.7525999998860061.
+Canonical BaSTIv1Track without AGB extension, M_ini=1.01, MH=-1.26395, [α/Fe]=0.0, η=0.4, Z=0.001, Y=0.2464, X=0.7526.
 
 julia> isochrone(ts, 10.0) isa NamedTuple # Interpolate isochrone at `log10(age [yr]) = 10`
 true
@@ -338,7 +338,7 @@ alphaFe(ts::BaSTIv1TrackSet) = ts.properties.α_fe
 post_rgb(t::BaSTIv1TrackSet) = true
 Base.eltype(ts::BaSTIv1TrackSet) = typeof(ts.properties.Z)
 function Base.show(io::IO, mime::MIME"text/plain", ts::BaSTIv1TrackSet)
-    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1TrackSet $(ifelse(ts.properties.agb, "with AGB extension", "without AGB extension")), MH=$(MH(ts)), [α/Fe]=$(ts.properties.α_fe), η=$(ts.properties.η), Z=$(Z(ts)), Y=$(Y(ts)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.""")
+    print(io, """$(ifelse(ts.properties.canonical, "Canonical", "Non-canonical")) BaSTIv1TrackSet $(ifelse(ts.properties.agb, "with AGB extension", "without AGB extension")), MH=$(round(MH(ts); sigdigits=6)), [α/Fe]=$(ts.properties.α_fe), η=$(ts.properties.η), Z=$(round(Z(ts); sigdigits=6)), Y=$(round(Y(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.""")
 end
 
 function isochrone(ts::BaSTIv1TrackSet, logAge::Number)
@@ -411,13 +411,13 @@ This type also supports isochrone construction
 # Examples
 ```jldoctest
 julia> p = BaSTIv1Library(0.0, true, false, 0.4)
-Structure of interpolants for the older BaSTI library of canonical stellar tracks without AGB extension, [α/Fe]=0.0, η=0.4. Valid range of metallicities is (-3.265322279085031, 0.5088071641379128).
+Structure of interpolants for the older BaSTI library of canonical stellar tracks without AGB extension, [α/Fe]=0.0, η=0.4. Valid range of metallicities is (-3.26532, 0.508807).
 
 julia> isochrone(p, 10.05, -2.01) isa NamedTuple
 true
 
 julia> p(-2.05, 1.05)
-InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.0001641003350386593, Y=0.24522974046905413, X=0.7546061591959072.
+InterpolatedTrack with M_ini=1.05, MH=-2.05, Z=0.0001641, Y=0.24523, X=0.754606.
 ```
 """
 struct BaSTIv1Library{A,B} <: AbstractTrackLibrary
@@ -433,7 +433,7 @@ post_rgb(::BaSTIv1Library) = true
 Base.eltype(p::BaSTIv1Library) = typeof(first(Z(p)))
 Base.Broadcast.broadcastable(p::BaSTIv1Library) = Ref(p)
 function Base.show(io::IO, mime::MIME"text/plain", p::BaSTIv1Library)
-    print(io, """Structure of interpolants for the older BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.agb, "with AGB extension", "without AGB extension")), [α/Fe]=$(p.properties.α_fe), η=$(p.properties.η). Valid range of metallicities is $(extrema(MH(p))).""")
+    print(io, """Structure of interpolants for the older BaSTI library of $(ifelse(p.properties.canonical, "canonical", "non-canonical")) stellar tracks $(ifelse(p.properties.agb, "with AGB extension", "without AGB extension")), [α/Fe]=$(p.properties.α_fe), η=$(p.properties.η). Valid range of metallicities is $(round.(extrema(MH(p)); sigdigits=6)).""")
 end
 function BaSTIv1Library(α_fe::Number=0, canonical::Bool=true, agb::Bool=false, η::Number=0.4)
     # Only η=0.4 models with no AGB extension were run for first and last value of zgrid
