@@ -203,7 +203,7 @@ the [Fe/H] values to [M/H] and ``Z``. The α-enhanced library also includes mode
 with enhanced primordial helium abundance (`yp` here), so we require that information
 as well.
 
-For the [α/Fe] = 0.4 models presented in [Pietrinferni2021(@citet) and the [α/Fe] = -0.2 models
+For the [α/Fe] = 0.4 models presented in [Pietrinferni2021](@citet) and the [α/Fe] = -0.2 models
 presented in [Pietrinferni2024](@citet), the α elements
 O, Ne, Mg, Si, S, Ca, and Ti have all been uniformly modified with respect to the Fe abundance
 relative to the [Caffau2011](@citet) heavy element distribution. As C and N are not changed,
