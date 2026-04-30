@@ -132,7 +132,7 @@ Y(mix::BaSTIv1Chemistry, Zval) = Y_p(mix) +  14//10 * Zval # Second paragraph, s
 # X generic
 MH(mix::BaSTIv1Chemistry, Zval) = log10(Zval / X(mix, Zval)) - log10(Z_phot(mix) / X_phot(mix))
 # Alpha-element mass fraction for GN93 (Grevesse & Noels 1993),
-# alpha elements: O, Ne, Mg, Si, S, Ar, Ca, Ti
+# alpha elements: O, Ne, Mg, Si, S, Ca, Ti (Ar is not an enhanced alpha element in BaSTIv1)
 alpha_mass_fraction(::BaSTIv1Chemistry) = 0.6635
 function Z(mix::BaSTIv1Chemistry, MHval)
     # Derivation in parsec code

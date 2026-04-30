@@ -12,4 +12,8 @@ doctest(StellarTracks)
     @safetestset "BaSTIv1 Tracks" include("basti_v1_tests.jl")
     @safetestset "BaSTIv2 Tracks" include("basti_v2_tests.jl")
     @safetestset "InterpolatedTrack" include("interpolated_track_tests.jl")
+    @testset "alpha mass fractions" begin
+        @safetestset "BaSTIv1Chemistry (Grevesse & Noels 1993)" include("alpha_mass_fractions/basti_v1_grevesse1993.jl")
+        @safetestset "BaSTIv2Chemistry (Caffau+2011)" include("alpha_mass_fractions/basti_v2_caffau2011.jl")
+    end
 end
