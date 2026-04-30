@@ -173,8 +173,14 @@ additional `afe` (\\[α/Fe\\]) argument when interpolating the bolometric correc
 """
 function isochrone(tl::AbstractTrackLibrary,
                    bcg::MISTv2BCGrid, logAge::Number, mh::Number, Av::Number)
+    # First, find correct bulk [M/H] accounting for any differences in Z_sol between tracklib and bcg
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
-    return isochrone(tl, bcg(bc_mh, alphaFe(tl), Av), logAge, mh)
+
+    # Now, MISTv2BCGrid expects metallicity input in [Fe/H], 
+    # so we have to derive that from [M/H] and [α/Fe] for the tracklib chemistry.
+    afe = alphaFe(tl)
+    bc_feh = FeH(chemistry(bcg), bc_mh, afe)
+    return isochrone(tl, bcg(bc_feh, afe, Av), logAge, mh)
 end
 
 ####################################################################################
