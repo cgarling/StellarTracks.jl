@@ -80,21 +80,13 @@ Z(t::AbstractTrack) = Z(chemistry(t), MH(t))
 Returns the logarithmic metal abundance of the modeled star, defined as [M/H] = log(Z/X) - log(Z⊙/X⊙).
 Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\]
 from [`FeH`](@ref) and [`alphaFe`](@ref). """
-function MH(t::AbstractTrack)
-    afe = alphaFe(t)
-    f_α = alpha_mass_fraction(chemistry(t))
-    return FeH(t) + log10(f_α * exp10(afe) + (1 - f_α))
-end
+MH(t::AbstractTrack) = MH(chemistry(t), FeH(t), alphaFe(t)) # Calls generic from BolometricCorrections.jl
 """
     FeH(t::AbstractTrack)
 Returns the iron abundance [Fe/H] of the modeled star. For scaled-solar models, this equals [`MH`](@ref).
 Generic method uses the [Salaris1993](@citet) equation to compute \\[Fe/H\\]
 from [`MH`](@ref) and [`alphaFe`](@ref)."""
-function FeH(t::AbstractTrack)
-    afe = alphaFe(t)
-    f_α = alpha_mass_fraction(chemistry(t))
-    return MH(t) - log10(f_α * exp10(afe) + (1 - f_α))
-end
+FeH(t::AbstractTrack) = FeH(chemistry(t), MH(t), alphaFe(t)) # Calls generic from BolometricCorrections.jl
 """
     alphaFe(t::AbstractTrack)
 Returns the α-element enhancement [α/Fe] of the modeled star. For scaled-solar models, this is zero. """
@@ -185,22 +177,14 @@ Returns the common logarithmic metal abundance of the tracks contained in the tr
 defined as [M/H] = log(Z/X) - log(Z⊙/X⊙).
 Generic method uses the [Salaris1993](@citet) equation to compute \\[M/H\\]
 from [`FeH`](@ref) and [`alphaFe`](@ref). """
-function MH(ts::AbstractTrackSet)
-    afe = alphaFe(ts)
-    f_α = alpha_mass_fraction(chemistry(ts))
-    return FeH(ts) + log10(f_α * exp10(afe) + (1 - f_α))
-end
+MH(ts::AbstractTrackSet) = MH(chemistry(ts), FeH(ts), alphaFe(ts)) # Calls generic from BolometricCorrections.jl
 """
     FeH(ts::AbstractTrackSet)
 Returns the common iron abundance [Fe/H] of the tracks contained in the track set.
 For scaled-solar models, this equals [`MH`](@ref). Generic method uses the
 [Salaris1993](@citet) equation to compute \\[Fe/H\\] from [`MH`](@ref) and
 [`alphaFe`](@ref)."""
-function FeH(ts::AbstractTrackSet)
-    afe = alphaFe(ts)
-    f_α = alpha_mass_fraction(chemistry(ts))
-    return MH(ts) - log10(f_α * exp10(afe) + (1 - f_α))
-end
+FeH(ts::AbstractTrackSet) = FeH(chemistry(ts), MH(ts), alphaFe(ts)) # Calls generic from BolometricCorrections.jl
 """
     alphaFe(ts::AbstractTrackSet)
 Returns the common α-element enhancement [α/Fe] of the tracks contained in the track set. For scaled-solar models, this is zero. """
@@ -298,22 +282,14 @@ Z(tl::AbstractTrackLibrary) = Z.(Ref(chemistry(tl)), MH(tl))
 Returns the logarithmic metal abundances of the track sets contained in the track library, 
 defined as [M/H] = log(Z/X) - log(Z⊙/X⊙). Generic method uses the [Salaris1993](@citet) 
 equation to compute \\[M/H\\] from [`FeH`](@ref) and [`alphaFe`](@ref). """
-function MH(tl::AbstractTrackLibrary)
-    afe = alphaFe(tl)
-    f_α = alpha_mass_fraction(chemistry(tl))
-    return FeH(tl) .+ log10.(f_α * exp10.(afe) .+ (1 .- f_α))
-end
+MH(tl::AbstractTrackLibrary) = MH.(Ref(chemistry(tl)), FeH(tl), alphaFe(tl)) # Calls generic from BolometricCorrections.jl
 """
     FeH(tl::AbstractTrackLibrary)
 Returns the iron abundances [Fe/H] of the track sets contained in the track library.
 For scaled-solar models, this equals [`MH`](@ref). Generic method uses the
 [Salaris1993](@citet)  equation to compute \\[Fe/H\\] from [`MH`](@ref) and
 [`alphaFe`](@ref)."""
-function FeH(tl::AbstractTrackLibrary)
-    afe = alphaFe(tl)
-    f_α = alpha_mass_fraction(chemistry(tl))
-    return MH(tl) .- log10.(f_α * exp10.(afe) .+ (1 .- f_α))
-end
+FeH(tl::AbstractTrackLibrary) = FeH.(Ref(chemistry(tl)), MH(tl), alphaFe(tl)) # Calls generic from BolometricCorrections.jl
 """
     alphaFe(tl::AbstractTrackLibrary)
 Returns the α-element enhancement [α/Fe] of the track sets in the track library. For scaled-solar models, this is zero. """
