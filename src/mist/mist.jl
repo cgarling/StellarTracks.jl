@@ -575,6 +575,7 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
     logl    = similar(logte)
     logg    = similar(logte)
     logsurfz = similar(logte)
+    good_eeps = falses(length(eeps))
 
     Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
@@ -586,6 +587,11 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
         idxs = p1:lastindex(tmpdata)
         goodidxs = vcat(true, diff(tmpdata.m_ini[idxs]) .< 0)
         tmpdata = tmpdata[idxs[goodidxs]]
+        # Need at least 3 points to interpolate;
+        # This is a problem for MISTv2 vvcrit=0.4, alpha/Fe=0.4, Fe/H=+0.5, multiple high-EEP bins
+        if length(tmpdata) < 3
+            continue
+        end
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, log10.(tmpdata.star_age))
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
@@ -593,6 +599,15 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
         logl[i]     = PCHIPInterpolation(tmpdata.log_L, tmpdata.m_ini)
         logg[i]     = PCHIPInterpolation(tmpdata.log_g, tmpdata.m_ini)
         logsurfz[i] = PCHIPInterpolation(tmpdata.log_surf_cell_z, tmpdata.m_ini)
+        good_eeps[i] = true
+    end
+    if !all(good_eeps)
+        eeps = eeps[good_eeps]
+        amrs = amrs[good_eeps]
+        logte = logte[good_eeps]
+        logl = logl[good_eeps]
+        logg = logg[good_eeps]
+        logsurfz = logsurfz[good_eeps]
     end
     return MISTv2TrackSet(eeps, amrs,
                          (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz),
