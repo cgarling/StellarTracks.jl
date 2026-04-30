@@ -103,6 +103,26 @@ axislegend(ax, position=:rb) # hide
 fig # hide
 ```
 
+Here we compare JWST/NIRCam CMDs for α-enhanced and scaled-solar MIST v2.5 models with matched properties of `log10(age [yr]) = 10.05`, ``[\text{M}/\text{H}] = -1.234``, and ``A_v=0.02`` mag.
+
+```@example mistv2
+# bc_v1 = MISTv1BCGrid("JWST") # hide
+# lib_v1 = MISTv1Library(0.0) # hide
+# iso_phot_v1 = isochrone(lib_v1, bc_v1, 10.05, -1.234, 0.02) # hide
+# iso_phot_v2 = isochrone(lib_afe, bc, 10.05, -1.234, 0.02)  # hide
+lib_ss = MISTv2Library(0.0, 0.0) # hide
+iso_phot_ss = isochrone(lib_ss, bc, 10.05, -1.234, 0.02) # hide
+iso_phot_afe = isochrone(lib_afe, bc, 10.05, -1.234, 0.02)  # hide
+fig = Figure(size=(500, 500)) # hide
+ax = Axis(fig[1,1], xlabel="F090W - F150W", ylabel="F090W", # hide
+          xreversed=false, yreversed=true, # hide
+          limits=(0.4, 1.62, nothing, nothing)) # hide
+lines!(ax, iso_phot_ss.NIRCAM_F090W .- iso_phot_ss.NIRCAM_F150W, iso_phot_ss.NIRCAM_F090W; label="[α/Fe]=0.0") # hide
+lines!(ax, iso_phot_afe.NIRCAM_F090W .- iso_phot_afe.NIRCAM_F150W, iso_phot_afe.NIRCAM_F090W; linestyle=:dash, label="[α/Fe]=+0.4") # hide
+axislegend(ax, position=:rb) # hide
+fig # hide
+```
+
 ## Chemistry API
 
 We re-export the [`BolometricCorrections.MIST.MISTv2Chemistry`](@extref) type defined in BolometricCorrections.jl that encodes the solar chemical mixture assumed for the MIST v2.5 models ([Grevesse1998](@citet)). Because \[α/Fe\] is a free parameter in v2.5, the data grid is indexed by \[Fe/H\] rather than \[M/H\]. However, the `isochrone` interface always accepts \[M/H\] (the total logarithmic metal abundance), and `MISTv2Chemistry` handles the conversion between \[M/H\] and \[Fe/H\] via the [Salaris1993](@citet) relation. When a `MISTv2Library` is used with a `MISTv2BCGrid`, the `afe` value is inferred from the track library automatically so the correct bolometric corrections are selected.
