@@ -3,7 +3,7 @@ using Test, SafeTestsets
 
 # Run doctests first
 using Documenter: DocMeta, doctest
-DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks; import BolometricCorrections; using DataDeps: @datadep_str; datadep"PARSECv1.2S"; datadep"MISTv1.2_vvcrit0.0"; datadep"MISTv1.2_vvcrit0.4"; datadep"MISTv2.5_vvcrit0.0_afe_p0.0"; datadep"MISTv2.5_vvcrit0.0_afe_p0.4"; datadep"BaSTIv1"; datadep"BaSTIv2"); recursive=true)
+DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks; import BolometricCorrections; using DataDeps: @datadep_str; datadep"PARSECv1.2S"; datadep"MISTv1.2_vvcrit0.0"; datadep"MISTv1.2_vvcrit0.4"; datadep"MISTv2.5_vvcrit0.0_afe_p0.0"; datadep"MISTv2.5_vvcrit0.0_afe_p0.4"; datadep"MISTv2.5_vvcrit0.4_afe_p0.4"; datadep"BaSTIv1"; datadep"BaSTIv2"); recursive=true)
 doctest(StellarTracks)
 
 @testset verbose=true "StellarTracks.jl" begin

@@ -112,7 +112,7 @@ bcgv2 = MISTv2BCGrid("JWST")
 
     @testset "MISTv2Track" begin
         # Spot-check a representative subset of (vvcrit, afe, feh, mass) combinations
-        for (vvcrit, afe) in ((0.0, 0.0), (0.4, 0.0))
+        for (vvcrit, afe) in ((0.0, 0.0), (0.4, 0.0), (0.4, 0.4))
             for feh in [-2.0, 0.0]  # subset of feh_grid_v2
                 for M in [0.1, 0.81, 2.0]  # subset of mass_grid_v2
                     track = MISTv2Track(feh, M, vvcrit, afe)
@@ -134,7 +134,7 @@ bcgv2 = MISTv2BCGrid("JWST")
     end
 
     @testset "MISTv2TrackSet" begin
-        for (vvcrit, afe) in ((0.0, 0.0), (0.0, 0.4))
+        for (vvcrit, afe) in ((0.0, 0.0), (0.0, 0.4), (0.4, 0.4))
             for feh in MIST.feh_grid_v2_for(afe)
                 trackset = MISTv2TrackSet(feh, vvcrit, afe)
                 @test gridname(trackset) isa String
@@ -159,7 +159,7 @@ bcgv2 = MISTv2BCGrid("JWST")
     end
 
     @testset "MISTv2Library" begin
-        for (vvcrit, afe) in ((0.0, 0.0), (0.0, 0.4))
+        for (vvcrit, afe) in ((0.0, 0.0), (0.0, 0.4), (0.4, 0.4))
             tracklib = MISTv2Library(vvcrit, afe)
             @test gridname(tracklib) isa String
             @test tracklib(-2.05, 1.05) isa InterpolatedTrack
