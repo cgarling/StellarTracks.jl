@@ -16,8 +16,7 @@ DocMeta.setdocmeta!(StellarTracks, :DocTestSetup, :(using StellarTracks); recurs
 # The `format` below makes it so that urls are set to "pretty" if you are pushing them to a hosting service, and basic if you are just using them locally to make browsing easier.
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric) # style=:authoryear
-# links = InterLinks("BolometricCorrections" => "https://cgarling.github.io/BolometricCorrections.jl/stable/")
-links = InterLinks("BolometricCorrections" => "https://cgarling.github.io/BolometricCorrections.jl/previews/PR31/")
+links = InterLinks("BolometricCorrections" => "https://cgarling.github.io/BolometricCorrections.jl/stable/")
 
 makedocs(;
     modules=[StellarTracks],
