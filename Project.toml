@@ -22,7 +22,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 ArgCheck = "1, 2"
-BolometricCorrections = "0.1.4"
+BolometricCorrections = "0.2"
 CSV = "0.10"
 CodecZlib = "0.7"
 DataDeps = "0.7"
