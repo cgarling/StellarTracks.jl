@@ -1,7 +1,7 @@
 name = "StellarTracks"
 uuid = "2b4a1a39-e20a-4324-9c0b-7d841c062f62"
-authors = ["cgarling <chris.t.garling@gmail.com> and contributors"]
 version = "1.1.0"
+authors = ["cgarling <chris.t.garling@gmail.com> and contributors"]
 
 [deps]
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
@@ -26,7 +26,7 @@ BolometricCorrections = "0.2"
 CSV = "0.10"
 CodecZlib = "0.7"
 DataDeps = "0.7"
-DataInterpolations = "8"
+DataInterpolations = "8, 9"
 DelimitedFiles = "<0.0.1, 1"
 Documenter = "1"
 Interpolations = "0.15, 0.16"
