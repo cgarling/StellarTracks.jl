@@ -3,7 +3,7 @@ module PARSEC
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, _generic_trackset_interp, PARSECChemistry
+                       uniqueidx, _generic_trackset_interp, _pchip_svector, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
 
@@ -56,7 +56,8 @@ const track_type = Float64 # Float type to use to represent values
 const ygrid = track_type[0.249, 0.249, 0.249, 0.25, 0.252, 0.256, 0.259, 0.263, 0.267, 0.273, 0.279, 0.284, 0.302, 0.321, 0.356]
 """Valid metal mass fractions (Z) for PARSECv1.2S."""
 const zgrid = track_type[0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
-
+"""Order of the SVector components returned by the `interps` of PARSEC track sets."""
+const interp_names = (:logTe, :Mbol, :logg, :C_O)
 # Data download, organization, file parsing, etc.
 include("init.jl")
 
@@ -195,24 +196,9 @@ function PARSECTrackSet(data::Table, Z::Number)
     #             for eep in eeps]
     # Maybe best to just do an interpolator for each property eh?
     # We should wrap this into a single loop
-    itp_type1 = CubicHermiteSpline{Vector{track_type},
-                                   Vector{track_type},
-                                   Vector{track_type},
-                                   Vector{track_type},
-                                   Vector{track_type},
-                                   track_type}
-    itp_type2 = LinearInterpolation{Vector{track_type},
-                                    Vector{track_type},
-                                    Vector{track_type},
-                                    Vector{track_type},
-                                    track_type}
-    itp_type3 = AkimaInterpolation{Vector{track_type}, Vector{track_type}, Vector{track_type}, Vector{Float64}, Vector{Float64}, Vector{Float64}, track_type}
-
-    amrs = Vector{itp_type1}(undef, length(eeps))
-    logte = Vector{itp_type1}(undef, length(eeps))
-    mbol = similar(logte)
-    logg = similar(logte)
-    c_o = similar(logte)
+    # Filled as Vector{Any} in the threaded loop and narrowed to a concrete eltype afterward
+    amrs = Vector{Any}(undef, length(eeps))
+    interps = similar(amrs)
     Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
         # tmpdata = data[data.eep .== eep]
@@ -244,19 +230,11 @@ function PARSECTrackSet(data::Table, Z::Number)
         # Sort by initial stellar mass for defining the other interpolations
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
-        # Now interpolate mass against logte, mbol, logg, c_o
-        logte[i] = PCHIPInterpolation(tmpdata.logTe, tmpdata.m_ini)
-        mbol[i] = PCHIPInterpolation(tmpdata.Mbol, tmpdata.m_ini)
-        logg[i] = PCHIPInterpolation(tmpdata.logg, tmpdata.m_ini)
-        c_o[i] = PCHIPInterpolation(tmpdata.C_O, tmpdata.m_ini)
-        # logte[i] = LinearInterpolation(tmpdata.logTe, tmpdata.m_ini)
-        # mbol[i] = LinearInterpolation(tmpdata.Mbol, tmpdata.m_ini)
-        # logg[i] = LinearInterpolation(tmpdata.logg, tmpdata.m_ini)
-        # c_o[i] = LinearInterpolation(tmpdata.C_O, tmpdata.m_ini)
+        # Now interpolate mass against the properties in `interp_names`
+        interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
-    
-    return PARSECTrackSet(eeps, amrs, (logTe = logte, Mbol = mbol, logg = logg, C_O = c_o),
-                          (Z = Z, masses = unique(data.m_ini)))
+
+    return PARSECTrackSet(eeps, identity.(amrs), identity.(interps), (Z = Z, masses = unique(data.m_ini)))
 end
 function PARSECTrackSet(@nospecialize(zval::Number))
     idx = findfirst(≈(zval), zgrid) # Validate against zgrid
@@ -268,7 +246,7 @@ function PARSECTrackSet(@nospecialize(zval::Number))
     table = JLD2.load_object(dd)
     return PARSECTrackSet(table, zval)
 end
-(ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M)), Z(ts), M)
+(ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M, interp_names)), Z(ts), M)
 gridname(::Type{<:PARSECTrackSet}) = "PARSEC"
 mass(ts::PARSECTrackSet) = ts.properties.masses
 chemistry(::PARSECTrackSet) = PARSECChemistry()
@@ -283,7 +261,6 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(mass(ts))
     # interp_masses = Vector{eltype(first(ts.AMRs).u)}(undef, 0)
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte = similar(interp_masses)
@@ -302,8 +279,10 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
             # Check here and do not write if outside range. Also require monotonically
             # increasing initial masses (gets rid of some non-monotonic behavior in the
             # underlying EEP tracks). 
-            if imass >= first(track_extrema) && imass <= last(track_extrema) # && (length(interp_masses) == 0 || imass > last(interp_masses))
-                mboli = ts.interps.Mbol[i](imass) # 120 ns
+            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            itp = ts.interps[i]
+            if imass >= first(itp.t) && imass <= last(itp.t) # && (length(interp_masses) == 0 || imass > last(interp_masses))
+                logtei, mboli, loggi, c_oi = itp(imass)
                 # Enforce monotonically increasing Mbol along the MS (which ends at eep_idxs[4])
                 # We can't be sure if last point was overly bright or current point is overly faint,
                 # so we delete last point and continue so this point isn't output
@@ -321,9 +300,9 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
                 push!(eeps, i)
                 push!(interp_masses, imass)
                 push!(mbol, mboli)
-                push!(logte, ts.interps.logTe[i](imass))
-                push!(logg, ts.interps.logg[i](imass))
-                push!(c_o, ts.interps.C_O[i](imass))
+                push!(logte, logtei)
+                push!(logg, loggi)
+                push!(c_o, c_oi)
             end
         end
     end

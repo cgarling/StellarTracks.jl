@@ -3,7 +3,7 @@ module BaSTIv2
 
 # imports from parent module
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
-                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp,
+                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector,
                        radius, surface_gravity
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 using ..StellarTracks.BaSTIv1: _parse_α_fe
@@ -74,6 +74,8 @@ const feh_grid = track_type[-3.2, -2.5, -2.2, -1.9, -1.7, -1.55, -1.4, -1.3, -1.
 const massgrid = track_type[0.1, 0.12, 0.15, 0.18, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0]
 """α-element enrichment parameters [α/Fe] available for the BaSTIv2 grid."""
 const αFegrid = track_type[-0.2, 0.0, 0.4]
+"""Order of the SVector components returned by the `interps` of BaSTIv2 track sets."""
+const interp_names = (:log_L, :log_Teff, :log_g)
 
 function _validate_params(feh::Number, α_fe::Number, canonical::Bool, diffusion::Bool, yp::Number, η::Number)
     if ~any(≈(feh), feh_grid)
@@ -401,16 +403,9 @@ end
 function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Bool, diffusion::Bool,
                          yp::Number, η::Number)
     eeps = sort(unique(data.eep))[2:end] # First EEP has same age for all masses, so skip
-    itp_type = CubicHermiteSpline{Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  track_type}
-    amrs = Vector{itp_type}(undef, length(eeps))
-    logte = Vector{itp_type}(undef, length(eeps))
-    logl = similar(logte)
-    logg = similar(logte)
+    # Filled as Vector{Any} in the threaded loop and narrowed to a concrete eltype afterward
+    amrs = Vector{Any}(undef, length(eeps))
+    interps = similar(amrs)
 
     Threads.@threads for i in eachindex(eeps)
     # for i in eachindex(eeps)
@@ -438,21 +433,19 @@ function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Boo
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
         # Now interpolate mass against logte, logl, logg
-        logte[i] = PCHIPInterpolation(tmpdata.logTe, tmpdata.m_ini)
-        logl[i] = PCHIPInterpolation(tmpdata.logL, tmpdata.m_ini)
         # Calculate logg from mass, temperature, luminosity
-        logg[i] = PCHIPInterpolation(log10.(surface_gravity.(tmpdata.mass, radius.(exp10.(tmpdata.logTe), tmpdata.logL))),
-                                     tmpdata.m_ini)
+        tmp_logg = log10.(surface_gravity.(tmpdata.mass, radius.(exp10.(tmpdata.logTe), tmpdata.logL)))
+        # Columns in the order of `interp_names`
+        interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.logL, tmpdata.logTe, tmp_logg)
     end
-    return BaSTIv2TrackSet(eeps, amrs,
-                           (log_L = logl, log_Teff = logte, log_g = logg),
+    return BaSTIv2TrackSet(eeps, identity.(amrs), identity.(interps),
                            (feh = feh, α_fe = α_fe, canonical = canonical, diffusion = diffusion,
                             yp = yp, η = η, masses = unique(data.m_ini)))
 end
 function (ts::BaSTIv2TrackSet)(M::Number)
     props = (M = M, feh = FeH(ts), α_fe = alphaFe(ts), canonical = ts.properties.canonical,
              diffusion=ts.properties.diffusion, yp=ts.properties.yp, η=ts.properties.η)
-    nt = _generic_trackset_interp(ts, M)
+    nt = _generic_trackset_interp(ts, M, interp_names)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return BaSTIv2Track(table, props)
 end
@@ -470,7 +463,6 @@ end
 
 function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(mass(ts))
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte = similar(interp_masses)
     logl = similar(interp_masses)
@@ -485,8 +477,10 @@ function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
             # Check here and do not write if outside range. Also require monotonically
             # increasing initial masses (gets rid of some non-monotonic behavior in the
             # underlying EEP tracks).
-            if imass >= first(track_extrema) && imass <= last(track_extrema)
-                logli = ts.interps.log_L[i](imass) # 120 ns
+            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            itp = ts.interps[i]
+            if imass >= first(itp.t) && imass <= last(itp.t)
+                logli, logtei, loggi = itp(imass)
                 # Enforce monotonically increasing luminosity along the MS
                 # We can't be sure if last point was overly bright or current point is overly faint,
                 # so we delete last point and continue so this point isn't output
@@ -503,8 +497,8 @@ function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
                 push!(eeps, i)
                 push!(interp_masses, imass)
                 push!(logl, logli)
-                push!(logte, ts.interps.log_Teff[i](imass))
-                push!(logg, ts.interps.log_g[i](imass))
+                push!(logte, logtei)
+                push!(logg, loggi)
             end
         end
     end
