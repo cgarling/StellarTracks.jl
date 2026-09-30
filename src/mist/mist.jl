@@ -3,7 +3,7 @@ module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, Mbol, _generic_trackset_interp
+                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
 # Round floating-point values to 6 significant figures for display
@@ -83,6 +83,8 @@ const feh_grid_v2 = track_type[-4.0, -3.5, -3.0, -2.75, -2.5, -2.25, -2.0, -1.75
 const afe_grid_v2 = track_type[-0.2, 0.0, 0.2, 0.4, 0.6]
 """Available vvcrit values in the MIST v2.5 stellar track grid."""
 const vvcrit_grid_v2 = track_type[0.0, 0.4]
+"""Order of the SVector components returned by the `interps` of MIST track sets."""
+const interp_names = (:log_L, :log_Teff, :log_g, :log_surf_cell_z)
 
 """
     feh_grid_v2_for(afe) -> Vector
@@ -289,17 +291,9 @@ end
 function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
     # eeps = 1:maximum(length.(data))
     eeps = sort(unique(data.eep))
-    itp_type = CubicHermiteSpline{Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  track_type}
-    amrs = Vector{itp_type}(undef, length(eeps))
-    logte = Vector{itp_type}(undef, length(eeps))
-    logl = similar(logte)
-    logg = similar(logte)
-    logsurfz = similar(logte)
+    # Filled as Vector{Any} in the threaded loop and narrowed to a concrete eltype afterward
+    amrs = Vector{Any}(undef, length(eeps))
+    interps = similar(amrs)
 
     Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
@@ -323,19 +317,15 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
         # Sort by initial stellar mass for defining the other interpolations
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
-        # Now interpolate mass against logte, mbol, logg, c_o
-        logte[i] = PCHIPInterpolation(tmpdata.log_Teff, tmpdata.m_ini)
-        logl[i] = PCHIPInterpolation(tmpdata.log_L, tmpdata.m_ini)
-        logg[i] = PCHIPInterpolation(tmpdata.log_g, tmpdata.m_ini)
-        logsurfz[i] = PCHIPInterpolation(tmpdata.log_surf_cell_z, tmpdata.m_ini)
+        # Now interpolate mass against the properties in `interp_names`
+        interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
-    return MISTv1TrackSet(eeps, amrs,
-                        (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz),
+    return MISTv1TrackSet(eeps, identity.(amrs), identity.(interps),
                         (feh = feh, vvcrit = vvcrit, masses = unique(data.m_ini)))
 end
 function (ts::MISTv1TrackSet)(M::Number)
     props = (M = M, feh = MH(ts), vvcrit = ts.properties.vvcrit)
-    nt = _generic_trackset_interp(ts, M)
+    nt = _generic_trackset_interp(ts, M, interp_names)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return MISTv1Track(table, props)
 end
@@ -353,7 +343,6 @@ end
 
 function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(mass(ts))
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte = similar(interp_masses)
     logl = similar(interp_masses)
@@ -370,8 +359,10 @@ function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
             # Check here and do not write if outside range. Also require monotonically
             # increasing initial masses (gets rid of some non-monotonic behavior in the
             # underlying EEP tracks).
-            if imass >= first(track_extrema) && imass <= last(track_extrema)
-                logli = ts.interps.log_L[i](imass) # 120 ns
+            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            itp = ts.interps[i]
+            if imass >= first(itp.t) && imass <= last(itp.t)
+                logli, logtei, loggi, logsurfzi = itp(imass)
                 # Enforce monotonically increasing luminosity along the MS (which ends at eep_idxs[4])
                 # We can't be sure if last point was overly bright or current point is overly faint,
                 # so we delete last point and continue so this point isn't output
@@ -389,9 +380,9 @@ function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
                 push!(eeps, i)
                 push!(interp_masses, imass)
                 push!(logl, logli)
-                push!(logte, ts.interps.log_Teff[i](imass))
-                push!(logg, ts.interps.log_g[i](imass))
-                push!(logsurfz, ts.interps.log_surf_cell_z[i](imass))
+                push!(logte, logtei)
+                push!(logg, loggi)
+                push!(logsurfz, logsurfzi)
             end
         end
     end
@@ -564,18 +555,10 @@ function MISTv2TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number
 end
 function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
     eeps = sort(unique(data.eep))
-    itp_type = CubicHermiteSpline{Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  Vector{track_type},
-                                  track_type}
-    amrs    = Vector{itp_type}(undef, length(eeps))
-    logte   = Vector{itp_type}(undef, length(eeps))
-    logl    = similar(logte)
-    logg    = similar(logte)
-    logsurfz = similar(logte)
-    good_eeps = falses(length(eeps))
+    # Filled as Vector{Any} in the threaded loop and narrowed to a concrete eltype afterward
+    amrs    = Vector{Any}(undef, length(eeps))
+    interps = similar(amrs)
+    good_eeps = zeros(Bool, length(eeps)) # not a BitVector; concurrent writes to one can be lost
 
     Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
@@ -595,27 +578,15 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, log10.(tmpdata.star_age))
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
-        logte[i]    = PCHIPInterpolation(tmpdata.log_Teff, tmpdata.m_ini)
-        logl[i]     = PCHIPInterpolation(tmpdata.log_L, tmpdata.m_ini)
-        logg[i]     = PCHIPInterpolation(tmpdata.log_g, tmpdata.m_ini)
-        logsurfz[i] = PCHIPInterpolation(tmpdata.log_surf_cell_z, tmpdata.m_ini)
+        interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
         good_eeps[i] = true
     end
-    if !all(good_eeps)
-        eeps = eeps[good_eeps]
-        amrs = amrs[good_eeps]
-        logte = logte[good_eeps]
-        logl = logl[good_eeps]
-        logg = logg[good_eeps]
-        logsurfz = logsurfz[good_eeps]
-    end
-    return MISTv2TrackSet(eeps, amrs,
-                         (log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz),
+    return MISTv2TrackSet(eeps[good_eeps], identity.(amrs[good_eeps]), identity.(interps[good_eeps]),
                          (feh = feh, vvcrit = vvcrit, afe = afe, masses = unique(data.m_ini)))
 end
 function (ts::MISTv2TrackSet)(M::Number)
     props = (M = M, feh = FeH(ts), vvcrit = ts.properties.vvcrit, afe = ts.properties.afe)
-    nt = _generic_trackset_interp(ts, M)
+    nt = _generic_trackset_interp(ts, M, interp_names)
     table = Table(NamedTuple{(:star_age, keys(nt)[2:end]...)}(
                   tuple(exp10.(nt.logAge), values(nt)[2:end]...)))
     return MISTv2Track(table, props)
@@ -633,7 +604,6 @@ end
 
 function isochrone(ts::MISTv2TrackSet, logAge::Number)
     eeps = Vector{Int}(undef, 0)
-    track_extrema = extrema(mass(ts))
     interp_masses = Vector{eltype(ts)}(undef, 0)
     logte   = similar(interp_masses)
     logl    = similar(interp_masses)
@@ -643,8 +613,10 @@ function isochrone(ts::MISTv2TrackSet, logAge::Number)
         drange = extrema(amr)
         if logAge >= first(drange) && logAge <= last(drange)
             imass = amr(logAge)
-            if imass >= first(track_extrema) && imass <= last(track_extrema)
-                logli = ts.interps.log_L[i](imass)
+            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            itp = ts.interps[i]
+            if imass >= first(itp.t) && imass <= last(itp.t)
+                logli, logtei, loggi, logsurfzi = itp(imass)
                 if length(logl) > 0 && i < eep_idxs[4] && logli < last(logl)
                     li = lastindex(logl)
                     deleteat!(eeps, li); deleteat!(interp_masses, li)
@@ -654,9 +626,9 @@ function isochrone(ts::MISTv2TrackSet, logAge::Number)
                 end
                 push!(eeps, i); push!(interp_masses, imass)
                 push!(logl, logli)
-                push!(logte,    ts.interps.log_Teff[i](imass))
-                push!(logg,     ts.interps.log_g[i](imass))
-                push!(logsurfz, ts.interps.log_surf_cell_z[i](imass))
+                push!(logte,    logtei)
+                push!(logg,     loggi)
+                push!(logsurfz, logsurfzi)
             end
         end
     end

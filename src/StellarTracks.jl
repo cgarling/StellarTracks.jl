@@ -8,7 +8,8 @@ using TypedTables: Table
 using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol, MISTv2BCGrid
 using BolometricCorrections.YBC: PARSECChemistry
 import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname
-using DataInterpolations: PCHIPInterpolation
+using DataInterpolations: PCHIPInterpolation, CubicHermiteSpline, du_PCHIP
+using StaticArrays: SVector
 import Tables
 
 # Top-level API definitions
@@ -110,34 +111,32 @@ Concrete instances are callable with an initial stellar mass (in solar masses),
 returning an interpolated track at the requested mass. """
 abstract type AbstractTrackSet end
 Base.Broadcast.broadcastable(ts::AbstractTrackSet) = Ref(ts)
+# PCHIP interpolation of several properties sharing the knots `t`, as one spline returning
+# an SVector. Slopes use DataInterpolations' internal `du_PCHIP` because
+# `PCHIPInterpolation` with vector-valued `u` stores non-static slopes that allocate on every call.
+_pchip_svector(t, cols...) = CubicHermiteSpline(SVector.(map(c -> du_PCHIP(c, t), cols)...), SVector.(cols...), t)
 # Generic function to interpolate a trackset to a new initial stellar mass
-# This returns a NamedTuple; concrete subtypes should define methods to
+# This returns a NamedTuple with columns `(:logAge, names...)`, where `names` labels the
+# components of the SVector-valued `ts.interps`; concrete subtypes should define methods to
 # construct the correct AbstractTrack type from this NamedTuple.
-function _generic_trackset_interp(ts::AbstractTrackSet, M::Number)
+function _generic_trackset_interp(ts::AbstractTrackSet, M::Number, names::NTuple{N, Symbol}) where {N}
     # Validate that mass is in range
     # throw(DomainError(M, "Requested mass $M is outside the valid range $(extrema(mass(ts))) for the track set."))
     m_min, m_max = extrema(mass(ts))
     @argcheck m_min <= M <= m_max "Requested mass $M is outside the valid range $(extrema(mass(ts))) for the track set."
-    interps = ts.interps
-    results = Vector{Vector{eltype(ts)}}(undef, length(interps)) # +1 for age column
     # Find EEP points where the requested mass is valid
-    good_idx = findall(ii -> begin
-                                  ee = extrema(first(interps)[ii])
-                                  (M >= ee[1]) && (M <= ee[2])
-                             end, eachindex(first(interps)))
-    # Loop over unique values that are being interpolated (logg, Teff, etc), one interp per property
-    for i in eachindex(values(interps))
-        interps_i = interps[i]
-        results[i] = [interps_i[j](M) for j in good_idx]
-    end
+    good_idx = findall(itp -> first(itp.t) <= M <= last(itp.t), ts.interps)
+    # Convert to eltype(ts) so e.g. Float32 track sets return Float32 properties when evaluated at a Float64 mass
+    results = [convert(SVector{N, eltype(ts)}, ts.interps[j](M)) for j in good_idx]
     # Nearly all computation time is spent here -- faster interpolation inversion
     # or *maybe* root-finding on existing interpolation would speed this up
     ages = [begin
-                sortidx = sortperm(amr.u)
-                PCHIPInterpolation(amr.t[sortidx], amr.u[sortidx])(M)
+                s = sortperm(amr.u)
+                PCHIPInterpolation(amr.t[s], amr.u[s])(M)
             end for amr in ts.AMRs[good_idx]]
     sortidx = sortperm(ages)
-    return NamedTuple{(:logAge, keys(interps)...)}(tuple(ages[sortidx], (r[sortidx] for r in results)...))
+    sorted = results[sortidx]
+    return NamedTuple{(:logAge, names...)}((ages[sortidx], ntuple(k -> getindex.(sorted, k), N)...))
 end
 """
     gridname(::Type{<:AbstractTrackSet})
