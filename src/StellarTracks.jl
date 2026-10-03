@@ -398,6 +398,7 @@ metallicity [M/H] = `mh`. Returns a `NamedTuple` containing the
 properties; different libraries may have different properties available.
 If `result = isochrone(...)`, EEP points are generally available as
 `result.eep` and the corresponding initial stellar masses are `result.m_ini`.
+Between metallicity grid points, only EEPs present in both bracketing isochrones are returned.
 
 ```jldoctest
 julia> using StellarTracks.MIST
@@ -451,7 +452,7 @@ function isochrone(tracklib::AbstractTrackLibrary, logAge::Number, mh::Number)
     good_eeps = similar(y0_idxs)
     for (y0_idx, eep) in enumerate(y0.eep)
         y1_idx = searchsortedfirst(y1.eep, eep)
-        if y1_idx < lastindex(y1.eep) + 1 # Match found
+        if y1_idx <= lastindex(y1.eep) && y1.eep[y1_idx] == eep
             push!(y0_idxs, y0_idx)
             push!(y1_idxs, y1_idx)
             push!(good_eeps, eep)
