@@ -3,7 +3,8 @@ module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector
+                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices,
+                       _supported_masses
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
 # Round floating-point values to 6 significant figures for display
@@ -298,19 +299,7 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
     Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
-        # Sort by age, which will be the independent variable in the AMR interpolation
-        idxs = sortperm(tmpdata.star_age)
-        tmpdata = tmpdata[idxs]
-        # Now keep only entries that define a unique mapping between age and m_ini
-        tmpdata = tmpdata[uniqueidx(tmpdata.star_age)]
-
-        # We'll start the interpolation at the most massive model and enforce a monotonic
-        # decrease in stellar initial mass with increasing age at fixed EEP
-        _, p1 = findmax(tmpdata.m_ini)
-        idxs = p1:lastindex(tmpdata)
-        goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
-        goodidxs = vcat(true, goodidxs) # add true for first element as well
-        tmpdata = tmpdata[idxs[goodidxs]]
+        tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.star_age)]
 
         # PCHIPInterpolation is a type of CubicHermiteSpline
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, log10.(tmpdata.star_age))
@@ -320,8 +309,9 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
         # Now interpolate mass against the properties in `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
+    masses = _supported_masses(interps, data.m_ini)
     return MISTv1TrackSet(eeps, identity.(amrs), identity.(interps),
-                        (feh = feh, vvcrit = vvcrit, masses = unique(data.m_ini)))
+                        (feh = feh, vvcrit = vvcrit, masses = masses))
 end
 function (ts::MISTv1TrackSet)(M::Number)
     props = (M = M, feh = MH(ts), vvcrit = ts.properties.vvcrit)
@@ -377,7 +367,7 @@ function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
                     deleteat!(logsurfz, li)
                     continue
                 end
-                push!(eeps, i)
+                push!(eeps, ts.eeps[i])
                 push!(interp_masses, imass)
                 push!(logl, logli)
                 push!(logte, logtei)
@@ -563,13 +553,7 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
     Threads.@threads for i in eachindex(eeps)
         eep = eeps[i]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)]
-        idxs = sortperm(tmpdata.star_age)
-        tmpdata = tmpdata[idxs]
-        tmpdata = tmpdata[uniqueidx(tmpdata.star_age)]
-        _, p1 = findmax(tmpdata.m_ini)
-        idxs = p1:lastindex(tmpdata)
-        goodidxs = vcat(true, diff(tmpdata.m_ini[idxs]) .< 0)
-        tmpdata = tmpdata[idxs[goodidxs]]
+        tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.star_age)]
         # Need at least 3 points to interpolate;
         # This is a problem for MISTv2 vvcrit=0.4, alpha/Fe=0.4, Fe/H=+0.5, multiple high-EEP bins
         if length(tmpdata) < 3
@@ -581,8 +565,9 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
         good_eeps[i] = true
     end
+    masses = _supported_masses(interps[good_eeps], data.m_ini)
     return MISTv2TrackSet(eeps[good_eeps], identity.(amrs[good_eeps]), identity.(interps[good_eeps]),
-                         (feh = feh, vvcrit = vvcrit, afe = afe, masses = unique(data.m_ini)))
+                         (feh = feh, vvcrit = vvcrit, afe = afe, masses = masses))
 end
 function (ts::MISTv2TrackSet)(M::Number)
     props = (M = M, feh = FeH(ts), vvcrit = ts.properties.vvcrit, afe = ts.properties.afe)
@@ -624,7 +609,7 @@ function isochrone(ts::MISTv2TrackSet, logAge::Number)
                     deleteat!(logg, li); deleteat!(logsurfz, li)
                     continue
                 end
-                push!(eeps, i); push!(interp_masses, imass)
+                push!(eeps, ts.eeps[i]); push!(interp_masses, imass)
                 push!(logl, logli)
                 push!(logte,    logtei)
                 push!(logg,     loggi)

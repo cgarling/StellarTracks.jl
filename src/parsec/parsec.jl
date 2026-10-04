@@ -3,7 +3,8 @@ module PARSEC
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, _generic_trackset_interp, _pchip_svector, PARSECChemistry
+                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices,
+                       _supported_masses, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
 
@@ -203,19 +204,7 @@ function PARSECTrackSet(data::Table, Z::Number)
         eep = eeps[i]
         # tmpdata = data[data.eep .== eep]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
-        # Sort by age, which will be the independent variable in the AMR interpolation
-        idxs = sortperm(tmpdata.logAge)
-        tmpdata = tmpdata[idxs]
-        # Now keep only entries that define a unique mapping between age and m_ini
-        tmpdata = tmpdata[uniqueidx(tmpdata.logAge)]
-        
-        # We'll start the interpolation at the most massive model and enforce a monotonic
-        # decrease in stellar initial mass with increasing age at fixed EEP
-        _, p1 = findmax(tmpdata.m_ini)
-        idxs = p1:lastindex(tmpdata)
-        goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
-        goodidxs = vcat(true, goodidxs) # add true for first element as well
-        tmpdata = tmpdata[idxs[goodidxs]]
+        tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.logAge)]
 
         # PCHIPInterpolation is a type of CubicHermiteSpline
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, tmpdata.logAge)
@@ -234,7 +223,8 @@ function PARSECTrackSet(data::Table, Z::Number)
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
 
-    return PARSECTrackSet(eeps, identity.(amrs), identity.(interps), (Z = Z, masses = unique(data.m_ini)))
+    masses = _supported_masses(interps, data.m_ini)
+    return PARSECTrackSet(eeps, identity.(amrs), identity.(interps), (Z = Z, masses = masses))
 end
 function PARSECTrackSet(@nospecialize(zval::Number))
     idx = findfirst(≈(zval), zgrid) # Validate against zgrid
@@ -297,7 +287,7 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
                     deleteat!(c_o, li)
                     continue
                 end
-                push!(eeps, i)
+                push!(eeps, ts.eeps[i])
                 push!(interp_masses, imass)
                 push!(mbol, mboli)
                 push!(logte, logtei)

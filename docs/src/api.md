@@ -41,6 +41,8 @@ StellarTracks.InterpolatedTrack
 ## Track Sets
 We define a "track set" to be a set of individual stellar tracks that share common properties (typically initial metallicity). By grouping these tracks together, we can interpolate between tracks in the set, create isochrones, and perform other similar operations.
 
+For each EEP, age–mass relations are constructed by scanning tracks from highest to lowest initial mass and retaining only ages strictly greater than the last retained age. Equal ages retain the higher-mass sample. This top-down selection follows the canonical approach in [Dotter2016](@citet): physical nonmonotonic regions are represented by a single monotonic selection rather than multiple masses per EEP. Stellar properties use the same selected tracks. This approximation can change EEP mass intervals and therefore IMF-weighted phase counts; it does not guarantee monotonic masses between neighboring EEPs. Selection occurs in memory and does not modify the saved track files. If selection removes a mass from every EEP of a track set, that mass is excluded from the supported mass grid rather than advertising a track with no valid points.
+
 ### API
 ```@docs
 StellarTracks.AbstractTrackSet
