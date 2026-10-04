@@ -111,6 +111,20 @@ Concrete instances are callable with an initial stellar mass (in solar masses),
 returning an interpolated track at the requested mass. """
 abstract type AbstractTrackSet end
 Base.Broadcast.broadcastable(ts::AbstractTrackSet) = Ref(ts)
+# Canonical AMRs retain the high-mass side of physical folds, following Dotter (2016).
+function _top_down_indices(masses::AbstractVector, ages::AbstractVector)
+    order = sortperm(masses; rev=true)
+    kept = Int[]
+    for i in order
+        if isempty(kept) || (masses[i] < masses[last(kept)] && ages[i] > ages[last(kept)])
+            push!(kept, i)
+        end
+    end
+    return kept
+end
+# Masses for which at least one EEP has a valid property interpolation. Top-down selection can
+# drop a mass from every EEP of a track set, so `unique(data.m_ini)` may advertise unusable masses.
+_supported_masses(interps, m_ini) = filter(m -> any(itp -> first(itp.t) <= m <= last(itp.t), interps), unique(m_ini))
 # PCHIP interpolation of several properties sharing the knots `t`, as one spline returning
 # an SVector. Slopes use DataInterpolations' internal `du_PCHIP` because
 # `PCHIPInterpolation` with vector-valued `u` stores non-static slopes that allocate on every call.

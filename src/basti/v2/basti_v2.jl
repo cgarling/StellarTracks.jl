@@ -3,8 +3,8 @@ module BaSTIv2
 
 # imports from parent module
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
-                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector,
-                       radius, surface_gravity
+                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices,
+                       _supported_masses, radius, surface_gravity
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 using ..StellarTracks.BaSTIv1: _parse_α_fe
 
@@ -411,21 +411,7 @@ function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Boo
     # for i in eachindex(eeps)
         eep = eeps[i]
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
-        # Sort by age, which will be the independent variable in the AMR interpolation
-        idxs = sortperm(tmpdata.logAge)
-        tmpdata = tmpdata[idxs]
-        # Now keep only entries that define a unique mapping between age and m_ini
-        tmpdata = tmpdata[uniqueidx(tmpdata.logAge)]
-
-        # We'll start the interpolation at the most massive model and enforce a monotonic
-        # decrease in stellar initial mass with increasing age at fixed EEP while EEP < eep_idxs[3]
-        if eep < eep_idxs.MS_TO
-            _, p1 = findmax(tmpdata.m_ini)
-            idxs = p1:lastindex(tmpdata)
-            goodidxs = diff(tmpdata.m_ini[idxs]) .< 0
-            goodidxs = vcat(true, goodidxs) # add true for first element as well
-            tmpdata = tmpdata[idxs[goodidxs]]
-        end
+        tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.logAge)]
 
         # PCHIPInterpolation is a type of CubicHermiteSpline
         amrs[i] = PCHIPInterpolation(tmpdata.m_ini, tmpdata.logAge)
@@ -438,9 +424,10 @@ function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Boo
         # Columns in the order of `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.logL, tmpdata.logTe, tmp_logg)
     end
+    masses = _supported_masses(interps, data.m_ini)
     return BaSTIv2TrackSet(eeps, identity.(amrs), identity.(interps),
                            (feh = feh, α_fe = α_fe, canonical = canonical, diffusion = diffusion,
-                            yp = yp, η = η, masses = unique(data.m_ini)))
+                            yp = yp, η = η, masses = masses))
 end
 function (ts::BaSTIv2TrackSet)(M::Number)
     props = (M = M, feh = FeH(ts), α_fe = alphaFe(ts), canonical = ts.properties.canonical,
@@ -494,7 +481,7 @@ function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
                 #     deleteat!(logg, li)
                 #     continue
                 # end
-                push!(eeps, i)
+                push!(eeps, ts.eeps[i])
                 push!(interp_masses, imass)
                 push!(logl, logli)
                 push!(logte, logtei)
