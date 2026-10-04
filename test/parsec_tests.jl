@@ -81,6 +81,13 @@ bcg = MISTv1BCGrid("JWST")
         # Make sure error is thrown for out of MH range
         @test_throws DomainError isochrone(tracklib, 10.0, -5)
         @test_throws DomainError isochrone(tracklib, 10.0, 1.0)
+        # Below the track metallicity range, the tracks are evaluated at the lowest track [M/H]
+        # while the BCs are evaluated at the requested [M/H]
+        mh_min = minimum(MH(tracklib))
+        iso_low = isochrone(tracklib, bcg, 10.0, mh_min - 0.3, 0.0)
+        @test iso_low == isochrone(tracklib, bcg(MH(chemistry(bcg), Z(chemistry(tracklib), mh_min - 0.3)), 0.0), 10.0, mh_min)
+        @test iso_low.m_ini == isochrone(tracklib, bcg, 10.0, mh_min, 0.0).m_ini
+        @test iso_low.F090W != isochrone(tracklib, bcg, 10.0, mh_min, 0.0).F090W
     end
     
 end

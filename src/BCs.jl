@@ -89,6 +89,17 @@ logarithmic metallicity [M/H] for the chemical mixture used by the bolometric
 correction grid `bcg`. This "corrected" [M/H] value is used when interpolating the
 bolometric grid.
 
+If `mh` lies outside the metallicity range of `tracklib`, the stellar tracks are evaluated
+at the nearest metallicity in `tracklib` while the bolometric corrections are still evaluated
+at `mh`. This is an extrapolation and is similar to what is done by the PARSEC CMD isochrone service.
+The idea is that stellar interiors change little at very low metallicity, so combining a [M/H] = -2.2
+dex PARSEC isochrone (meaning, interior quantities only) with a [M/H] = -2.5 dex bolometric correction
+is a *good enough* approximation of true photometric quantities at [M/H] = -2.5. Whether this is
+actually *good enough* depends on your application; if such extrapolation is not acceptable, you
+should ensure that `mh` lies within the metallicity range of `tracklib`, for example by checking
+that `mh` is between `minimum(MH(tracklib))` and `maximum(MH(tracklib))`. An `mh` outside
+that range is an error from `bcg`.
+
 ```julia
 using StellarTracks, BolometricCorrections
 p = MISTv1Library(0.0)   # Load MIST library of non-rotating stellar models
@@ -105,7 +116,7 @@ function isochrone(tl::AbstractTrackLibrary,
                    bcg::AbstractBCGrid, logAge::Number, mh::Number, Av::Number)
     # Take stellar track mh, convert to Z, then convert to MH for the BC chemistry
     bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
-    return isochrone(tl, bcg(bc_mh, Av), logAge, mh)
+    return isochrone(tl, bcg(bc_mh, Av), logAge, clamp(mh, extrema(MH(tl))...))
 end
 
 # This is most useful for constructing large isochrone tables that can then be written out.
@@ -123,7 +134,7 @@ function isochrone(tl::AbstractTrackLibrary,
         bc_mh = MH(chemistry(bcg), Zval)
         bc = bcg(bc_mh, Av)
         Threads.@threads for la in logAge
-            iso = isochrone(tl, bc, la, mhval)
+            iso = isochrone(tl, bc, la, clamp(mhval, extrema(MH(tl))...))
             # Lock and push into result, adding Z and logAge columns
             @lock rlock push!(result, Table(Table(Z_ini=fill(Zval, length(iso)),
                                                   MH=fill(mhval, length(iso)),
@@ -169,7 +180,8 @@ end
 Like the generic `isochrone` method, but for `MISTv2BCGrid` which requires an
 additional `afe` (\\[α/Fe\\]) argument when interpolating the bolometric correction grid.
 `afe` (\\[α/Fe\\]) is inferred from `tl` via [`alphaFe`](@ref) forwarded to the bolometric correction grid.
-`mh` is the desired \\[M/H\\] in the stellar track library's chemical mixture.
+`mh` is the desired \\[M/H\\] in the stellar track library's chemical mixture; as in the generic
+method, the stellar tracks are evaluated at the nearest metallicity in `tl` when `mh` is outside its range.
 """
 function isochrone(tl::AbstractTrackLibrary,
                    bcg::MISTv2BCGrid, logAge::Number, mh::Number, Av::Number)
@@ -180,7 +192,7 @@ function isochrone(tl::AbstractTrackLibrary,
     # so we have to derive that from [M/H] and [α/Fe] for the tracklib chemistry.
     afe = alphaFe(tl)
     bc_feh = FeH(chemistry(bcg), bc_mh, afe)
-    return isochrone(tl, bcg(bc_feh, afe, Av), logAge, mh)
+    return isochrone(tl, bcg(bc_feh, afe, Av), logAge, clamp(mh, extrema(MH(tl))...))
 end
 
 ####################################################################################
