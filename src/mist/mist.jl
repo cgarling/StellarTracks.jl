@@ -3,7 +3,7 @@ module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices,
+                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr,
                        _supported_masses
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
@@ -301,8 +301,7 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
         tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.star_age)]
 
-        # PCHIPInterpolation is a type of CubicHermiteSpline
-        amrs[i] = PCHIPInterpolation(tmpdata.m_ini, log10.(tmpdata.star_age))
+        amrs[i] = _amr(tmpdata.m_ini, log10.(tmpdata.star_age))
         # Sort by initial stellar mass for defining the other interpolations
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
@@ -342,31 +341,13 @@ function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
     for (i, amr) in enumerate(ts.AMRs)
         drange = extrema(amr) # Get valid age range for the EEP
         if logAge >= first(drange) && logAge <= last(drange)
-            imass = amr(logAge) # 100 ns
-            # imass = amr(age)
-            # Due to non-linear interpolation of mass(age), it is possible for the
-            # interpolated masses to be outside the range valid for the tracks
-            # Check here and do not write if outside range. Also require monotonically
-            # increasing initial masses (gets rid of some non-monotonic behavior in the
-            # underlying EEP tracks).
-            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
             itp = ts.interps[i]
-            if imass >= first(itp.t) && imass <= last(itp.t)
+            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
+            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
+            # of folds as in `_top_down_indices`
+            if isempty(interp_masses) || imass > last(interp_masses)
                 logli, logtei, loggi, logsurfzi = itp(imass)
-                # Enforce monotonically increasing luminosity along the MS (which ends at eep_idxs[4])
-                # We can't be sure if last point was overly bright or current point is overly faint,
-                # so we delete last point and continue so this point isn't output
-                # Maybe not necessary, revisit later
-                if length(logl) > 0 && i < eep_idxs[4] && logli < last(logl)
-                    li = lastindex(logl)
-                    deleteat!(eeps, li)
-                    deleteat!(interp_masses, li)
-                    deleteat!(logte, li)
-                    deleteat!(logl, li)
-                    deleteat!(logg, li)
-                    deleteat!(logsurfz, li)
-                    continue
-                end
                 push!(eeps, ts.eeps[i])
                 push!(interp_masses, imass)
                 push!(logl, logli)
@@ -559,7 +540,7 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
         if length(tmpdata) < 3
             continue
         end
-        amrs[i] = PCHIPInterpolation(tmpdata.m_ini, log10.(tmpdata.star_age))
+        amrs[i] = _amr(tmpdata.m_ini, log10.(tmpdata.star_age))
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
@@ -597,18 +578,13 @@ function isochrone(ts::MISTv2TrackSet, logAge::Number)
     for (i, amr) in enumerate(ts.AMRs)
         drange = extrema(amr)
         if logAge >= first(drange) && logAge <= last(drange)
-            imass = amr(logAge)
-            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
             itp = ts.interps[i]
-            if imass >= first(itp.t) && imass <= last(itp.t)
+            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
+            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
+            # of folds as in `_top_down_indices`
+            if isempty(interp_masses) || imass > last(interp_masses)
                 logli, logtei, loggi, logsurfzi = itp(imass)
-                if length(logl) > 0 && i < eep_idxs[4] && logli < last(logl)
-                    li = lastindex(logl)
-                    deleteat!(eeps, li); deleteat!(interp_masses, li)
-                    deleteat!(logte, li); deleteat!(logl, li)
-                    deleteat!(logg, li); deleteat!(logsurfz, li)
-                    continue
-                end
                 push!(eeps, ts.eeps[i]); push!(interp_masses, imass)
                 push!(logl, logli)
                 push!(logte,    logtei)

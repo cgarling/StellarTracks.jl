@@ -96,6 +96,10 @@ The full library is principally a set of [`PARSECTrackSet`](@ref StellarTracks.P
 ```@docs
 StellarTracks.PARSEC.PARSECTrackSet
 ```
+
+For PARSEC, the post-RGB rows of tracks taken from the separate horizontal-branch files are relabeled to begin at the start of core-He burning, and the core-He-burning and early-AGB phases of every track are resampled at uniform spacing in the mean of fractional time and fractional HR-diagram path length within each phase, so that an EEP represents nearly the same phase for all masses while fast parts of the phases stay sampled.
+
+At each metallicity, one low-mass track (0.30 ``M_\odot`` for ``0.0002 \leq Z \leq 0.008`` and 0.25 ``M_\odot`` otherwise) is excluded from the track set. These tracks reach the early main-sequence EEPs 0.1 to 0.3 dex later than their mass neighbors, although at fixed age their properties lie on the curve through their neighbors. Their EEP ages fold the age–mass relations and produce jumps of up to ~40% in isochrone initial masses. Because [`PARSECTrack`](@ref StellarTracks.PARSEC.PARSECTrack) is built from a track set, requesting one of these masses returns a track interpolated from its neighbors.
  
 ## Individual Tracks API
 ```@docs

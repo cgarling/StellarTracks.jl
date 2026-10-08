@@ -3,7 +3,7 @@ module BaSTIv2
 
 # imports from parent module
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
-                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices,
+                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr,
                        _supported_masses, radius, surface_gravity
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 using ..StellarTracks.BaSTIv1: _parse_α_fe
@@ -292,7 +292,7 @@ julia> track = StellarTracks.BaSTIv2.BaSTIv2Track(-2.2, 0.81, 0.0, false, true, 
 Non-canonical BaSTIv2Track with diffusion, M_ini=0.81, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.87095e-5, Y=0.247129, X=0.752772, Y_p=0.247, η=0.3.
 
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = -0.1362482951194913, log_Teff = 3.8011768472932603, log_g = 4.642115349406555)
+(log_L = -0.136238765308819, log_Teff = 3.8011775768892004, log_g = 4.642108742647652)
 ```
 """
 struct BaSTIv2Track{A,B,C} <: AbstractTrack
@@ -413,8 +413,7 @@ function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Boo
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
         tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.logAge)]
 
-        # PCHIPInterpolation is a type of CubicHermiteSpline
-        amrs[i] = PCHIPInterpolation(tmpdata.m_ini, tmpdata.logAge)
+        amrs[i] = _amr(tmpdata.m_ini, tmpdata.logAge)
         # Sort by initial stellar mass for defining the other interpolations
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
@@ -457,30 +456,13 @@ function isochrone(ts::BaSTIv2TrackSet, logAge::Number)
     for (i, amr) in enumerate(ts.AMRs)
         drange = extrema(amr) # Get valid age range for the EEP
         if logAge >= first(drange) && logAge <= last(drange)
-            imass = amr(logAge) # 100 ns
-            # imass = amr(age)
-            # Due to non-linear interpolation of mass(age), it is possible for the
-            # interpolated masses to be outside the range valid for the tracks
-            # Check here and do not write if outside range. Also require monotonically
-            # increasing initial masses (gets rid of some non-monotonic behavior in the
-            # underlying EEP tracks).
-            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
             itp = ts.interps[i]
-            if imass >= first(itp.t) && imass <= last(itp.t)
+            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
+            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
+            # of folds as in `_top_down_indices`
+            if isempty(interp_masses) || imass > last(interp_masses)
                 logli, logtei, loggi = itp(imass)
-                # Enforce monotonically increasing luminosity along the MS
-                # We can't be sure if last point was overly bright or current point is overly faint,
-                # so we delete last point and continue so this point isn't output
-                # Maybe not necessary, revisit later
-                # if length(logl) > 0 && i < eep_idxs.MS_TO && logli < last(logl)
-                #     li = lastindex(logl)
-                #     deleteat!(eeps, li)
-                #     deleteat!(interp_masses, li)
-                #     deleteat!(logte, li)
-                #     deleteat!(logl, li)
-                #     deleteat!(logg, li)
-                #     continue
-                # end
                 push!(eeps, ts.eeps[i])
                 push!(interp_masses, imass)
                 push!(logl, logli)

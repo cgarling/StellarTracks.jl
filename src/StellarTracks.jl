@@ -8,7 +8,7 @@ using TypedTables: Table
 using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol, MISTv2BCGrid
 using BolometricCorrections.YBC: PARSECChemistry
 import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname
-using DataInterpolations: PCHIPInterpolation, CubicHermiteSpline, du_PCHIP
+using DataInterpolations: LinearInterpolation, CubicHermiteSpline, du_PCHIP
 using StaticArrays: SVector
 import Tables
 
@@ -122,6 +122,12 @@ function _top_down_indices(masses::AbstractVector, ages::AbstractVector)
     end
     return kept
 end
+# Age-mass relation (AMR) at one EEP: log10(initial mass) linear in log age, on knots with masses decreasing as ages
+# increase (e.g., from `_top_down_indices`). The interpolation weights depend only on the knot masses, so wherever two
+# adjacent EEPs share knots, the isochrone initial mass cannot decrease from one to the next; PCHIP slopes depend on the
+# ages and its curves can cross between shared knots. Log mass follows the near power-law lifetime-mass relation, so
+# the accuracy is close to PCHIP's.
+_amr(m_ini, logAge) = LinearInterpolation(log10.(m_ini), logAge)
 # Masses for which at least one EEP has a valid property interpolation. Top-down selection can
 # drop a mass from every EEP of a track set, so `unique(data.m_ini)` may advertise unusable masses.
 _supported_masses(interps, m_ini) = filter(m -> any(itp -> first(itp.t) <= m <= last(itp.t), interps), unique(m_ini))
@@ -142,12 +148,9 @@ function _generic_trackset_interp(ts::AbstractTrackSet, M::Number, names::NTuple
     good_idx = findall(itp -> first(itp.t) <= M <= last(itp.t), ts.interps)
     # Convert to eltype(ts) so e.g. Float32 track sets return Float32 properties when evaluated at a Float64 mass
     results = [convert(SVector{N, eltype(ts)}, ts.interps[j](M)) for j in good_idx]
-    # Nearly all computation time is spent here -- faster interpolation inversion
-    # or *maybe* root-finding on existing interpolation would speed this up
-    ages = [begin
-                s = sortperm(amr.u)
-                PCHIPInterpolation(amr.t[s], amr.u[s])(M)
-            end for amr in ts.AMRs[good_idx]]
+    # Exact inverse of the piecewise-linear AMR (`_amr`); log masses decrease as ages increase. The clamp absorbs
+    # rounding in log10 at the ends of the mass range.
+    ages = [LinearInterpolation(reverse(amr.t), reverse(amr.u))(clamp(log10(M), last(amr.u), first(amr.u))) for amr in ts.AMRs[good_idx]]
     sortidx = sortperm(ages)
     sorted = results[sortidx]
     return NamedTuple{(:logAge, names...)}((ages[sortidx], ntuple(k -> getindex.(sorted, k), N)...))

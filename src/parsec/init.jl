@@ -130,7 +130,8 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
                 @views tmphbdata[:, la_col] .= log10.(exp10.(tmphbdata[:, la_col]) .+ exp10(trgb_la))
                 hbdata = vcat(hbdata, tmphbdata)
                 hb_masses = vcat(hb_masses, fill(mass, size(tmphbdata, 1)))
-                hb_eep_vec = vcat(hb_eep_vec, (0:size(tmphbdata, 1)-1) .+ eep_idxs.RG_TIP) # Offset EEP appropriately
+                # HB rows start at the ZAHB, so these labels are 30 EEPs early; `_fix_post_rgb_eeps` relabels them on load
+                hb_eep_vec = vcat(hb_eep_vec, (0:size(tmphbdata, 1)-1) .+ eep_idxs.RG_TIP)
             end
         end
         # hbdata = Table(NamedTuple{track_header_symbols[keepcols]}(row) for row in eachrow(hbdata))
@@ -147,6 +148,52 @@ function custom_unpack(fname::AbstractString=joinpath(datadep"PARSECv1.2S", "rel
     @info "Cleaning up data directory"
     rm(fname) # remove releasev2.tar.gz
     rm(out_dir; recursive=true)
+end
+
+"""
+    _fix_post_rgb_eeps(data::Table)
+Returns a copy of a PARSEC table written by `custom_unpack` with two corrections to the phases after the RGB tip,
+applied when track sets are loaded so cached tables need not be regenerated:
+ 1. Rows from the separate HB files begin at the ZAHB but are labeled from `eep_idxs.RG_TIP`. They are relabeled from
+    `eep_idxs.HE_BEG`, where full tracks begin core-He burning, which also aligns END_CHEB.
+ 2. HB-file EEPs are spaced roughly uniformly in log(time since the ZAHB), unlike those of full tracks, so an EEP is a
+    different phase on either side of the transition mass and the age-mass relations fold there. Every track's
+    core-He-burning (`HE_BEG` to `END_CHEB`) and early-AGB (`END_CHEB` to `TPAGB_BEG - 1`) segments are resampled
+    linearly at uniform spacing in the mean of the fractional time and the fractional HR-diagram path length within
+    the segment, with path elements `hypot(ΔMbol, 10ΔlogTe)`. Fractional time makes an EEP the same phase for all
+    masses; path length keeps EEPs in fast phases such as the starts of blue loops, which time alone leaves sparse.
+"""
+function _fix_post_rgb_eeps(data::Table)
+    eep = copy(data.eep)
+    cols = (:logAge, :mass, :logTe, :Mbol, :logg, :C_O)
+    vals = NamedTuple{cols}(map(c -> copy(getproperty(data, c)), cols))
+    for m in unique(data.m_ini)
+        idx = findall(==(m), data.m_ini)
+        # HB files have 600 or 800 rows; full tracks have 630 or 830 from RG_TIP on, including RG_TIP to HE_BEG
+        if count(i -> eep[i] >= eep_idxs.RG_TIP, idx) in (600, 800)
+            for i in idx
+                eep[i] >= eep_idxs.RG_TIP && (eep[i] += eep_idxs.HE_BEG - eep_idxs.RG_TIP)
+            end
+        end
+        for (e0, e1) in ((eep_idxs.HE_BEG, eep_idxs.END_CHEB), (eep_idxs.END_CHEB, eep_idxs.TPAGB_BEG - 1))
+            seg = filter(i -> e0 <= eep[i] <= e1, idx)
+            length(seg) == e1 - e0 + 1 || continue # Track does not cover the whole segment
+            seg = seg[sortperm(eep[seg])]
+            t = exp10.(vals.logAge[seg])
+            s = (t .- first(t)) ./ (last(t) - first(t))
+            l = [0; cumsum(hypot.(diff(vals.Mbol[seg]), 10 .* diff(vals.logTe[seg])))]
+            last(l) > 0 && (s = (s .+ l ./ last(l)) ./ 2)
+            # Ages never decrease along a track, but the first HB rows repeat ages and positions
+            keep = [1; findall(>(0), diff(s)) .+ 1]
+            length(keep) > 1 || continue
+            snew = range(0, 1; length=length(seg))
+            for c in cols
+                v = getproperty(vals, c)
+                v[seg] .= c === :logAge ? log10.(LinearInterpolation(t[keep], s[keep]).(snew)) : LinearInterpolation(v[seg][keep], s[keep]).(snew)
+            end
+        end
+    end
+    return Table(data; eep, vals...)
 end
 
 function __init__()
