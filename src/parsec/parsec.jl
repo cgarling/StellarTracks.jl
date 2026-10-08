@@ -3,7 +3,7 @@ module PARSEC
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices,
+                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr,
                        _supported_masses, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
@@ -57,6 +57,10 @@ const track_type = Float64 # Float type to use to represent values
 const ygrid = track_type[0.249, 0.249, 0.249, 0.25, 0.252, 0.256, 0.259, 0.263, 0.267, 0.273, 0.279, 0.284, 0.302, 0.321, 0.356]
 """Valid metal mass fractions (Z) for PARSECv1.2S."""
 const zgrid = track_type[0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.006, 0.008, 0.01, 0.014, 0.017, 0.02, 0.03, 0.04, 0.06]
+"""Initial mass of the track excluded from each `PARSECTrackSet(zval)`, in `zgrid` order. At each Z, this track reaches
+the early main-sequence EEPs 0.1-0.3 dex later than its mass neighbors, although at fixed age its properties lie on the
+curve through its neighbors; its EEP ages fold the age-mass relations and produce jumps in isochrone initial masses."""
+const excluded_masses = track_type[0.25, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
 """Order of the SVector components returned by the `interps` of PARSEC track sets."""
 const interp_names = (:logTe, :Mbol, :logg, :C_O)
 # Data download, organization, file parsing, etc.
@@ -77,7 +81,7 @@ julia> track = StellarTracks.PARSEC.PARSECTrack(0.0001, 0.15)
 PARSECTrack with M_ini=0.15, MH=-2.19172, Z=0.0001, Y=0.248678, X=0.751222.
 
 julia> track(7.0) # interpolate track at log10(age [yr]) = 7
-(logTe = 3.6015066653099757, Mbol = 8.518315848633081, logg = 4.464972304683626, C_O = 0.0)
+(logTe = 3.600922576598152, Mbol = 8.466677819135064, logg = 4.457190549383109, C_O = 0.0)
 ```
 """
 struct PARSECTrack{A,B,C} <: AbstractTrack
@@ -138,7 +142,7 @@ end
 interface for the PARSEC stellar evolution library.
 ```jldoctest
 julia> ts = StellarTracks.PARSEC.PARSECTrackSet(0.0001)
-TrackSet with Y=0.248678, Z=0.0001, 1930 EEPs and 104 initial stellar mass points.
+TrackSet with Y=0.248678, Z=0.0001, 1930 EEPs and 103 initial stellar mass points.
 
 julia> ts(1.01) # Interpolate track at new initial mass
 PARSECTrack with M_ini=1.01, MH=-2.19172, Z=0.0001, Y=0.248678, X=0.751222.
@@ -206,16 +210,7 @@ function PARSECTrackSet(data::Table, Z::Number)
         tmpdata = data[findall(Base.Fix1(==, eep), data.eep)] # Performance optimization
         tmpdata = tmpdata[_top_down_indices(tmpdata.m_ini, tmpdata.logAge)]
 
-        # PCHIPInterpolation is a type of CubicHermiteSpline
-        amrs[i] = PCHIPInterpolation(tmpdata.m_ini, tmpdata.logAge)
-        # amrs[i] = PCHIPInterpolation(tmpdata.m_ini[idxs[goodidxs]], exp10.(tmpdata.logAge[idxs[goodidxs]]))
-        # amrs[i] = AkimaInterpolation(tmpdata.m_ini[idxs[goodidxs]], exp10.(tmpdata.logAge[idxs[goodidxs]]))
-        # amrs[i] = AkimaInterpolation(tmpdata.m_ini, exp10.(tmpdata.logAge))
-        # amrs[i] = AkimaInterpolation(tmpdata.m_ini, tmpdata.logAge)
-        # TBH using linear interpolation for the AMRs does not seem to be that bad even
-        # amrs[i] = LinearInterpolation(tmpdata.m_ini[idxs[goodidxs]], exp10.(tmpdata.logAge[idxs[goodidxs]]))
-        # amrs[i] = LinearInterpolation(tmpdata.m_ini, tmpdata.logAge)
-        # amrs[i] = LinearInterpolation(tmpdata.m_ini, exp10.(tmpdata.logAge))
+        amrs[i] = _amr(tmpdata.m_ini, tmpdata.logAge)
         # Sort by initial stellar mass for defining the other interpolations
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
@@ -234,6 +229,7 @@ function PARSECTrackSet(@nospecialize(zval::Number))
     fname = "Z" * string(zgrid[idx]) * "Y" * string(ygrid[idx]) * ".jld2"
     dd = @datadep_str(joinpath("PARSECv1.2S", fname))
     table = JLD2.load_object(dd)
+    table = _fix_post_rgb_eeps(table[table.m_ini .!= excluded_masses[idx]])
     return PARSECTrackSet(table, zval)
 end
 (ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M, interp_names)), Z(ts), M)
@@ -261,32 +257,13 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
     for (i, amr) in enumerate(ts.AMRs)
         drange = extrema(amr) # Get valid age range for the EEP
         if logAge >= first(drange) && logAge <= last(drange)
-        # if age >= first(drange) && age <= last(drange)
-            imass = amr(logAge) # 100 ns
-            # imass = amr(age)
-            # Due to non-linear interpolation of mass(age), it is possible for the
-            # interpolated masses to be outside the range valid for the tracks
-            # Check here and do not write if outside range. Also require monotonically
-            # increasing initial masses (gets rid of some non-monotonic behavior in the
-            # underlying EEP tracks). 
-            # Not all EEPs span the full mass grid, so check against this EEP's own mass range
+            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
             itp = ts.interps[i]
-            if imass >= first(itp.t) && imass <= last(itp.t) # && (length(interp_masses) == 0 || imass > last(interp_masses))
+            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
+            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
+            # of folds as in `_top_down_indices`
+            if isempty(interp_masses) || imass > last(interp_masses)
                 logtei, mboli, loggi, c_oi = itp(imass)
-                # Enforce monotonically increasing Mbol along the MS (which ends at eep_idxs[4])
-                # We can't be sure if last point was overly bright or current point is overly faint,
-                # so we delete last point and continue so this point isn't output
-                # Maybe not necessary, revisit later
-                if length(mbol) > 0 && i < eep_idxs[4] && mboli > last(mbol)
-                    li = lastindex(mbol)
-                    deleteat!(eeps, li)
-                    deleteat!(interp_masses, li)
-                    deleteat!(logte, li)
-                    deleteat!(mbol, li)
-                    deleteat!(logg, li)
-                    deleteat!(c_o, li)
-                    continue
-                end
                 push!(eeps, ts.eeps[i])
                 push!(interp_masses, imass)
                 push!(mbol, mboli)
