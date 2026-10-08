@@ -1,5 +1,5 @@
 using StellarTracks
-using StellarTracks: _amr
+using StellarTracks: _amr, _increasing_subsequence
 using StellarTracks.PARSEC: PARSECTrackSet, PARSECLibrary, eep_idxs, zgrid, ygrid, excluded_masses, _fix_post_rgb_eeps
 using StellarTracks.MIST: MISTv1TrackSet
 using DataDeps: @datadep_str
@@ -17,6 +17,15 @@ using Test
     @test exp10(a0(t0[3])) ≈ m[3]
 end
 
+@testset "Longest increasing subsequence" begin
+    @test _increasing_subsequence([1, 3, 2, 4, 5]) == [1, 3, 4, 5]
+    # A small decrease before a long increasing run keeps the run rather than the point before the decrease
+    x = [1.0, 2.0, 3.0, 2.5, 2.6, 2.7, 2.8, 2.9]
+    @test x[_increasing_subsequence(x)] == [1.0, 2.0, 2.5, 2.6, 2.7, 2.8, 2.9]
+    @test length(_increasing_subsequence([2.0, 2.0, 2.0])) == 1
+    @test isempty(_increasing_subsequence(Float64[]))
+end
+
 @testset "Isochrone initial masses increase" begin
     p = PARSECLibrary()
     for la in 6.8:0.1:10.1, mh in (-2.0, -1.19, -0.75, -0.02, 0.3)
@@ -27,6 +36,9 @@ end
     for la in 6.8:0.2:10.1
         @test all(>(0), diff(isochrone(ts, la).m_ini))
     end
+    # At [Fe/H] = -3 most tracks near 2 Msun end before the TP-AGB, so the isochrone mass dips slightly at its start
+    # (EEP 809); keeping only points above the running maximum removed all 601 TP-AGB points at logAge 8.8
+    @test count(e -> 809 <= e <= 1409, isochrone(MISTv1TrackSet(-3.0, 0.0), 8.8).eep) > 500
 end
 
 # A track interpolated at an isochrone point's mass passes through that point: the track's age at the EEP is the exact

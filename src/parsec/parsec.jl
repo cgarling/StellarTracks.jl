@@ -3,7 +3,7 @@ module PARSEC
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr,
+                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses,
                        _supported_masses, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
@@ -246,32 +246,14 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
     print(io, "TrackSet with Y=$(round(Y(ts); sigdigits=6)), Z=$(round(Z(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
-    eeps = Vector{Int}(undef, 0)
-    # interp_masses = Vector{eltype(first(ts.AMRs).u)}(undef, 0)
-    interp_masses = Vector{eltype(ts)}(undef, 0)
+    idx, interp_masses = _isochrone_masses(ts, logAge)
+    eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     mbol = similar(interp_masses)
     logg = similar(interp_masses)
     c_o = similar(interp_masses)
-    # data = Vector{eltype(first(ts.AMRs))}(undef, 0)
-    for (i, amr) in enumerate(ts.AMRs)
-        drange = extrema(amr) # Get valid age range for the EEP
-        if logAge >= first(drange) && logAge <= last(drange)
-            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
-            itp = ts.interps[i]
-            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
-            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
-            # of folds as in `_top_down_indices`
-            if isempty(interp_masses) || imass > last(interp_masses)
-                logtei, mboli, loggi, c_oi = itp(imass)
-                push!(eeps, ts.eeps[i])
-                push!(interp_masses, imass)
-                push!(mbol, mboli)
-                push!(logte, logtei)
-                push!(logg, loggi)
-                push!(c_o, c_oi)
-            end
-        end
+    for (k, i) in enumerate(idx)
+        logte[k], mbol[k], logg[k], c_o[k] = ts.interps[i](interp_masses[k])
     end
     return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = mbol, logg = logg, C_O = c_o)
 end

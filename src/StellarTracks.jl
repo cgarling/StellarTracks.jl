@@ -128,6 +128,41 @@ end
 # ages and its curves can cross between shared knots. Log mass follows the near power-law lifetime-mass relation, so
 # the accuracy is close to PCHIP's.
 _amr(m_ini, logAge) = LinearInterpolation(log10.(m_ini), logAge)
+# Indices of a longest strictly increasing subsequence of `x` (patience sorting, O(n log n))
+function _increasing_subsequence(x::AbstractVector)
+    tails = Int[] # tails[k] is the index of the smallest last element of an increasing subsequence of length k
+    prev = zeros(Int, length(x))
+    for i in eachindex(x)
+        k = searchsortedfirst(tails, i; by=j -> x[j])
+        prev[i] = k > 1 ? tails[k-1] : 0
+        k > length(tails) ? push!(tails, i) : (tails[k] = i)
+    end
+    out = Int[]
+    i = isempty(tails) ? 0 : last(tails)
+    while i != 0
+        push!(out, i)
+        i = prev[i]
+    end
+    return reverse!(out)
+end
+# Indices into `ts.eeps` and initial masses of the points of the isochrone of `ts` at `logAge`. Where the AMRs of
+# neighboring EEPs use different knots the masses can decrease along the EEPs (a fold); keeping the longest increasing
+# subsequence drops the shorter side of each fold, so a small fold at the start of a long phase does not remove the phase.
+function _isochrone_masses(ts::AbstractTrackSet, logAge::Number)
+    idx = Int[]
+    masses = Vector{eltype(ts)}(undef, 0)
+    for (i, amr) in enumerate(ts.AMRs)
+        drange = extrema(amr) # Valid age range for the EEP
+        if logAge >= first(drange) && logAge <= last(drange)
+            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
+            itp = ts.interps[i]
+            push!(idx, i)
+            push!(masses, clamp(exp10(amr(logAge)), first(itp.t), last(itp.t)))
+        end
+    end
+    keep = _increasing_subsequence(masses)
+    return idx[keep], masses[keep]
+end
 # Masses for which at least one EEP has a valid property interpolation. Top-down selection can
 # drop a mass from every EEP of a track set, so `unique(data.m_ini)` may advertise unusable masses.
 _supported_masses(interps, m_ini) = filter(m -> any(itp -> first(itp.t) <= m <= last(itp.t), interps), unique(m_ini))
