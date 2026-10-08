@@ -1,0 +1,15 @@
+[BaSTIv1]
+git-tree-sha1 = "d9e065e039879232058f9ccd3b1731fd92a53b8b"
+lazy = true
+
+    [[BaSTIv1.download]]
+    sha256 = "5d3eb41da0b4c02c79e6df0cc5b0d40b3e26346980aadb231ab0b6a8a7e4bdcc"
+    url = "https://github.com/cgarling/StellarTracks.jl/releases/download/v0.0.3/basti_v1.tar.gz"
+
+[BaSTIv2]
+git-tree-sha1 = "06196474bcb622d831fcdb35f74e9100508a7f07"
+lazy = true
+
+    [[BaSTIv2.download]]
+    sha256 = "40dbee82847464cb2604e2f9abaf26c0457bee65d8f981ddec80ce0ef7ebcdb3"
+    url = "https://github.com/cgarling/StellarTracks.jl/releases/download/v0.0.3/basti_v2.tar.gz"

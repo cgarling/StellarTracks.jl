@@ -8,7 +8,7 @@ using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 
 # Imports for data reading / processing
-using DataDeps: register, DataDep, @datadep_str
+using LazyArtifacts # `artifact"..."` requires the LazyArtifacts module name in scope for lazy artifacts
 using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
 using Interpolations: deduplicate_knots!
 import JLD2 # for saving files in binary format
@@ -38,8 +38,9 @@ const eep_lengths = (MS_BEG = 200,    # beginning of MS
 # Indices where the different phases begin
 """1-based indices giving the EEP point at which each EEP phase begins."""
 const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[begin:end-1]) .+ 1)...))
-"""Data type to parse the BaSTIv1 tracks as."""
-const track_type = Float32
+"""Float type of BaSTIv1 track set properties and interpolated outputs. The stored tables are Float32 except for
+logAge, which needs Float64 so that ages along nearly flat stretches of a track (e.g., the RGB) stay distinct."""
+const track_type = Float64
 """Valid metal mass fractions (Z) for BaSTIv1."""
 const zgrid = track_type[0.00001, 0.0001, 0.0003, 0.0006, 0.001, 0.002, 0.004, 0.008, 0.01, 0.0198, 0.03, 0.04, 0.05]
 """Valid helium mass fractions (Y) for BaSTIv1."""
@@ -145,11 +146,6 @@ end
 
 ##########################################################################
 
-# Data download, organization, etc.
-include("init.jl")
-
-##########################################################################
-
 """
     BaSTIv1Track(zval::Number, mass::Number, α_fe::Number, canonical::Bool, agb::Bool, η::Number)
 `BaSTIv1Track` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
@@ -175,7 +171,7 @@ and call it with the masses you want, e.g.,
 julia> track = StellarTracks.BaSTIv1.BaSTIv1Track(1e-4, 1.2, 0.0, true, true, 0.4)
 Canonical BaSTIv1Track with AGB extension, M_ini=1.2, MH=-2.2652, [α/Fe]=0.0, η=0.4, Z=0.0001, Y=0.24514, X=0.75476.
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = 0.7036731727982912, log_Teff = 3.9489346127001865, log_g = 4.563808864700807)
+(log_L = 0.7036731515911923, log_Teff = 3.9489345952152375, log_g = 4.5638088548538125)
 ```
 """
 struct BaSTIv1Track{A,B,C} <: AbstractTrack
@@ -260,7 +256,7 @@ function BaSTIv1TrackSet(@nospecialize(zval::Number), @nospecialize(α_fe::Numbe
     zval = _parse_zval(zval)
     α_fe = _parse_α_fe(α_fe)
     η = _parse_η(η)
-    bfile = @datadep_str(joinpath("BaSTIv1", "basti_v1.jld2"))
+    bfile = joinpath(artifact"BaSTIv1", "basti_v1.jld2")
     group = ifelse(canonical, "canonical", "noncanonical") * "/" *
             ifelse(agb, "AGB", "noAGB") * "/" *
             α_fe * "/" * zval * "/" * η
@@ -296,7 +292,7 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
         # Columns in the order of `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.logL, tmpdata.logTe, tmp_logg)
     end
-    masses = _supported_masses(interps, data.m_ini)
+    masses = _supported_masses(interps, convert(Vector{track_type}, data.m_ini))
     return BaSTIv1TrackSet(eeps, identity.(amrs), identity.(interps),
                            (Z = zval, α_fe = α_fe, canonical = canonical,
                             agb = agb, η = η, masses = masses))
