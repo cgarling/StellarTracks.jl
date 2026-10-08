@@ -3,7 +3,7 @@ module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses,
+                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags,
                        _supported_masses
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
@@ -308,9 +308,10 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
         # Now interpolate mass against the properties in `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
-    masses = _supported_masses(interps, data.m_ini)
-    return MISTv1TrackSet(eeps, identity.(amrs), identity.(interps),
-                        (feh = feh, vvcrit = vvcrit, masses = masses))
+    itps = identity.(interps)
+    masses = _supported_masses(itps, data.m_ini)
+    return MISTv1TrackSet(eeps, identity.(amrs), itps,
+                        (feh = feh, vvcrit = vvcrit, masses = masses, coverage = _coverage_flags(itps)))
 end
 function (ts::MISTv1TrackSet)(M::Number)
     props = (M = M, feh = MH(ts), vvcrit = ts.properties.vvcrit)
@@ -331,7 +332,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv1TrackSet)
 end
 
 function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
-    idx, interp_masses = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     logl = similar(interp_masses)
@@ -341,7 +342,7 @@ function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
         logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k])
     end
     # return (eep = eeps, m_ini = interp_masses, log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz)
-    return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl, 4.74),
+    return (eep = eeps, m_ini, logTe = logte, Mbol = Mbol.(logl, 4.74),
             logg = logg, logL = logl, log_surf_cell_z = logsurfz)
 end
 
@@ -529,9 +530,10 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
         good_eeps[i] = true
     end
-    masses = _supported_masses(interps[good_eeps], data.m_ini)
-    return MISTv2TrackSet(eeps[good_eeps], identity.(amrs[good_eeps]), identity.(interps[good_eeps]),
-                         (feh = feh, vvcrit = vvcrit, afe = afe, masses = masses))
+    itps = identity.(interps[good_eeps])
+    masses = _supported_masses(itps, data.m_ini)
+    return MISTv2TrackSet(eeps[good_eeps], identity.(amrs[good_eeps]), itps,
+                         (feh = feh, vvcrit = vvcrit, afe = afe, masses = masses, coverage = _coverage_flags(itps)))
 end
 function (ts::MISTv2TrackSet)(M::Number)
     props = (M = M, feh = FeH(ts), vvcrit = ts.properties.vvcrit, afe = ts.properties.afe)
@@ -552,7 +554,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv2TrackSet)
 end
 
 function isochrone(ts::MISTv2TrackSet, logAge::Number)
-    idx, interp_masses = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte   = similar(interp_masses)
     logl    = similar(interp_masses)
@@ -561,7 +563,7 @@ function isochrone(ts::MISTv2TrackSet, logAge::Number)
     for (k, i) in enumerate(idx)
         logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k])
     end
-    return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl, 4.74),
+    return (eep = eeps, m_ini, logTe = logte, Mbol = Mbol.(logl, 4.74),
             logg = logg, logL = logl, log_surf_cell_z = logsurfz)
 end
 

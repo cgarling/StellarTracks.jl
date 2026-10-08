@@ -144,9 +144,52 @@ function _increasing_subsequence(x::AbstractVector)
     end
     return reverse!(out)
 end
-# Indices into `ts.eeps` and initial masses of the points of the isochrone of `ts` at `logAge`. Where the AMRs of
-# neighboring EEPs use different knots the masses can decrease along the EEPs (a fold); keeping the longest increasing
-# subsequence drops the shorter side of each fold, so a small fold at the start of a long phase does not remove the phase.
+# Whether the selected tracks (knots) of EEP indices i0 < i1 differ only because tracks end (selected at i0 and never
+# after i1) or start (selected at i1 and never before i0)
+function _coverage_change(interps, i0, i1)
+    k0, k1 = interps[i0].t, interps[i1].t
+    k0 == k1 && return false
+    selected(x, r) = any(i -> insorted(x, interps[i].t), r)
+    return all(x -> insorted(x, k1) || !selected(x, i1+1:lastindex(interps)), k0) &&
+           all(x -> insorted(x, k0) || !selected(x, firstindex(interps):i0-1), k1)
+end
+# `_coverage_change` for each pair of neighboring EEPs, stored in the track set `properties` because it is too slow to
+# evaluate for every isochrone
+_coverage_flags(interps) = BitVector([_coverage_change(interps, i, i + 1) for i in firstindex(interps):lastindex(interps)-1])
+# Where tracks end or start between the AMRs `a0` and `a1` of two EEPs, the isochrone mass step between them compares
+# interpolations over different tracks and can be far from the physical step. At fixed age, a star of mass `m0` at the
+# first EEP reaches the second after dt = t_1(m0) - t; this returns the ratio of the second mass to `m0` interpolated
+# from the tracks present at both EEPs only if dt is negative or differs by more than a factor `K` from the time the
+# two common tracks bracketing `m0` spend between the EEPs, and `nothing` otherwise.
+function _common_step(a0, a1, logAge, m0; K=3)
+    # Indices of the elements of sorted `xs` nearest to `x` on either side for which `keep` holds, or `nothing`
+    function _bracket(keep, xs, x; rev=false)
+        lo = searchsortedlast(xs, x; rev)
+        lo == lastindex(xs) && xs[lo] == x && (lo -= 1)
+        hi = lo + 1
+        while lo >= firstindex(xs) && !keep(lo); lo -= 1; end
+        while hi <= lastindex(xs) && !keep(hi); hi += 1; end
+        return lo < firstindex(xs) || hi > lastindex(xs) ? nothing : (lo, hi)
+    end
+    _lerp(x, xs, ys, (lo, hi)) = ys[lo] + (x - xs[lo]) / (xs[hi] - xs[lo]) * (ys[hi] - ys[lo])
+    in1(k) = insorted(a0.u[k], a1.u; rev=true) # knot k of `a0` is a track also selected at `a1`
+    in0(k) = insorted(a1.u[k], a0.u; rev=true)
+    lm = log10(m0)
+    b, bm = _bracket(Returns(true), a1.u, lm; rev=true), _bracket(in1, a0.u, lm; rev=true)
+    b0, b1 = _bracket(in1, a0.t, logAge), _bracket(in0, a1.t, logAge)
+    (isnothing(b) || isnothing(bm) || isnothing(b0) || isnothing(b1)) && return nothing
+    dt = exp10(_lerp(lm, a1.u, a1.t, b)) - exp10(logAge)
+    d = map(k -> exp10(a1.t[searchsortedfirst(a1.u, a0.u[k]; rev=true)]) - exp10(a0.t[k]), bm)
+    (dt <= 0 || dt > K * maximum(d) || dt < minimum(d) / K) || return nothing
+    return exp10(_lerp(logAge, a1.t, a1.u, b1) - _lerp(logAge, a0.t, a0.u, b0))
+end
+# Indices into `ts.eeps` of the points of the isochrone of `ts` at `logAge`, the initial masses from the AMRs at which to
+# evaluate properties, and the initial masses to report. Where tracks end or start between neighboring EEPs and the
+# mass step between them is non-physical (`_common_step`), the reported masses replace that step with the step from
+# the common tracks if this changes it by at most 1%, and shift all later masses by the same amount. Where the AMRs of
+# neighboring EEPs use different knots the masses can still decrease along the EEPs (a fold); keeping the longest
+# increasing subsequence drops the shorter side of each fold, so a small fold at the start of a long phase does not
+# remove the phase.
 function _isochrone_masses(ts::AbstractTrackSet, logAge::Number)
     idx = Int[]
     masses = Vector{eltype(ts)}(undef, 0)
@@ -159,8 +202,19 @@ function _isochrone_masses(ts::AbstractTrackSet, logAge::Number)
             push!(masses, clamp(exp10(amr(logAge)), first(itp.t), last(itp.t)))
         end
     end
-    keep = _increasing_subsequence(masses)
-    return idx[keep], masses[keep]
+    m_ini = copy(masses)
+    offset = zero(eltype(m_ini))
+    for j in firstindex(masses)+1:lastindex(masses)
+        m_ini[j] = masses[j] + offset
+        i0, i1 = idx[j-1], idx[j]
+        (i1 == i0 + 1 ? ts.properties.coverage[i0] : _coverage_change(ts.interps, i0, i1)) || continue
+        ratio = _common_step(ts.AMRs[i0], ts.AMRs[i1], logAge, masses[j-1])
+        (isnothing(ratio) || abs(ratio * masses[j-1] / masses[j] - 1) > 0.01) && continue
+        m_ini[j] = m_ini[j-1] * ratio
+        offset = m_ini[j] - masses[j]
+    end
+    keep = _increasing_subsequence(m_ini)
+    return idx[keep], masses[keep], m_ini[keep]
 end
 # Masses for which at least one EEP has a valid property interpolation. Top-down selection can
 # drop a mass from every EEP of a track set, so `unique(data.m_ini)` may advertise unusable masses.
