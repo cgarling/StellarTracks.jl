@@ -47,6 +47,8 @@ MIST.select_columns
 
 Note that the MIST v2.5 grid has some individual mass tracks missing for certain (`feh`, `vvcrit`, `afe`) combinations. `MISTv2TrackSet` silently skips missing files rather than erroring, so the set of available masses may differ across the parameter grid.
 
+The tracks of white dwarf progenitors (``0.6\,M_\odot \lesssim M < 7\,M_\odot``) continue past the end of the TP-AGB (`MIST.eep_idxs.END_TPAGB`) through the white dwarf cooling sequence [Bauer2026](@citep). By default, [`MISTv2TrackSet`](@ref StellarTracks.MIST.MISTv2TrackSet) and [`MISTv2Library`](@ref StellarTracks.MIST.MISTv2Library) drop these EEPs, so that isochrones contain only living stars, as for the other libraries. Pass `wd = true` to keep the cooling sequence; isochrones then include white dwarfs descended from progenitors up to ``\sim 6.5\,M_\odot``, and the largest initial mass of an isochrone is no longer that of the most evolved living star.
+
 ## Examples
 
 Load the MIST v2.5 library of non-rotating, solar-scaled models. The `vvcrit` and `afe` parameters must be exact values from the grid.

@@ -158,6 +158,22 @@ bcgv2 = MISTv2BCGrid("JWST")
         end
     end
 
+    # The white dwarf cooling sequence follows the end of the TP-AGB; by default it is dropped so isochrones contain
+    # only living stars (with it, the largest initial mass at 10 Gyr was ~5.4 Msun instead of ~0.85)
+    @testset "MISTv2 white dwarfs" begin
+        ts, ts_wd = MISTv2TrackSet(-1.5, 0.0, 0.0), MISTv2TrackSet(-1.5, 0.0, 0.0; wd=true)
+        @test maximum(ts.eeps) == MIST.eep_idxs.END_TPAGB
+        @test maximum(ts_wd.eeps) > MIST.eep_idxs.END_TPAGB
+        iso, iso_wd = isochrone(ts, 10.0), isochrone(ts_wd, 10.0)
+        @test maximum(iso.m_ini) < 0.9
+        @test maximum(iso_wd.m_ini) > 5
+        living = iso_wd.eep .<= MIST.eep_idxs.END_TPAGB
+        @test iso_wd.eep[living] == iso.eep
+        @test iso_wd.m_ini[living] == iso.m_ini
+        @test maximum(isochrone(MISTv2Library(0.0, 0.0), 10.0, -1.5).m_ini) < 0.9
+        @test maximum(isochrone(MISTv2Library(0.0, 0.0; wd=true), 10.0, -1.5).m_ini) > 5
+    end
+
     @testset "MISTv2Library" begin
         for (vvcrit, afe) in ((0.0, 0.0), (0.0, 0.4), (0.4, 0.4))
             tracklib = MISTv2Library(vvcrit, afe)
