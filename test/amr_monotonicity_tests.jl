@@ -1,5 +1,5 @@
 using StellarTracks
-using StellarTracks: _amr, _increasing_subsequence
+using StellarTracks: _amr, _increasing_subsequence, _common_step
 using StellarTracks.PARSEC: PARSECTrackSet, PARSECLibrary, eep_idxs, zgrid, ygrid, excluded_masses, _fix_post_rgb_eeps
 using StellarTracks.MIST: MISTv1TrackSet
 using StellarTracks.BaSTIv2: BaSTIv2TrackSet
@@ -46,6 +46,31 @@ end
     iso = isochrone(ts, 10.1)
     @test eltype(iso.m_ini) == Float64
     @test length(iso.eep) == count(a -> first(extrema(a)) <= 10.1 <= last(extrema(a)), ts.AMRs)
+end
+
+# Where a track ends between two EEPs, the mass step between them is replaced by the step from the tracks present at
+# both only if it is non-physical: the time it implies for a star to go from one EEP to the next is negative or far
+# from the time the neighboring common tracks take
+@testset "Mass steps across tracks that end" begin
+    m = [3.0, 2.0, 1.5, 1.2, 1.0]
+    t0 = 10 .- 2.5 .* log10.(m)
+    t1 = t0 .+ log10(1.01) # every track spends 1% of its age between the two EEPs
+    common = [1, 2, 4, 5]  # the 1.5 Msun track ends at the first EEP
+    a1 = _amr(m[common], t1[common])
+    expected = exp10(a1(9.6) - _amr(m[common], t0[common])(9.6))
+    # 1.5 Msun track consistent with the others: the step is physical and kept
+    a0 = _amr(m, t0)
+    @test isnothing(_common_step(a0, a1, 9.6, exp10(a0(9.6))))
+    # 1.5 Msun track 0.05 dex older at the first EEP: the step is a 4% decrease, which no star can make
+    a0 = _amr(m, t0 .+ [0, 0, 0.05, 0, 0])
+    @test exp10(a1(9.6) - a0(9.6)) < 0.97
+    @test _common_step(a0, a1, 9.6, exp10(a0(9.6))) ≈ expected
+    # At [Fe/H] = -3 with rotation, tracks ending after the core-He burning decrease the isochrone mass by < 1% at
+    # EEP 694; the longest increasing subsequence removed EEPs 694-808 at logAge 9.0
+    ts = MISTv1TrackSet(-3.0, 0.4)
+    iso = isochrone(ts, 9.0)
+    @test count(e -> 694 <= e <= 808, iso.eep) == count(a -> first(extrema(a)) <= 9.0 <= last(extrema(a)), ts.AMRs[findall(e -> 694 <= e <= 808, ts.eeps)])
+    @test all(>(0), diff(iso.m_ini))
 end
 
 # A track interpolated at an isochrone point's mass passes through that point: the track's age at the EEP is the exact

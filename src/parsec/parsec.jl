@@ -3,7 +3,7 @@ module PARSEC
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses,
+                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags,
                        _supported_masses, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
@@ -218,8 +218,9 @@ function PARSECTrackSet(data::Table, Z::Number)
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
 
-    masses = _supported_masses(interps, data.m_ini)
-    return PARSECTrackSet(eeps, identity.(amrs), identity.(interps), (Z = Z, masses = masses))
+    itps = identity.(interps)
+    masses = _supported_masses(itps, data.m_ini)
+    return PARSECTrackSet(eeps, identity.(amrs), itps, (Z = Z, masses = masses, coverage = _coverage_flags(itps)))
 end
 function PARSECTrackSet(@nospecialize(zval::Number))
     idx = findfirst(≈(zval), zgrid) # Validate against zgrid
@@ -246,7 +247,7 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
     print(io, "TrackSet with Y=$(round(Y(ts); sigdigits=6)), Z=$(round(Z(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
-    idx, interp_masses = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     mbol = similar(interp_masses)
@@ -255,7 +256,7 @@ function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
     for (k, i) in enumerate(idx)
         logte[k], mbol[k], logg[k], c_o[k] = ts.interps[i](interp_masses[k])
     end
-    return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = mbol, logg = logg, C_O = c_o)
+    return (eep = eeps, m_ini, logTe = logte, Mbol = mbol, logg = logg, C_O = c_o)
 end
 
 ##########################################################################
