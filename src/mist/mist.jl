@@ -3,7 +3,7 @@ module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr,
+                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses,
                        _supported_masses
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
@@ -331,31 +331,14 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv1TrackSet)
 end
 
 function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
-    eeps = Vector{Int}(undef, 0)
-    interp_masses = Vector{eltype(ts)}(undef, 0)
+    idx, interp_masses = _isochrone_masses(ts, logAge)
+    eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     logl = similar(interp_masses)
     logg = similar(interp_masses)
     logsurfz = similar(interp_masses)
-    # data = Vector{eltype(first(ts.AMRs))}(undef, 0)
-    for (i, amr) in enumerate(ts.AMRs)
-        drange = extrema(amr) # Get valid age range for the EEP
-        if logAge >= first(drange) && logAge <= last(drange)
-            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
-            itp = ts.interps[i]
-            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
-            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
-            # of folds as in `_top_down_indices`
-            if isempty(interp_masses) || imass > last(interp_masses)
-                logli, logtei, loggi, logsurfzi = itp(imass)
-                push!(eeps, ts.eeps[i])
-                push!(interp_masses, imass)
-                push!(logl, logli)
-                push!(logte, logtei)
-                push!(logg, loggi)
-                push!(logsurfz, logsurfzi)
-            end
-        end
+    for (k, i) in enumerate(idx)
+        logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k])
     end
     # return (eep = eeps, m_ini = interp_masses, log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz)
     return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl, 4.74),
@@ -569,29 +552,14 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv2TrackSet)
 end
 
 function isochrone(ts::MISTv2TrackSet, logAge::Number)
-    eeps = Vector{Int}(undef, 0)
-    interp_masses = Vector{eltype(ts)}(undef, 0)
+    idx, interp_masses = _isochrone_masses(ts, logAge)
+    eeps = Vector{Int}(ts.eeps[idx])
     logte   = similar(interp_masses)
     logl    = similar(interp_masses)
     logg    = similar(interp_masses)
     logsurfz = similar(interp_masses)
-    for (i, amr) in enumerate(ts.AMRs)
-        drange = extrema(amr)
-        if logAge >= first(drange) && logAge <= last(drange)
-            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
-            itp = ts.interps[i]
-            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
-            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
-            # of folds as in `_top_down_indices`
-            if isempty(interp_masses) || imass > last(interp_masses)
-                logli, logtei, loggi, logsurfzi = itp(imass)
-                push!(eeps, ts.eeps[i]); push!(interp_masses, imass)
-                push!(logl, logli)
-                push!(logte,    logtei)
-                push!(logg,     loggi)
-                push!(logsurfz, logsurfzi)
-            end
-        end
+    for (k, i) in enumerate(idx)
+        logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k])
     end
     return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl, 4.74),
             logg = logg, logL = logl, log_surf_cell_z = logsurfz)

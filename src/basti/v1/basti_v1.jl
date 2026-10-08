@@ -3,7 +3,7 @@ module BaSTIv1
 
 # imports from parent module
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
-                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr,
+                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses,
                        _supported_masses, radius, surface_gravity
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 
@@ -321,28 +321,13 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::BaSTIv1TrackSet)
 end
 
 function isochrone(ts::BaSTIv1TrackSet, logAge::Number)
-    eeps = Vector{Int}(undef, 0)
-    interp_masses = Vector{eltype(ts)}(undef, 0)
+    idx, interp_masses = _isochrone_masses(ts, logAge)
+    eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     logl = similar(interp_masses)
     logg = similar(interp_masses)
-    for (i, amr) in enumerate(ts.AMRs)
-        drange = extrema(amr) # Get valid age range for the EEP
-        if logAge >= first(drange) && logAge <= last(drange)
-            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
-            itp = ts.interps[i]
-            imass = clamp(exp10(amr(logAge)), first(itp.t), last(itp.t))
-            # Keep only points whose initial mass exceeds every earlier point's, retaining the high-mass side
-            # of folds as in `_top_down_indices`
-            if isempty(interp_masses) || imass > last(interp_masses)
-                logli, logtei, loggi = itp(imass)
-                push!(eeps, ts.eeps[i])
-                push!(interp_masses, imass)
-                push!(logl, logli)
-                push!(logte, logtei)
-                push!(logg, loggi)
-            end
-        end
+    for (k, i) in enumerate(idx)
+        logl[k], logte[k], logg[k] = ts.interps[i](interp_masses[k])
     end
     return (eep = eeps, m_ini = interp_masses, logTe = logte, Mbol = Mbol.(logl),
             logg = logg, logL = logl)
