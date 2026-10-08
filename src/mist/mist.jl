@@ -467,12 +467,18 @@ end
 ##########################################################################
 
 """
-    MISTv2TrackSet(feh, vvcrit=0, afe=0)
+    MISTv2TrackSet(feh, vvcrit=0, afe=0; wd=false)
 `MISTv2TrackSet` implements the [`AbstractTrackSet`](@ref StellarTracks.AbstractTrackSet)
 interface for the MIST v2.5 stellar evolution library.
+
+The MIST v2.5 tracks of white dwarf progenitors continue past the end of the TP-AGB
+(`MIST.eep_idxs.END_TPAGB`) through the white dwarf cooling sequence [Bauer2026](@citep).
+By default these EEPs are dropped, so that isochrones contain only living stars and their
+largest initial mass is that of the most evolved living star, as for the other libraries.
+Set `wd = true` to keep the white dwarf cooling sequence in track and isochrone interpolation.
 ```jldoctest
 julia> ts = StellarTracks.MIST.MISTv2TrackSet(0.0, 0.0, 0.0)
-MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.0185, Y=0.2735, 1721 EEPs and 155 initial stellar mass points.
+MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.0185, Y=0.2735, 1409 EEPs and 155 initial stellar mass points.
 ```
 """
 struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
@@ -484,7 +490,7 @@ struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
     interps::C
     properties::D
 end
-function MISTv2TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number=0), @nospecialize(afe::Number=0))
+function MISTv2TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number=0), @nospecialize(afe::Number=0); wd::Bool=false)
     valid_feh  = feh_grid_v2_for(afe)
     feh_idx = findfirst(≈(feh), valid_feh)
     @argcheck !isnothing(feh_idx) ArgumentError("Provided `feh` argument $feh to `MISTv2TrackSet` is invalid for [α/Fe]=$afe; available metallicities are $valid_feh. For metallicity interpolation, use `MISTv2Library`.")
@@ -506,9 +512,11 @@ function MISTv2TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number
               end for fm in allfiles_masses]
     data = reduce(vcat, tables)
     return MISTv2TrackSet(data, valid_feh[feh_idx],
-                          parse(track_type, vvcrit_str), afe_val)
+                          parse(track_type, vvcrit_str), afe_val; wd)
 end
-function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
+function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number; wd::Bool=false)
+    # EEPs after the end of the TP-AGB are the transition to and the white dwarf cooling sequence
+    wd || (data = data[findall(<=(eep_idxs.END_TPAGB), data.eep)])
     eeps = sort(unique(data.eep))
     # Filled as Vector{Any} in the threaded loop and narrowed to a concrete eltype afterward
     amrs    = Vector{Any}(undef, length(eeps))
@@ -533,7 +541,7 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number)
     itps = identity.(interps[good_eeps])
     masses = _supported_masses(itps, data.m_ini)
     return MISTv2TrackSet(eeps[good_eeps], identity.(amrs[good_eeps]), itps,
-                         (feh = feh, vvcrit = vvcrit, afe = afe, masses = masses, coverage = _coverage_flags(itps)))
+                         (feh = feh, vvcrit = vvcrit, afe = afe, wd = wd, masses = masses, coverage = _coverage_flags(itps)))
 end
 function (ts::MISTv2TrackSet)(M::Number)
     props = (M = M, feh = FeH(ts), vvcrit = ts.properties.vvcrit, afe = ts.properties.afe)
@@ -570,13 +578,14 @@ end
 ##########################################################################
 
 """
-    MISTv2Library(vvcrit=0.0, afe=0.0)
+    MISTv2Library(vvcrit=0.0, afe=0.0; wd=false)
 `MISTv2Library` implements the [`AbstractTrackLibrary`](@ref StellarTracks.AbstractTrackLibrary)
 interface for the MIST v2.5 stellar evolution library.
 
 The library interpolates in [M/H] (metallicity). The `vvcrit` and `afe` parameters
 must be exact values from the MIST v2.5 grid (`vvcrit_grid_v2` and `afe_grid_v2`);
-they select which DataDep is loaded but are not interpolated over.
+they select which DataDep is loaded but are not interpolated over. `wd` is passed to
+[`MISTv2TrackSet`](@ref); by default the white dwarf cooling sequence is excluded.
 
 Calling the library as `lib(mh, mass)` returns a
 [`MISTv2Track`](@ref) or [`InterpolatedTrack`](@ref StellarTracks.InterpolatedTrack)
@@ -615,13 +624,13 @@ function Base.show(io::IO, mime::MIME"text/plain", p::MISTv2Library)
           "Valid [M/H] range: $(extrema(MH(p))).")
 end
 
-function MISTv2Library(@nospecialize(vvcrit::Number=0.0), @nospecialize(afe::Number=0.0))
+function MISTv2Library(@nospecialize(vvcrit::Number=0.0), @nospecialize(afe::Number=0.0); wd::Bool=false)
     vvcrit_val = track_type(vvcrit)
     afe_val    = track_type(afe)
     @argcheck any(≈(vvcrit_val), vvcrit_grid_v2) ArgumentError("Invalid vvcrit=$vvcrit; valid options are $vvcrit_grid_v2.")
     @argcheck any(≈(afe_val),    afe_grid_v2)    ArgumentError("Invalid afe=$afe; valid options are $afe_grid_v2.")
     valid_feh = feh_grid_v2_for(afe_val)
-    ts = [MISTv2TrackSet(feh, vvcrit_val, afe_val) for feh in valid_feh]
+    ts = [MISTv2TrackSet(feh, vvcrit_val, afe_val; wd) for feh in valid_feh]
     return MISTv2Library(ts, valid_feh, vvcrit_val, afe_val)
 end
 

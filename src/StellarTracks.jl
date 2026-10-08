@@ -306,6 +306,9 @@ Returns a `NamedTuple` containing the properties; different libraries
 may have different properties available. If `result = isochrone(...)`,
 EEP points are generally available as `result.eep` and the corresponding
 initial stellar masses are `result.m_ini`.
+Isochrones contain only living stars (no stellar remnants), so the largest
+`result.m_ini` is the initial mass of the most evolved living star; the exception is
+a [`MISTv2TrackSet`](@ref StellarTracks.MIST.MISTv2TrackSet) created with `wd = true`.
 
 ```jldoctest
 julia> using StellarTracks.MIST
