@@ -18,7 +18,13 @@ using StellarTracks.BaSTIv2: BaSTIv2Library, X, Y, Z # load specific methods
 
 ## Data Acquisition
 
-The tracks will be downloaded automatically using [DataDeps.jl](https://github.com/oxinabox/DataDeps.jl) the first time you try to access them. The main access point we provide is [`BaSTIv2Library`](@ref StellarTracks.BaSTIv2.BaSTIv2Library), which will load and make available a set of stellar models corresponding to a specific chemical mixture and set of input physics. The first time you call this method, you will be prompted to download the required data files. The total data volume is ~110 MB. Information on customizing the install location is available [here](https://www.oxinabox.net/DataDeps.jl/stable/z10-for-end-users/). The data can be uninstalled by running `using DataDeps; rm(datadep"BaSTIv2"; recursive=true)`. With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the BaSTIv2 parameter space.
+The tracks are distributed as a lazy [Julia artifact](https://pkgdocs.julialang.org/v1/artifacts/) that is downloaded automatically the first time you try to access them. The main access point we provide is [`BaSTIv2Library`](@ref StellarTracks.BaSTIv2.BaSTIv2Library), which will load and make available a set of stellar models corresponding to a specific chemical mixture and set of input physics. The total data volume is ~150 MB. The data are tied to the installed version of StellarTracks.jl and are removed by Julia's package garbage collector (`using Pkg; Pkg.gc()`, which also runs automatically during package updates) once no installed version of StellarTracks.jl uses them. Versions of StellarTracks.jl before v1.2 downloaded these tracks with DataDeps.jl. That copy is no longer used; if it was saved in the default DataDeps location, it can be removed with
+
+```julia
+rm(joinpath(DEPOT_PATH[1], "scratchspaces", "124859b0-ceae-595e-8997-d05f6a7a8dfe", "datadeps", "BaSTIv2"); recursive=true, force=true)
+```
+
+With all the tracks available, we are able to perform operations like interpolating isochrones at any age and metallicity within the BaSTIv2 parameter space.
 
 ## Grid Properties
 The BaSTIv2 model grid contains models for the following iron abundances:
@@ -52,7 +58,7 @@ Not all combinations of `canonical`, `diffusion`, α-element abundance, primordi
 As setting up these arguments can be arduous, we have attempted to provide useful error messages when an invalid combination of arguments is requested.
 
 ## Examples
-First we load the scaled-solar models (`[α/Fe] = 0.0`) with convective core overshooting (`canonical = false`), diffusion (`diffusion = true`), primordial helium abundance `yp = 0.247`, and Reimers mass loss parameter `η = 0.3`. These models will be downloaded via DataDeps.jl if not already available.
+First we load the scaled-solar models (`[α/Fe] = 0.0`) with convective core overshooting (`canonical = false`), diffusion (`diffusion = true`), primordial helium abundance `yp = 0.247`, and Reimers mass loss parameter `η = 0.3`. These models will be downloaded if not already available.
 ```@example
 using StellarTracks.BaSTIv2
 p = BaSTIv2Library(0.0, false, true, 0.247, 0.3)

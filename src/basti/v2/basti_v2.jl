@@ -9,7 +9,7 @@ import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha
 using ..StellarTracks.BaSTIv1: _parse_α_fe
 
 # Imports for data reading / processing
-using DataDeps: register, DataDep, @datadep_str
+using LazyArtifacts # `artifact"..."` requires the LazyArtifacts module name in scope for lazy artifacts
 using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
 using Interpolations: deduplicate_knots!
 import JLD2 # for saving files in binary format
@@ -66,8 +66,9 @@ const eep_lengths = NamedTuple{keys(eep_idxs)[begin:end-1]}(eep_idxs[i+1] - eep_
 # Indices where the different phases begin
 # """1-based indices giving the EEP point at which each EEP phase begins."""
 # const eep_idxs = NamedTuple{keys(eep_lengths)}((1, (cumsum(values(eep_lengths)[begin:end-1]) .+ 1)...))
-"""Data type to parse the BaSTIv2 tracks as."""
-const track_type = Float32
+"""Float type of BaSTIv2 track set properties and interpolated outputs. The stored tables are Float32 except for
+logAge, which needs Float64 so that ages along nearly flat stretches of a track (e.g., the RGB) stay distinct."""
+const track_type = Float64
 """Available [Fe/H] values in the BaSTIv2 stellar track grid."""
 const feh_grid = track_type[-3.2, -2.5, -2.2, -1.9, -1.7, -1.55, -1.4, -1.3, -1.2, -1.05, -0.9, -0.7, -0.6, -0.4, -0.3, -0.2, -0.1, 0.06, 0.15, 0.3, 0.45] # -0.1 is listed as -0.08 in paper but -0.1 in the online grids...
 """Initial stellar masses for the stellar tracks in the BaSTIv2 grid. These are uniform for all metallicities and also for alpha-enhanced grids."""
@@ -258,11 +259,6 @@ function Z(mix::BaSTIv2Chemistry, MHval)
 end
 
 ##########################################################################
-
-# Data download, organization, etc.
-include("init.jl")
-
-##########################################################################
 """
     BaSTIv2Track(feh::Number, mass::Number, α_fe::Number, canonical::Bool, diffusion::Bool, yp::Number, η::Number)
 `BaSTIv2Track` implements the [`AbstractTrack`](@ref StellarTracks.AbstractTrack)
@@ -292,7 +288,7 @@ julia> track = StellarTracks.BaSTIv2.BaSTIv2Track(-2.2, 0.81, 0.0, false, true, 
 Non-canonical BaSTIv2Track with diffusion, M_ini=0.81, [M/H]=-2.2, [Fe/H]=-2.2, [α/Fe]=0.0, Z=9.87095e-5, Y=0.247129, X=0.752772, Y_p=0.247, η=0.3.
 
 julia> track(9.0) # interpolate track at log10(age [yr]) = 9
-(log_L = -0.136238765308819, log_Teff = 3.8011775768892004, log_g = 4.642108742647652)
+(log_L = -0.13623875349579812, log_Teff = 3.801177574986798, log_g = 4.642108911103173)
 ```
 """
 struct BaSTIv2Track{A,B,C} <: AbstractTrack
@@ -384,7 +380,7 @@ function BaSTIv2TrackSet(@nospecialize(feh::Number), @nospecialize(α_fe::Number
     α_fe = _parse_α_fe(α_fe)
     yp = _parse_yp(yp)
     η = _parse_η(η)
-    bfile = @datadep_str(joinpath("BaSTIv2", "basti_v2.jld2"))
+    bfile = joinpath(artifact"BaSTIv2", "basti_v2.jld2")
     group = ifelse(canonical, "canonical", "noncanonical") * "/" *
             ifelse(diffusion, "diffusion", "nodiffusion") * "/" *
             α_fe * "/" * feh * "/" * yp * "/" * η
@@ -423,7 +419,7 @@ function BaSTIv2TrackSet(data::Table, feh::Number, α_fe::Number, canonical::Boo
         # Columns in the order of `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.logL, tmpdata.logTe, tmp_logg)
     end
-    masses = _supported_masses(interps, data.m_ini)
+    masses = _supported_masses(interps, convert(Vector{track_type}, data.m_ini))
     return BaSTIv2TrackSet(eeps, identity.(amrs), identity.(interps),
                            (feh = feh, α_fe = α_fe, canonical = canonical, diffusion = diffusion,
                             yp = yp, η = η, masses = masses))

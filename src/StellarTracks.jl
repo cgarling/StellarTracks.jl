@@ -1,7 +1,6 @@
 module StellarTracks
 
 using ArgCheck: @argcheck
-import SentinelArrays
 using TypedTables: Table
 
 # For BCs.jl

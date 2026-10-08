@@ -2,6 +2,7 @@ using StellarTracks
 using StellarTracks: _amr, _increasing_subsequence
 using StellarTracks.PARSEC: PARSECTrackSet, PARSECLibrary, eep_idxs, zgrid, ygrid, excluded_masses, _fix_post_rgb_eeps
 using StellarTracks.MIST: MISTv1TrackSet
+using StellarTracks.BaSTIv2: BaSTIv2TrackSet
 using DataDeps: @datadep_str
 import JLD2
 using Test
@@ -39,6 +40,12 @@ end
     # At [Fe/H] = -3 most tracks near 2 Msun end before the TP-AGB, so the isochrone mass dips slightly at its start
     # (EEP 809); keeping only points above the running maximum removed all 601 TP-AGB points at logAge 8.8
     @test count(e -> 809 <= e <= 1409, isochrone(MISTv1TrackSet(-3.0, 0.0), 8.8).eep) > 500
+    # Past the RGB tip, isochrone masses at neighboring EEPs differ by ~2e-8 (relative), below Float32 resolution; with
+    # the masses stored as Float32 (BaSTI eltype), 6 points at logAge 10.1 tied with a neighbor and the guard removed them
+    ts = BaSTIv2TrackSet(-0.4, 0.0, false, true, 0.247, 0.3)
+    iso = isochrone(ts, 10.1)
+    @test eltype(iso.m_ini) == Float64
+    @test length(iso.eep) == count(a -> first(extrema(a)) <= 10.1 <= last(extrema(a)), ts.AMRs)
 end
 
 # A track interpolated at an isochrone point's mass passes through that point: the track's age at the EEP is the exact
