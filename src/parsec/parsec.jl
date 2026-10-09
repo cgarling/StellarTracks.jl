@@ -3,7 +3,7 @@ module PARSEC
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags,
+                       uniqueidx, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags, AMR, _flatten,
                        _supported_masses, PARSECChemistry
 import ..StellarTracks: mass, post_rgb, isochrone, gridname
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, chemistry # X_phot, Y_phot, Z_phot
@@ -23,8 +23,7 @@ using TypedTables: Table
 using ArgCheck: @argcheck
 using StaticArrays: SVector
 # import Interpolations: interpolate, Gridded, Linear, deduplicate_knots!
-using DataInterpolations: AbstractInterpolation, AkimaInterpolation, LinearInterpolation, CubicSpline, PCHIPInterpolation, CubicHermiteSpline
-Base.extrema(a::AbstractInterpolation) = extrema(a.t) # utility
+using DataInterpolations: AkimaInterpolation, LinearInterpolation, CubicSpline, PCHIPInterpolation, CubicHermiteSpline
 
 # Number of EEP points per evolutionary phase
 # starting from beginning of pre-main sequence through
@@ -152,7 +151,7 @@ true
 ```
 """
 struct PARSECTrackSet{A <: AbstractVector{<:Integer},
-                      B <: AbstractVector{<:AbstractInterpolation}, # AbstractInterpolation{T}
+                      B <: AbstractVector{<:AMR},
                       # C <: AbstractVector{<:AbstractVector{<:AbstractInterpolation}},
                       C,
                       D} <: AbstractTrackSet
@@ -218,9 +217,9 @@ function PARSECTrackSet(data::Table, Z::Number)
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
 
-    itps = identity.(interps)
+    amrset, itps = _flatten(amrs, interps)
     masses = _supported_masses(itps, data.m_ini)
-    return PARSECTrackSet(eeps, identity.(amrs), itps, (Z = Z, masses = masses, coverage = _coverage_flags(itps)))
+    return PARSECTrackSet(eeps, amrset, itps, (Z = Z, masses = masses, coverage = _coverage_flags(itps)))
 end
 function PARSECTrackSet(@nospecialize(zval::Number))
     idx = findfirst(≈(zval), zgrid) # Validate against zgrid
@@ -247,14 +246,14 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::PARSECTrackSet)
     print(io, "TrackSet with Y=$(round(Y(ts); sigdigits=6)), Z=$(round(Z(ts); sigdigits=6)), $(length(ts.AMRs)) EEPs and $(length(mass(ts))) initial stellar mass points.")
 end
 function isochrone(ts::PARSECTrackSet, logAge::Number) # 800 μs
-    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini, seg = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     mbol = similar(interp_masses)
     logg = similar(interp_masses)
     c_o = similar(interp_masses)
     for (k, i) in enumerate(idx)
-        logte[k], mbol[k], logg[k], c_o[k] = ts.interps[i](interp_masses[k])
+        logte[k], mbol[k], logg[k], c_o[k] = ts.interps[i](interp_masses[k], seg[k])
     end
     return (eep = eeps, m_ini, logTe = logte, Mbol = mbol, logg = logg, C_O = c_o)
 end
