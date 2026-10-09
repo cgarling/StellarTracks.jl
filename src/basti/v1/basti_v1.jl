@@ -3,13 +3,13 @@ module BaSTIv1
 
 # imports from parent module
 using ..StellarTracks: AbstractChemicalMixture, AbstractTrack, AbstractTrackSet,
-                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags,
+                       AbstractTrackLibrary, uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags, AMR, _flatten,
                        _supported_masses, radius, surface_gravity
 import ..StellarTracks: X, Y, Z, X_phot, Y_phot, Z_phot, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname
 
 # Imports for data reading / processing
 using LazyArtifacts # `artifact"..."` requires the LazyArtifacts module name in scope for lazy artifacts
-using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
+using DataInterpolations: CubicSpline, CubicHermiteSpline, PCHIPInterpolation
 using Interpolations: deduplicate_knots!
 import JLD2 # for saving files in binary format
 using Printf: @sprintf
@@ -240,7 +240,7 @@ true
 ```
 """
 struct BaSTIv1TrackSet{A <: AbstractVector{<:Integer},
-                       B <: AbstractVector{<:AbstractInterpolation},
+                       B <: AbstractVector{<:AMR},
                        C,
                        D} <: AbstractTrackSet
     eeps::A # EEP points; vector of integers
@@ -292,9 +292,9 @@ function BaSTIv1TrackSet(data::Table, zval::Number, α_fe::Number, canonical::Bo
         # Columns in the order of `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.logL, tmpdata.logTe, tmp_logg)
     end
-    itps = identity.(interps)
+    amrset, itps = _flatten(amrs, interps)
     masses = _supported_masses(itps, convert(Vector{track_type}, data.m_ini))
-    return BaSTIv1TrackSet(eeps, identity.(amrs), itps,
+    return BaSTIv1TrackSet(eeps, amrset, itps,
                            (Z = zval, α_fe = α_fe, canonical = canonical,
                             agb = agb, η = η, masses = masses, coverage = _coverage_flags(itps)))
 end
@@ -318,13 +318,13 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::BaSTIv1TrackSet)
 end
 
 function isochrone(ts::BaSTIv1TrackSet, logAge::Number)
-    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini, seg = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     logl = similar(interp_masses)
     logg = similar(interp_masses)
     for (k, i) in enumerate(idx)
-        logl[k], logte[k], logg[k] = ts.interps[i](interp_masses[k])
+        logl[k], logte[k], logg[k] = ts.interps[i](interp_masses[k], seg[k])
     end
     return (eep = eeps, m_ini, logTe = logte, Mbol = Mbol.(logl),
             logg = logg, logL = logl)

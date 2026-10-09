@@ -3,7 +3,7 @@ module MIST
 
 # imports from parent module
 using ..StellarTracks: AbstractTrack, AbstractTrackSet, AbstractTrackLibrary,
-                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags,
+                       uniqueidx, Mbol, _generic_trackset_interp, _pchip_svector, _top_down_indices, _amr, _isochrone_masses, _coverage_flags, AMR, _flatten,
                        _supported_masses
 import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, mass, post_rgb, isochrone, gridname # X_phot, Y_phot, Z_phot,
 
@@ -12,7 +12,7 @@ import ..StellarTracks: X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, chemistr
 # Imports for data reading / processing
 import CSV
 using DataDeps: register, DataDep, @datadep_str, unpack
-using DataInterpolations: AbstractInterpolation, CubicSpline, CubicHermiteSpline, PCHIPInterpolation
+using DataInterpolations: CubicSpline, CubicHermiteSpline, PCHIPInterpolation
 # # MIST track with [Fe/H] = -4, M=0.9, vvcrit=0.0 has float error in the star_age that results
 # in non-increasing as a function of EEP. Since it's ~EPS error, we use Interpolations.deduplicate_knots!
 # to correct for this minor error.
@@ -263,7 +263,7 @@ true
 ```
 """
 struct MISTv1TrackSet{A <: AbstractVector{<:Integer},
-                    B <: AbstractVector{<:AbstractInterpolation},
+                    B <: AbstractVector{<:AMR},
                     C,
                     D} <: AbstractTrackSet
     eeps::A # EEP points; vector of integers
@@ -308,9 +308,9 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
         # Now interpolate mass against the properties in `interp_names`
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
     end
-    itps = identity.(interps)
+    amrset, itps = _flatten(amrs, interps)
     masses = _supported_masses(itps, data.m_ini)
-    return MISTv1TrackSet(eeps, identity.(amrs), itps,
+    return MISTv1TrackSet(eeps, amrset, itps,
                         (feh = feh, vvcrit = vvcrit, masses = masses, coverage = _coverage_flags(itps)))
 end
 function (ts::MISTv1TrackSet)(M::Number)
@@ -332,14 +332,14 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv1TrackSet)
 end
 
 function isochrone(ts::MISTv1TrackSet, logAge::Number) # 1 ms
-    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini, seg = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte = similar(interp_masses)
     logl = similar(interp_masses)
     logg = similar(interp_masses)
     logsurfz = similar(interp_masses)
     for (k, i) in enumerate(idx)
-        logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k])
+        logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k], seg[k])
     end
     # return (eep = eeps, m_ini = interp_masses, log_L = logl, log_Teff = logte, log_g = logg, log_surf_cell_z = logsurfz)
     return (eep = eeps, m_ini, logTe = logte, Mbol = Mbol.(logl, 4.74),
@@ -482,7 +482,7 @@ MISTv2TrackSet with MH=0.0, afe=0.0, vvcrit=0.0, Z=0.0185, Y=0.2735, 1409 EEPs a
 ```
 """
 struct MISTv2TrackSet{A <: AbstractVector{<:Integer},
-                      B <: AbstractVector{<:AbstractInterpolation},
+                      B <: AbstractVector{<:AMR},
                       C,
                       D} <: AbstractTrackSet
     eeps::A
@@ -538,9 +538,9 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number; w
         interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
         good_eeps[i] = true
     end
-    itps = identity.(interps[good_eeps])
+    amrset, itps = _flatten(amrs[good_eeps], interps[good_eeps])
     masses = _supported_masses(itps, data.m_ini)
-    return MISTv2TrackSet(eeps[good_eeps], identity.(amrs[good_eeps]), itps,
+    return MISTv2TrackSet(eeps[good_eeps], amrset, itps,
                          (feh = feh, vvcrit = vvcrit, afe = afe, wd = wd, masses = masses, coverage = _coverage_flags(itps)))
 end
 function (ts::MISTv2TrackSet)(M::Number)
@@ -562,14 +562,14 @@ function Base.show(io::IO, mime::MIME"text/plain", ts::MISTv2TrackSet)
 end
 
 function isochrone(ts::MISTv2TrackSet, logAge::Number)
-    idx, interp_masses, m_ini = _isochrone_masses(ts, logAge)
+    idx, interp_masses, m_ini, seg = _isochrone_masses(ts, logAge)
     eeps = Vector{Int}(ts.eeps[idx])
     logte   = similar(interp_masses)
     logl    = similar(interp_masses)
     logg    = similar(interp_masses)
     logsurfz = similar(interp_masses)
     for (k, i) in enumerate(idx)
-        logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k])
+        logl[k], logte[k], logg[k], logsurfz[k] = ts.interps[i](interp_masses[k], seg[k])
     end
     return (eep = eeps, m_ini, logTe = logte, Mbol = Mbol.(logl, 4.74),
             logg = logg, logL = logl, log_surf_cell_z = logsurfz)

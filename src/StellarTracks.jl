@@ -7,7 +7,6 @@ using TypedTables: Table
 using BolometricCorrections: AbstractBCTable, AbstractBCGrid, filternames, Mbol, logL, radius, surface_gravity, _parse_Mbol, MISTv2BCGrid
 using BolometricCorrections.YBC: PARSECChemistry
 import BolometricCorrections: AbstractChemicalMixture, X, X_phot, Y, Y_phot, Z, Z_phot, Y_p, MH, FeH, alphaFe, alpha_mass_fraction, chemistry, gridname
-using DataInterpolations: LinearInterpolation, CubicHermiteSpline, du_PCHIP
 using StaticArrays: SVector
 import Tables
 
@@ -126,7 +125,92 @@ end
 # adjacent EEPs share knots, the isochrone initial mass cannot decrease from one to the next; PCHIP slopes depend on the
 # ages and its curves can cross between shared knots. Log mass follows the near power-law lifetime-mass relation, so
 # the accuracy is close to PCHIP's.
-_amr(m_ini, logAge) = LinearInterpolation(log10.(m_ini), logAge)
+struct AMR{T <: AbstractVector, U <: AbstractVector}
+    t::T # log age, increasing
+    u::U # log10 initial mass, decreasing
+end
+_amr(m_ini, logAge) = AMR(logAge, log10.(m_ini))
+# PCHIP interpolation of several properties sharing the knots `t` (initial masses, increasing), with SVector values `u`
+# and slopes `du`
+struct PCHIP{T <: AbstractVector, U <: AbstractVector}
+    t::T
+    u::U
+    du::U
+end
+# Index j of the knot interval t[j] <= x < t[j+1] of increasing `t`, clamped to 1:length(t)-1; with `j`, found by
+# walking from `j`, which is fast when it is close
+_interval(t, x) = clamp(searchsortedlast(t, x), firstindex(t), lastindex(t) - 1)
+function _interval(t, x, j)
+    j = clamp(j, firstindex(t), lastindex(t) - 1)
+    while j > firstindex(t) && t[j] > x; j -= 1; end
+    while j < lastindex(t) - 1 && t[j+1] <= x; j += 1; end
+    return j
+end
+_checkrange(t, x) = first(t) <= x <= last(t) || throw(DomainError(x, "outside the interpolation range ($(first(t)), $(last(t)))"))
+# The arithmetic of the AMR and PCHIP evaluations is that of DataInterpolations' LinearInterpolation and
+# CubicHermiteSpline, which these replaced
+(a::AMR)(logAge) = (_checkrange(a.t, logAge); a(logAge, _interval(a.t, logAge)))
+(a::AMR)(logAge, j) = a.u[j] + (a.u[j+1] - a.u[j]) / (a.t[j+1] - a.t[j]) * (logAge - a.t[j])
+# Log age at log10 initial mass `lm` in the knot range; the inverse of the AMR, as linear interpolation on reversed knots
+function _inverse(a::AMR, lm)
+    t, u = a.t, a.u
+    p = clamp(searchsortedfirst(u, lm; rev=true), firstindex(u) + 1, lastindex(u))
+    return t[p] + (t[p-1] - t[p]) / (u[p-1] - u[p]) * (lm - u[p])
+end
+(p::PCHIP)(m) = (_checkrange(p.t, m); p(m, _interval(p.t, m)))
+function (p::PCHIP)(m, k)
+    t, u, du = p.t, p.u, p.du
+    Δt = t[k+1] - t[k]
+    c₁ = (u[k+1] - u[k] - du[k] * Δt) / Δt^2
+    c₂ = (du[k+1] - du[k] - 2c₁ * Δt) / Δt^2
+    Δt₀ = m - t[k]
+    return u[k] + Δt₀ * du[k] + Δt₀^2 * (c₁ + (m - t[k+1]) * c₂)
+end
+# PCHIP slopes at knots `t` for values `u`: weighted harmonic mean of the neighboring secant slopes, or zero at local
+# extrema, with the three-point end formula of pchiptx.m (Moler 2004, Numerical Computing with MATLAB, Section 3.6). Same
+# arithmetic as DataInterpolations' internal `du_PCHIP`, which this replaced.
+function _pchip_slopes(u, t)
+    n = length(t)
+    h = diff(t)
+    δ = diff(u) ./ h
+    function edge(h₁, h₂, δ₁, δ₂)
+        d = ((2h₁ + h₂) * δ₁ - h₁ * δ₂) / (h₁ + h₂)
+        sign(d) != sign(δ₁) && return zero(d)
+        return sign(δ₁) != sign(δ₂) && abs(d) > 3abs(δ₁) ? 3δ₁ : d
+    end
+    du = similar(δ, n)
+    du[1], du[n] = edge(h[1], h[2], δ[1], δ[2]), edge(h[n-1], h[n-2], δ[n-1], δ[n-2])
+    for k in 2:n-1
+        w₁, w₂ = 2h[k] + h[k-1], h[k] + 2h[k-1]
+        du[k] = sign(δ[k-1]) == sign(δ[k]) != 0 ? (w₁ + w₂) / (w₁ / δ[k-1] + w₂ / δ[k]) : zero(eltype(δ))
+    end
+    return du
+end
+# The AMRs and property interpolants of all EEPs of a track set, stored flat: the knots of EEP i are `off[i]+1:off[i+1]`
+# of one vector per field. `isochrone` visits every EEP, and reading them in sequence is several times faster than
+# through separate objects. Indexing returns an `AMR` or `PCHIP` of views.
+const _Segment{T} = SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int}}, true}
+struct AMRSet{T, U} <: AbstractVector{AMR{_Segment{T}, _Segment{U}}}
+    off::Vector{Int}
+    t::Vector{T}
+    u::Vector{U}
+end
+struct PCHIPSet{T, U} <: AbstractVector{PCHIP{_Segment{T}, _Segment{U}}}
+    off::Vector{Int}
+    t::Vector{T}
+    u::Vector{U}
+    du::Vector{U}
+end
+Base.size(s::Union{AMRSet, PCHIPSet}) = (length(s.off) - 1,)
+Base.@propagate_inbounds Base.getindex(s::AMRSet, i::Int) = (r = s.off[i]+1:s.off[i+1]; AMR(view(s.t, r), view(s.u, r)))
+Base.@propagate_inbounds Base.getindex(s::PCHIPSet, i::Int) = (r = s.off[i]+1:s.off[i+1]; PCHIP(view(s.t, r), view(s.u, r), view(s.du, r)))
+# Vectors of the `AMR`s and `PCHIP`s of each EEP to flat storage
+function _flatten(amrs, interps)
+    amrs, interps = identity.(amrs), identity.(interps)
+    off = [0; cumsum([length(a.t) for a in amrs])]
+    cat(f, xs) = reduce(vcat, [getfield(x, f) for x in xs])
+    return AMRSet(off, cat(:t, amrs), cat(:u, amrs)), PCHIPSet(off, cat(:t, interps), cat(:u, interps), cat(:du, interps))
+end
 # Indices of a longest strictly increasing subsequence of `x` (patience sorting, O(n log n))
 function _increasing_subsequence(x::AbstractVector)
     tails = Int[] # tails[k] is the index of the smallest last element of an increasing subsequence of length k
@@ -184,22 +268,28 @@ function _common_step(a0, a1, logAge, m0; K=3)
     return exp10(_lerp(logAge, a1.t, a1.u, b1) - _lerp(logAge, a0.t, a0.u, b0))
 end
 # Indices into `ts.eeps` of the points of the isochrone of `ts` at `logAge`, the initial masses from the AMRs at which to
-# evaluate properties, and the initial masses to report. Where tracks end or start between neighboring EEPs and the
+# evaluate properties, the initial masses to report, and the knot intervals of the property interpolants (`PCHIP`) at
+# the first masses. Where tracks end or start between neighboring EEPs and the
 # mass step between them is non-physical (`_common_step`), the reported masses replace that step with the step from
 # the common tracks if this changes it by at most 1%, and shift all later masses by the same amount. Where the AMRs of
 # neighboring EEPs use different knots the masses can still decrease along the EEPs (a fold); keeping the longest
 # increasing subsequence drops the shorter side of each fold, so a small fold at the start of a long phase does not
 # remove the phase.
 function _isochrone_masses(ts::AbstractTrackSet, logAge::Number)
-    idx = Int[]
+    idx, seg = Int[], Int[]
     masses = Vector{eltype(ts)}(undef, 0)
+    j = 1
     for (i, amr) in enumerate(ts.AMRs)
-        drange = extrema(amr) # Valid age range for the EEP
-        if logAge >= first(drange) && logAge <= last(drange)
-            # The AMR and this EEP's property interpolant share knots, so the clamp only absorbs rounding in exp10
+        if first(amr.t) <= logAge <= last(amr.t) # Valid age range for the EEP
+            # Neighboring EEPs have nearby knot intervals at a given age, so each search starts from the last
+            j = _interval(amr.t, logAge, j)
+            # The AMR and this EEP's property interpolant share knots in reverse order, so the clamp only absorbs
+            # rounding in exp10 and the interval of the mass is at or next to that of the AMR
             itp = ts.interps[i]
+            m = clamp(exp10(amr(logAge, j)), first(itp.t), last(itp.t))
             push!(idx, i)
-            push!(masses, clamp(exp10(amr(logAge)), first(itp.t), last(itp.t)))
+            push!(masses, m)
+            push!(seg, _interval(itp.t, m, lastindex(amr.t) - j))
         end
     end
     m_ini = copy(masses)
@@ -213,16 +303,15 @@ function _isochrone_masses(ts::AbstractTrackSet, logAge::Number)
         m_ini[j] = m_ini[j-1] * ratio
         offset = m_ini[j] - masses[j]
     end
+    # Most isochrones are already strictly increasing
+    issorted(m_ini; lt=<=) && return idx, masses, m_ini, seg
     keep = _increasing_subsequence(m_ini)
-    return idx[keep], masses[keep], m_ini[keep]
+    return idx[keep], masses[keep], m_ini[keep], seg[keep]
 end
 # Masses for which at least one EEP has a valid property interpolation. Top-down selection can
 # drop a mass from every EEP of a track set, so `unique(data.m_ini)` may advertise unusable masses.
 _supported_masses(interps, m_ini) = filter(m -> any(itp -> first(itp.t) <= m <= last(itp.t), interps), unique(m_ini))
-# PCHIP interpolation of several properties sharing the knots `t`, as one spline returning
-# an SVector. Slopes use DataInterpolations' internal `du_PCHIP` because
-# `PCHIPInterpolation` with vector-valued `u` stores non-static slopes that allocate on every call.
-_pchip_svector(t, cols...) = CubicHermiteSpline(SVector.(map(c -> du_PCHIP(c, t), cols)...), SVector.(cols...), t)
+_pchip_svector(t, cols...) = PCHIP(t, SVector.(cols...), SVector.(map(c -> _pchip_slopes(c, t), cols)...))
 # Generic function to interpolate a trackset to a new initial stellar mass
 # This returns a NamedTuple with columns `(:logAge, names...)`, where `names` labels the
 # components of the SVector-valued `ts.interps`; concrete subtypes should define methods to
@@ -236,9 +325,8 @@ function _generic_trackset_interp(ts::AbstractTrackSet, M::Number, names::NTuple
     good_idx = findall(itp -> first(itp.t) <= M <= last(itp.t), ts.interps)
     # Convert to eltype(ts) so e.g. Float32 track sets return Float32 properties when evaluated at a Float64 mass
     results = [convert(SVector{N, eltype(ts)}, ts.interps[j](M)) for j in good_idx]
-    # Exact inverse of the piecewise-linear AMR (`_amr`); log masses decrease as ages increase. The clamp absorbs
-    # rounding in log10 at the ends of the mass range.
-    ages = [LinearInterpolation(reverse(amr.t), reverse(amr.u))(clamp(log10(M), last(amr.u), first(amr.u))) for amr in ts.AMRs[good_idx]]
+    # The clamp absorbs rounding in log10 at the ends of the mass range
+    ages = [(amr = ts.AMRs[j]; _inverse(amr, clamp(log10(M), last(amr.u), first(amr.u)))) for j in good_idx]
     sortidx = sortperm(ages)
     sorted = results[sortidx]
     return NamedTuple{(:logAge, names...)}((ages[sortidx], ntuple(k -> getindex.(sorted, k), N)...))

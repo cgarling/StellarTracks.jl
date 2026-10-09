@@ -5,6 +5,8 @@ using StellarTracks.MIST: MISTv1TrackSet
 using StellarTracks.BaSTIv2: BaSTIv2TrackSet
 using DataDeps: @datadep_str
 import JLD2
+using DataInterpolations: LinearInterpolation, PCHIPInterpolation
+using StaticArrays: SVector
 using Test
 
 # Shared knots: if every track is at least as old at EEP e+1 as at EEP e, the e+1 mass is never lower at any age
@@ -16,6 +18,28 @@ using Test
     ages = range(maximum(first.((t0, t1))), minimum(last.((t0, t1))); length=1001)
     @test all(exp10(a1(la)) >= exp10(a0(la)) for la in ages)
     @test exp10(a0(t0[3])) ≈ m[3]
+end
+
+# The package's AMR and PCHIP evaluations replaced DataInterpolations objects and keep their arithmetic
+@testset "Interpolants match DataInterpolations" begin
+    t = cumsum(0.05 .+ 0.1 .* abs.(sin.(1:30))) # increasing knots
+    y, z = cos.(t) .+ 0.1 .* t, t .^ 2           # non-monotone and monotone values
+    p = StellarTracks._pchip_svector(t, y, z)
+    py, pz = PCHIPInterpolation(y, t), PCHIPInterpolation(z, t)
+    xs = vcat(range(first(t), last(t); length=1001), t)
+    @test all(p(x) == SVector(py(x), pz(x)) for x in xs)
+    m = exp10.(2 .- 0.3 .* t) # masses decreasing as ages increase
+    a = _amr(m, t)
+    @test all(a(x) == LinearInterpolation(log10.(m), t)(x) for x in xs)
+    inv = LinearInterpolation(reverse(t), reverse(log10.(m)))
+    @test all(StellarTracks._inverse(a, lm) == inv(lm) for lm in range(last(a.u), first(a.u); length=1001))
+    @test all(StellarTracks._interval(t, x, j) == StellarTracks._interval(t, x) for x in xs, j in (1, 15, 29))
+    @test_throws DomainError a(first(t) - 0.1)
+    @test_throws DomainError p(last(t) + 0.1)
+    amrs, itps = StellarTracks._flatten(Any[a, _amr(m[1:10], t[1:10])], Any[p, StellarTracks._pchip_svector(t[1:10], y[1:10], z[1:10])])
+    @test length(amrs) == length(itps) == 2
+    @test amrs[1](t[5]) == a(t[5]) && amrs[2].t == t[1:10]
+    @test itps[1](xs[7]) == p(xs[7]) && itps[2].u == SVector.(y[1:10], z[1:10])
 end
 
 @testset "Longest increasing subsequence" begin
@@ -45,7 +69,7 @@ end
     ts = BaSTIv2TrackSet(-0.4, 0.0, false, true, 0.247, 0.3)
     iso = isochrone(ts, 10.1)
     @test eltype(iso.m_ini) == Float64
-    @test length(iso.eep) == count(a -> first(extrema(a)) <= 10.1 <= last(extrema(a)), ts.AMRs)
+    @test length(iso.eep) == count(a -> first(a.t) <= 10.1 <= last(a.t), ts.AMRs)
 end
 
 # Where a track ends between two EEPs, the mass step between them is replaced by the step from the tracks present at
@@ -69,7 +93,7 @@ end
     # EEP 694; the longest increasing subsequence removed EEPs 694-808 at logAge 9.0
     ts = MISTv1TrackSet(-3.0, 0.4)
     iso = isochrone(ts, 9.0)
-    @test count(e -> 694 <= e <= 808, iso.eep) == count(a -> first(extrema(a)) <= 9.0 <= last(extrema(a)), ts.AMRs[findall(e -> 694 <= e <= 808, ts.eeps)])
+    @test count(e -> 694 <= e <= 808, iso.eep) == count(a -> first(a.t) <= 9.0 <= last(a.t), ts.AMRs[findall(e -> 694 <= e <= 808, ts.eeps)])
     @test all(>(0), diff(iso.m_ini))
 end
 
