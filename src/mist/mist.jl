@@ -271,6 +271,8 @@ struct MISTv1TrackSet{A <: AbstractVector{<:Integer},
     interps::C
     properties::D
 end
+# The MIST v1 or v2 track files at `paths` for initial masses `masses` as one table with `m_ini` and `eep` columns
+_mist_table(paths, masses) = reduce(vcat, [(d = JLD2.load_object(p)::_MISTRawTable; Table(d, m_ini=fill(m, length(d)), eep=1:length(d))) for (p, m) in zip(paths, masses)])
 # Given a metallicity and rotation, load the correct models and then call below method
 function MISTv1TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number=0)) # One table per stellar model
     # Validate feh
@@ -281,12 +283,7 @@ function MISTv1TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number
     vvcrit = _parse_vvcrit(vvcrit)
     # List stellar track files
     allfiles = [@datadep_str(joinpath("MISTv1.2_vvcrit"*vvcrit, feh, _parse_mass(mass) * "M.track.jld2")) for mass in mass_grid]
-    tables = [begin
-                  tmpdata = JLD2.load_object(allfiles[i])::_MISTRawTable
-                  Table(tmpdata, m_ini=fill(mass_grid[i], length(tmpdata)),
-                        eep = 1:length(tmpdata))
-              end for i in eachindex(allfiles)]
-    data = reduce(vcat, tables)
+    data = _mist_table(allfiles, mass_grid)
     return MISTv1TrackSet(data, parse(track_type, feh), parse(track_type, vvcrit))
 end
 function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
@@ -306,7 +303,9 @@ function MISTv1TrackSet(data::Table, feh::Number, vvcrit::Number)
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
         # Now interpolate mass against the properties in `interp_names`
-        interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
+        # Columns of `interp_names` written out: a generator over them would capture `tmpdata`, which is reassigned above, so
+        # Julia would box it and infer everything in this loop that uses it as Any
+        interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.log_L, tmpdata.log_Teff, tmpdata.log_g, tmpdata.log_surf_cell_z)
     end
     amrset, itps = _flatten(amrs, interps)
     masses = _supported_masses(itps, data.m_ini)
@@ -505,12 +504,7 @@ function MISTv2TrackSet(@nospecialize(feh::Number), @nospecialize(vvcrit::Number
     # Some (feh, vvcrit, afe) combinations are missing individual mass tracks in the MIST v2.5 grid.
     # Skip files that are not present on disk rather than erroring.
     allfiles_masses = filter(fm -> isfile(fm.path), allfiles_masses)
-    tables = [begin
-                  tmpdata = JLD2.load_object(fm.path)::_MISTRawTable
-                  Table(tmpdata, m_ini=fill(fm.mass, length(tmpdata)),
-                        eep = 1:length(tmpdata))
-              end for fm in allfiles_masses]
-    data = reduce(vcat, tables)
+    data = _mist_table([fm.path for fm in allfiles_masses], [fm.mass for fm in allfiles_masses])
     return MISTv2TrackSet(data, valid_feh[feh_idx],
                           parse(track_type, vvcrit_str), afe_val; wd)
 end
@@ -535,7 +529,8 @@ function MISTv2TrackSet(data::Table, feh::Number, vvcrit::Number, afe::Number; w
         amrs[i] = _amr(tmpdata.m_ini, log10.(tmpdata.star_age))
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
-        interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
+        # Write out the columns of `interp_names` to avoid capturing and boxing `tmpdata`
+        interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.log_L, tmpdata.log_Teff, tmpdata.log_g, tmpdata.log_surf_cell_z)
         good_eeps[i] = true
     end
     amrset, itps = _flatten(amrs[good_eeps], interps[good_eeps])
