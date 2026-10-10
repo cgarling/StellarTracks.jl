@@ -695,7 +695,7 @@ include("BCs.jl")
 include("precompile.jl")
 
 # Common API exports
-export mass, chemistry, X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, post_rgb, isochrone, gridname
+export mass, chemistry, X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, post_rgb, isochrone, gridname, apply_bc, bc_table
 # Submodule exports
 export PARSECLibrary, MISTv1Library, MISTLibrary, MISTv2Library, BaSTIv1Library, BaSTIv2Library
 
