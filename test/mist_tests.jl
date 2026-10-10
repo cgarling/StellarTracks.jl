@@ -1,5 +1,5 @@
 using StellarTracks.MIST
-using StellarTracks: InterpolatedTrack
+using StellarTracks: InterpolatedTrack, apply_bc, bc_table
 using BolometricCorrections.MIST: MISTv1BCGrid, MISTv2BCGrid
 using TypedTables: Table
 
@@ -204,6 +204,8 @@ bcgv2 = MISTv2BCGrid("JWST")
             iso2_v2 = isochrone(tracklib, bcgv2, 10.0, mh_test, 0.0)
             @test iso2_v2 isa Table
             @test iso1_v2 == iso2_v2
+            # bc_table converts [M/H] to the [Fe/H] and [α/Fe] that MISTv2BCGrid takes
+            @test apply_bc(isochrone(tracklib, 10.0, mh_test), bc_table(tracklib, bcgv2, mh_test, 0.0)) == iso2_v2
 
             # Test that we can interpolate across the range of valid MH
             for mh in range(extrema(MH(tracklib))...; length=10)

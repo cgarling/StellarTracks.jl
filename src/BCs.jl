@@ -1,16 +1,38 @@
 """
-    _apply_bc(iso, bc::AbstractBCTable)
-Given a calculated isochrone `iso` and an `AbstractBCTable`, parse the isochrone
-for `Teff, logg, Mbol`, evaluate BCs as a function of `(Teff, logg)`, and apply
-BCs to `Mbol`, returning a joined `TypedTables.Table` with theoretical and
-observational quantities.
+    apply_bc(iso, bc::BolometricCorrections.AbstractBCTable)
+Given a theoretical isochrone `iso` (e.g., from `isochrone(tracklib, logAge, mh)`) and a bolometric correction table
+`bc`, evaluates the bolometric corrections at the effective temperatures and surface gravities of `iso` and applies
+them to its bolometric magnitudes, returning a `TypedTables.Table` with the columns of `iso` followed by the magnitude
+in each filter of `bc`. Together with [`bc_table`](@ref), this applies several tables (e.g., for different
+extinctions) to one isochrone without recomputing it.
+
+```julia
+using StellarTracks, BolometricCorrections
+p = MISTv1Library(0.0)   # Load MIST library of non-rotating stellar models
+m = MISTv1BCGrid("JWST") # Load MIST library of BCs
+iso = isochrone(p, 10.0, -1.01)
+isos = [apply_bc(iso, bc_table(p, m, -1.01, Av)) for Av in (0.0, 0.5)]
+```
 """
-@inline function _apply_bc(iso, bc::AbstractBCTable)
-    iso_Mbol = _parse_Mbol(iso)
-    BCs = permutedims(bc(iso)) # Parsing of `iso` for correct args happens in BolometricCorrections.jl
-    # Concatenate theoretical quantities with magnitudes
-    return Table(Table(iso),
-                 Table(Tables.table(iso_Mbol .- BCs; header=filternames(bc))))
+function apply_bc(iso, bc::AbstractBCTable)
+    # Parsing of `iso` for the arguments of `bc` happens in BolometricCorrections.jl; `bc(iso)` is (filters × stars)
+    mags = _parse_Mbol(iso) .- transpose(bc(iso))
+    filters = filternames(bc)
+    return Table(Table(iso), Table(NamedTuple{filters}(ntuple(k -> view(mags, :, k), Val(length(filters))))))
+end
+
+"""
+    bc_table(tracklib::AbstractTrackLibrary, bcg::BolometricCorrections.AbstractBCGrid, mh::Number, Av::Number)
+Returns the bolometric correction table interpolated from `bcg` for stars of metallicity [M/H] = `mh`, defined for the
+chemical mixture of `tracklib`, and V-band extinction `Av`. `mh` is converted to the metal mass fraction `Z` and then
+to the [M/H] of the chemical mixture of `bcg`; for grids indexed by [Fe/H] and [α/Fe] (e.g., `MISTv2BCGrid`),
+[α/Fe] is taken from `tracklib` (see [`alphaFe`](@ref)). These are the tables used by
+`isochrone(tracklib, bcg, logAge, mh, Av)`; see [`apply_bc`](@ref) to apply them to theoretical isochrones.
+"""
+bc_table(tl::AbstractTrackLibrary, bcg::AbstractBCGrid, mh::Number, Av::Number) = bcg(MH(chemistry(bcg), Z(chemistry(tl), mh)), Av)
+function bc_table(tl::AbstractTrackLibrary, bcg::MISTv2BCGrid, mh::Number, Av::Number)
+    afe = alphaFe(tl)
+    return bcg(FeH(chemistry(bcg), MH(chemistry(bcg), Z(chemistry(tl), mh)), afe), afe, Av)
 end
 
 """
@@ -36,7 +58,7 @@ Table with 35 columns and 1323 rows:
 ```
 """
 isochrone(ts::AbstractTrackSet, bc::AbstractBCTable, logAge::Number) =
-    _apply_bc(isochrone(ts, logAge), bc)
+    apply_bc(isochrone(ts, logAge), bc)
 # This generic fallback will work as long as isochrone(tl, logAge, mh) works
 """
     isochrone(tracklib::AbstractTrackLibrary,
@@ -62,7 +84,7 @@ Table with 36 columns and 1465 rows:
 ```
 """
 isochrone(tracklib::AbstractTrackLibrary, bc::AbstractBCTable, logAge::Number, mh::Number) =
-    _apply_bc(isochrone(tracklib, logAge, mh), bc)
+    apply_bc(isochrone(tracklib, logAge, mh), bc)
 
 """
     isochrone(tracklib::AbstractTrackLibrary,
@@ -100,6 +122,9 @@ should ensure that `mh` lies within the metallicity range of `tracklib`, for exa
 that `mh` is between `minimum(MH(tracklib))` and `maximum(MH(tracklib))`. An `mh` outside
 that range is an error from `bcg`.
 
+The bolometric correction table is [`bc_table(tl, bcg, mh, Av)`](@ref bc_table), so for grids indexed by [Fe/H] and
+[α/Fe] (e.g., `MISTv2BCGrid`), [α/Fe] is taken from `tl` (see [`alphaFe`](@ref)).
+
 ```julia
 using StellarTracks, BolometricCorrections
 p = MISTv1Library(0.0)   # Load MIST library of non-rotating stellar models
@@ -112,12 +137,8 @@ Table with 36 columns and 1465 rows:
 ...
 ```
 """
-function isochrone(tl::AbstractTrackLibrary,
-                   bcg::AbstractBCGrid, logAge::Number, mh::Number, Av::Number)
-    # Take stellar track mh, convert to Z, then convert to MH for the BC chemistry
-    bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
-    return isochrone(tl, bcg(bc_mh, Av), logAge, clamp(mh, extrema(MH(tl))...))
-end
+isochrone(tl::AbstractTrackLibrary, bcg::AbstractBCGrid, logAge::Number, mh::Number, Av::Number) =
+    isochrone(tl, bc_table(tl, bcg, mh, Av), logAge, clamp(mh, extrema(MH(tl))...))
 
 # This is most useful for constructing large isochrone tables that can then be written out.
 # For large grids (3403 isochrones) selecting out a single isochrone takes longer than
@@ -131,8 +152,7 @@ function isochrone(tl::AbstractTrackLibrary,
     # This implementation returns a single Table, with Z and logAge rows 
     Threads.@threads for mhval in mh
         Zval = Z(chemistry(tl), mhval)
-        bc_mh = MH(chemistry(bcg), Zval)
-        bc = bcg(bc_mh, Av)
+        bc = bc_table(tl, bcg, mhval, Av)
         Threads.@threads for la in logAge
             iso = isochrone(tl, bc, la, clamp(mhval, extrema(MH(tl))...))
             # Lock and push into result, adding Z and logAge columns
@@ -170,30 +190,6 @@ end
 # For now we are not interpolating against α-abundance and all BC grids have Av
 # as an interpolation variable, so the above generic functions are sufficient. 
 # Leaving this here as we may need to revisit this when more BC grids are added.
-
-####################################################################################
-# isochrone overloads for BC grids that require α-abundance as an argument
-
-"""
-    isochrone(tl::AbstractTrackLibrary, bcg::MISTv2BCGrid,
-              logAge::Number, mh::Number, Av::Number)
-Like the generic `isochrone` method, but for `MISTv2BCGrid` which requires an
-additional `afe` (\\[α/Fe\\]) argument when interpolating the bolometric correction grid.
-`afe` (\\[α/Fe\\]) is inferred from `tl` via [`alphaFe`](@ref) forwarded to the bolometric correction grid.
-`mh` is the desired \\[M/H\\] in the stellar track library's chemical mixture; as in the generic
-method, the stellar tracks are evaluated at the nearest metallicity in `tl` when `mh` is outside its range.
-"""
-function isochrone(tl::AbstractTrackLibrary,
-                   bcg::MISTv2BCGrid, logAge::Number, mh::Number, Av::Number)
-    # First, find correct bulk [M/H] accounting for any differences in Z_sol between tracklib and bcg
-    bc_mh = MH(chemistry(bcg), Z(chemistry(tl), mh))
-
-    # Now, MISTv2BCGrid expects metallicity input in [Fe/H], 
-    # so we have to derive that from [M/H] and [α/Fe] for the tracklib chemistry.
-    afe = alphaFe(tl)
-    bc_feh = FeH(chemistry(bcg), bc_mh, afe)
-    return isochrone(tl, bcg(bc_feh, afe, Av), logAge, clamp(mh, extrema(MH(tl))...))
-end
 
 ####################################################################################
 # Code for specific stellar models / BC grid combinations

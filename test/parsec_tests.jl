@@ -1,5 +1,5 @@
 using StellarTracks.PARSEC
-using StellarTracks: InterpolatedTrack
+using StellarTracks: InterpolatedTrack, apply_bc, bc_table
 using BolometricCorrections.MIST: MISTv1BCGrid
 using TypedTables: Table
 
@@ -73,6 +73,12 @@ bcg = MISTv1BCGrid("JWST")
         @test iso2 isa Table
         # These should both be equivalent
         @test iso1 == iso2
+        # One theoretical isochrone with tables from bc_table at several extinctions, as isochrone does for each
+        let iso = isochrone(tracklib, 10.0, -1.234)
+            @test MH(bc_table(tracklib, bcg, -1.234, 0.0)) == MH(chemistry(bcg), Z(chemistry(tracklib), -1.234))
+            @test apply_bc(iso, bc_table(tracklib, bcg, -1.234, 0.0)) == iso2
+            @test apply_bc(iso, bc_table(tracklib, bcg, -1.234, 0.5)) == isochrone(tracklib, bcg, 10.0, -1.234, 0.5)
+        end
         # Test that we can interpolate across the range of valid MH
         for mh in range(extrema(MH(tracklib))...; length=10)
             @test_nowarn isochrone(tracklib, 10.0, mh)

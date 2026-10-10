@@ -85,6 +85,9 @@ alphaFe(::StellarTracks.AbstractTrackLibrary)
 post_rgb(::StellarTracks.AbstractTrackLibrary)
 isochrone(::StellarTracks.AbstractTrackLibrary, ::Number, ::Number)
 isochrone(::StellarTracks.AbstractTrackLibrary, ::StellarTracks.AbstractBCTable, ::Number, ::Number)
+isochrone(::StellarTracks.AbstractTrackLibrary, ::StellarTracks.AbstractBCGrid, ::Number, ::Number, ::Number)
+bc_table
+apply_bc
 ```
 
 ### Concrete Implementations
