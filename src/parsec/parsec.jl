@@ -214,13 +214,16 @@ function PARSECTrackSet(data::Table, Z::Number)
         idxs = sortperm(tmpdata.m_ini)
         tmpdata = tmpdata[idxs]
         # Now interpolate mass against the properties in `interp_names`
-        interps[i] = _pchip_svector(tmpdata.m_ini, (getproperty(tmpdata, n) for n in interp_names)...)
+        # Write out the columns of `interp_names` to avoid capturing and boxing `tmpdata`
+        interps[i] = _pchip_svector(tmpdata.m_ini, tmpdata.logTe, tmpdata.Mbol, tmpdata.logg, tmpdata.C_O)
     end
 
     amrset, itps = _flatten(amrs, interps)
     masses = _supported_masses(itps, data.m_ini)
     return PARSECTrackSet(eeps, amrset, itps, (Z = Z, masses = masses, coverage = _coverage_flags(itps)))
 end
+# The PARSEC table at `path` without the tracks of initial mass `excluded`, with corrected post-RGB EEPs
+_parsec_table(path, excluded) = (t = JLD2.load_object(path); _fix_post_rgb_eeps(t[t.m_ini .!= excluded]))
 function PARSECTrackSet(@nospecialize(zval::Number))
     idx = findfirst(≈(zval), zgrid) # Validate against zgrid
     if isnothing(idx)
@@ -228,9 +231,7 @@ function PARSECTrackSet(@nospecialize(zval::Number))
     end
     fname = "Z" * string(zgrid[idx]) * "Y" * string(ygrid[idx]) * ".jld2"
     dd = @datadep_str(joinpath("PARSECv1.2S", fname))
-    table = JLD2.load_object(dd)
-    table = _fix_post_rgb_eeps(table[table.m_ini .!= excluded_masses[idx]])
-    return PARSECTrackSet(table, zval)
+    return PARSECTrackSet(_parsec_table(dd, excluded_masses[idx]), zval)
 end
 (ts::PARSECTrackSet)(M::Number) = PARSECTrack(Table(_generic_trackset_interp(ts, M, interp_names)), Z(ts), M)
 gridname(::Type{<:PARSECTrackSet}) = "PARSEC"

@@ -522,9 +522,7 @@ function BaSTIv2Library(@nospecialize(α_fe::Number)=0, canonical::Bool=false, d
               catch
               end
           end for feh in feh_grid]
-    if any(isnothing, ts)
-        ts = filter(!isnothing, ts)
-    end
+    ts = identity.(filter(!isnothing, ts)) # concrete eltype
     return BaSTIv2Library(ts, (feh = [tt.properties.feh for tt in ts],
                                α_fe = convert(track_type, α_fe),
                                canonical = canonical, diffusion = diffusion,

@@ -692,6 +692,8 @@ using .BaSTIv2
 # Include bolometric correction-related functionality
 include("BCs.jl")
 
+include("precompile.jl")
+
 # Common API exports
 export mass, chemistry, X, Y, Z, MH, FeH, alphaFe, alpha_mass_fraction, post_rgb, isochrone, gridname
 # Submodule exports
