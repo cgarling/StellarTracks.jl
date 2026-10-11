@@ -1,6 +1,6 @@
 name = "StellarTracks"
 uuid = "2b4a1a39-e20a-4324-9c0b-7d841c062f62"
-version = "1.1.2"
+version = "1.2.0"
 authors = ["cgarling <chris.t.garling@gmail.com> and contributors"]
 
 [deps]
@@ -24,7 +24,7 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 ArgCheck = "1, 2"
-BolometricCorrections = "0.2"
+BolometricCorrections = "0.2.3"
 CSV = "0.10, 1"
 CodecZlib = "0.7"
 DataDeps = "0.7, 1"
